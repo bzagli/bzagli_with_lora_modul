@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayısı Entegre Hastalık ve Zararlı Mücadele Programı</title>
+    <!-- Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Auth Guard -->
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+    
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+    
+    <style>
+        :root {
+            --primary-apricot: #e67e22;
+            --primary-dark: #d35400;
+            --accent-green: #27ae60;
+            --accent-blue: #2980b9;
+            --card-shadow: 0 10px 25px rgba(0,0,0,0.06);
+        }
+        body {
+            background-color: #f7f9fa;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: #2c3e50;
+        }
+        .hero-banner {
+            background: linear-gradient(135deg, #d35400 0%, #e67e22 50%, #f39c12 100%);
+            color: white;
+            padding: 45px 0 35px 0;
+            border-radius: 0 0 32px 32px;
+            box-shadow: 0 8px 25px rgba(211, 84, 0, 0.25);
+        }
+        .stage-card {
+            border: none;
+            border-radius: 18px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.25s ease-in-out;
+            background: #ffffff;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top: 5px solid var(--primary-apricot);
+        }
+        .stage-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 30px rgba(0,0,0,0.12);
+        }
+        .stage-header {
+            padding: 16px 20px;
+            background: #fffaf5;
+            border-bottom: 1px solid #fcefe6;
+        }
+        .bbch-badge {
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background-color: #fcefe6;
+            color: #d35400;
+            display: inline-block;
+        }
+        .badge-frac {
+            background-color: #e8f4fd;
+            color: #1976d2;
+            font-weight: 700;
+            border: 1px solid #bbdefb;
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+        }
+        .badge-irac {
+            background-color: #fbe9e7;
+            color: #d84315;
+            font-weight: 700;
+            border: 1px solid #ffccbc;
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+        }
+        .badge-phi {
+            background-color: #e8f8f5;
+            color: #16a085;
+            font-weight: 700;
+            border: 1px solid #a3e4d7;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        .badge-phi-warn {
+            background-color: #fff9e6;
+            color: #b78103;
+            font-weight: 700;
+            border: 1px solid #ffeeba;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+        }
+        .product-pill {
+            display: inline-block;
+            background: #f1f2f6;
+            color: #2f3542;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.82rem;
+            margin: 2px 2px 2px 0;
+            font-weight: 600;
+        }
+        .product-pill-highlight {
+            background: #eafaf1;
+            color: #27ae60;
+            border: 1px solid #c8e6c9;
+        }
+        .note-callout {
+            border-left: 4px solid #f39c12;
+            background: #fffdf9;
+            padding: 14px 18px;
+            border-radius: 0 12px 12px 0;
+        }
+        .danger-callout {
+            border-left: 4px solid #e74c3c;
+            background: #fdf7f7;
+            padding: 14px 18px;
+            border-radius: 0 12px 12px 0;
+        }
+        .info-callout {
+            border-left: 4px solid #3498db;
+            background: #f4f9fd;
+            padding: 14px 18px;
+            border-radius: 0 12px 12px 0;
+        }
+        .fenoloji-thumbnail-container {
+            cursor: pointer;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 3px solid #ffddbe;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            transition: all 0.3s;
+            position: relative;
+        }
+        .fenoloji-thumbnail-container:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(211, 84, 0, 0.2);
+            border-color: #e67e22;
+        }
+        .fenoloji-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .nav-tabs .nav-link {
+            font-weight: 600;
+            color: #576574;
+            border: none;
+            border-bottom: 3px solid transparent;
+            padding: 12px 20px;
+        }
+        .nav-tabs .nav-link.active {
+            color: #d35400;
+            background: transparent;
+            border-bottom: 3px solid #d35400;
+        }
+        @media print {
+            .navbar, .btn-no-print, .nav-tabs, footer {
+                display: none !important;
+            }
+            .stage-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc !important;
+            }
+            body {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Standard Navigation Bar -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold active" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<header class="hero-banner text-center mb-4">
+    <div class="container">
+        <div class="d-inline-flex align-items-center mb-2 px-3 py-1 rounded-pill bg-white bg-opacity-25 text-white">
+            <i class="bi bi-flower2 me-2"></i> Bilimsel Bitki Koruma & Direnç Yönetimi
+        </div>
+        <h1 class="display-6 fw-bold mb-2">Kayısı Entegre Hastalık ve Zararlı Mücadele Programı</h1>
+        <p class="lead opacity-90 mb-3 mx-auto" style="max-width: 850px;">
+            Fenolojik BBCH Gelişim Evrelerine Göre Planlanmış, Direnç Rotasyonu (FRAC / IRAC) ve Resmi BKÜ Veritabanı ile Tam Uyumlu Sezonluk Koruma Rehberi
+        </p>
+        <div class="d-flex flex-wrap justify-content-center gap-2 mb-3">
+            <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-shield-check text-success me-1"></i>FRAC & IRAC Uyumlu</span>
+            <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-database-check text-primary me-1"></i>BKÜ Dashboard Entegre</span>
+            <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-diagram-3 text-warning me-1"></i>BBCH Fenoloji Esaslı</span>
+            <span class="badge bg-light text-dark px-3 py-2"><i class="bi bi-check2-circle text-info me-1"></i>PHI & Kalıntı Güvenli</span>
+        </div>
+        <div class="d-flex flex-wrap justify-content-center gap-2 btn-no-print">
+            <button class="btn btn-light text-dark fw-bold px-3 py-2 rounded-pill shadow-sm" data-bs-toggle="modal" data-bs-target="#bbchModal">
+                <i class="bi bi-image me-1 text-danger"></i> BBCH Fenoloji Tablosunu İncele
+            </button>
+            <a href="bku_dashboard.html?bitki=KAYISI" class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm">
+                <i class="bi bi-speedometer2 me-1"></i> BKÜ Dashboard'da Aç
+            </a>
+            <button class="btn btn-outline-light fw-bold px-3 py-2 rounded-pill shadow-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Programı Yazdır / PDF
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="container mb-5">
+
+    <!-- Fenoloji Tanıtım & Özet Bant -->
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-3 col-md-4 text-center">
+                <div class="fenoloji-thumbnail-container" data-bs-toggle="modal" data-bs-target="#bbchModal">
+                    <img src="assets/images/kayisi_fenoloji_bbch.jpg" alt="Kayısı BBCH Fenoloji Skalası" class="img-fluid" style="max-height: 190px; object-fit: cover; width: 100%;">
+                    <div class="fenoloji-overlay">
+                        <i class="bi bi-zoom-in me-1"></i> Büyütmek İçin Tıklayın
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-9 col-md-8">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill me-2 fw-bold">BBCH Skalası Esaslı Koruma</span>
+                    <span class="text-muted small">00/A Kış Uykusundan 89 Hasat ve 97 Yaprak Dökümüne Kadar</span>
+                </div>
+                <h4 class="fw-bold mb-2 text-dark">Direnç Kırmanın Temel Kuralı: Doğru Zamanda Doğru FRAC / IRAC Grubu</h4>
+                <p class="text-secondary small mb-3">
+                    Kayısıda en yıkıcı fungal hastalık olan <strong>Çiçek Monilyası (<em>Monilinia laxa</em>)</strong> ve <strong>Yaprak Delen / Çil (<em>Stigmina carpophila</em>)</strong> ile 
+                    ana zararlılar olan <strong>Şeftali Güvesi (<em>Anarsia lineatella</em>)</strong> ve <strong>Erik Koşnili</strong> mücadelesinde kritik evre kaçırılmamalıdır. 
+                    Aynı kimyasal etki grubunun (örn. DMI Triazoller veya Diamidler) ardışık uygulanması ilaca karşı hızlı direnç gelişmesine yol açar.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="#stage1" class="btn btn-sm btn-outline-secondary rounded-pill">1. Kış / Uyku (00/A)</a>
+                    <a href="#stage2" class="btn btn-sm btn-outline-secondary rounded-pill">2. Tomurcuk Patlaması (01-03)</a>
+                    <a href="#stage3" class="btn btn-sm btn-outline-secondary rounded-pill">3. Pembe/Balon (53-59)</a>
+                    <a href="#stage4" class="btn btn-sm btn-outline-danger fw-bold rounded-pill">4. Tam Çiçek (65/F)</a>
+                    <a href="#stage5" class="btn btn-sm btn-outline-secondary rounded-pill">5. Kürkten Çıkış (69-71)</a>
+                    <a href="#stage6" class="btn btn-sm btn-outline-secondary rounded-pill">6. Yeşil Çağla (72-75)</a>
+                    <a href="#stage7" class="btn btn-sm btn-outline-success fw-bold rounded-pill">7. Hasat Öncesi (81-85)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs for Sections -->
+    <ul class="nav nav-tabs mb-4 border-bottom" id="programTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="stages-tab" data-bs-toggle="tab" data-bs-target="#stages-content" type="button" role="tab">
+                <i class="bi bi-calendar3-range me-2 text-warning"></i>Fenolojik İlaçlama Takvimi (7 Evre)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-content" type="button" role="tab">
+                <i class="bi bi-shield-lock me-2 text-primary"></i>FRAC & IRAC Direnç Matrisi
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="database-tab" data-bs-toggle="tab" data-bs-target="#database-content" type="button" role="tab">
+                <i class="bi bi-database-check me-2 text-success"></i>BKÜ Ruhsatlı Ürünler & Arama (182 Kayıt)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="rules-tab" data-bs-toggle="tab" data-bs-target="#rules-content" type="button" role="tab">
+                <i class="bi bi-exclamation-triangle me-2 text-danger"></i>Tank Karışımı & Yasaklı Madde Rehberi
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="programTabsContent">
+        
+        <!-- TAB 1: 7 FENOLOJİK EVRE KARTLARI -->
+        <div class="tab-pane fade show active" id="stages-content" role="tabpanel">
+            
+            <div class="row g-4">
+                
+                <!-- 1. EVRE: SONBAHAR / KIŞ UYKUSU -->
+                <div class="col-lg-6" id="stage1">
+                    <div class="stage-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge"><i class="bi bi-snow me-1"></i>BBCH 97 / 91-99 (00/A)</span>
+                            <span class="badge-frac">FRAC M01 (Bakır)</span>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-dark">1. Uygulama: Sonbahar & Kış Uykusu</h4>
+                        <p class="text-muted small mb-3">Yaprak dökümü %75-80 olduğunda ve kış uykusu dönemi</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                            <p class="small text-secondary mb-0">Yaprak Delen / Çil (<em>Stigmina carpophila</em>), Bakteriyel Kanser ve Dal Yanıklığı (<em>Pseudomonas syringae</em>), Kanser yaraları.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Etken Madde:</h6>
+                            <p class="small mb-1"><strong>%40 Metalik Bakıra Eşdeğer Tribazik Bakır Sülfat</strong> veya %1.5-2 Bordo Bulamacı</p>
+                            <div>
+                                <span class="product-pill product-pill-highlight">Novicure (%40 Tribazik Bakır Sülfat)</span>
+                                <span class="product-pill">Bordo Bulamacı (%1.5-2)</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <strong>Doz:</strong> 300 g / 100 L su &bull; <strong>PHI:</strong> 21 gün &bull; <strong>Etki:</strong> Kontak / Koruyucu Çok Noktalı (Multi-site)
+                            </div>
+                        </div>
+
+                        <div class="note-callout mt-auto">
+                            <small class="d-block text-secondary">
+                                <strong>Kritik Uygulama Notu:</strong> Yaprakların %75-80'i döküldüğünde yaprak sapının koptuğu yara yerleri bakteri ve mantar girişine açıktır. Ağaçların her tarafı yıkanacak şekilde kaplama ilaçlama yapılmalıdır.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. EVRE: TOMURCUK KABARMASI - PATLAMASI -->
+                <div class="col-lg-6" id="stage2">
+                    <div class="stage-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge"><i class="bi bi-droplet-half me-1"></i>BBCH 01 – 03</span>
+                            <div>
+                                <span class="badge-frac">FRAC M01</span>
+                                <span class="badge-irac">IRAC 7C</span>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-dark">2. Uygulama: Tomurcuk Patlaması</h4>
+                        <p class="text-muted small mb-3">Geç kış - erken ilkbahar, tomurcuklar kabarıp patlarken (gözler uyanırken)</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                            <p class="small text-secondary mb-0">Yaprak Delen (Çil) 1. İlaçlaması &bull; Erik Koşnili (<em>Sphaerolecanium prunastri</em>) &bull; Kabuklu Bit kışlayan formları.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Etken Madde & Ürünler:</h6>
+                            <div class="mb-2">
+                                <span class="badge bg-secondary mb-1">Fungisit:</span>
+                                <span class="product-pill product-pill-highlight">Novicure (300 g/100 L)</span>
+                                <span class="product-pill">Bordo Bulamacı (%1)</span>
+                            </div>
+                            <div>
+                                <span class="badge bg-secondary mb-1">İnsektisit (Koşnil Varsa):</span>
+                                <span class="product-pill product-pill-highlight">Admiral (100 g/l Pyriproxyfen - 50 ml/100 L)</span>
+                                <span class="product-pill">Kışlık Beyaz Yağ</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <strong>Pyriproxyfen PHI:</strong> 21 gün &bull; <strong>Grup:</strong> IRAC 7C (Böcek Büyüme Düzenleyicisi - JHA)
+                            </div>
+                        </div>
+
+                        <div class="info-callout mt-auto">
+                            <small class="d-block text-secondary">
+                                <strong>Kritik Uygulama Notu:</strong> Yaprak delen için pembe burun/yeşil uç döneminden hemen önce %1'lik bakır uygulaması kışlayan miselyum ve sporları imha eder.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. EVRE: PEMBE / BALON / KADEH DÖNEMİ -->
+                <div class="col-lg-6" id="stage3">
+                    <div class="stage-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge"><i class="bi bi-flower1 me-1"></i>BBCH 53/C – 59/D-E</span>
+                            <div>
+                                <span class="badge-frac">FRAC M09 / FRAC 9</span>
+                                <span class="badge-frac">FRAC M04</span>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-dark">3. Uygulama: Pembe / Balon & Kadeh Dönemi</h4>
+                        <p class="text-muted small mb-3">Çiçek tomurcukları kabarıp pembe/beyaz taç yapraklar göründüğünde (%5-10 çiçeklenme)</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                            <p class="small text-secondary mb-0"><strong>Çiçek Monilyası 1. İlaçlama</strong> &bull; <strong>Yaprak Delen (Çil) 2. İlaçlama</strong> (Kadeh dökülürken / çanak yaprak belirirken).</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Etken Madde & Ürünler:</h6>
+                            <div class="mb-2">
+                                <div><strong>Seçenek A (Kontakt Çoklu Koruma):</strong></div>
+                                <span class="product-pill product-pill-highlight">Delan 70 WG (%70 Dithianon - 50 g/100 L - FRAC M09)</span>
+                                <span class="product-pill">Merpan (%80 Captan - 200 g/100 L - FRAC M04)</span>
+                                <span class="product-pill">Ziram DF (%76 Ziram - 250 g/100 L - FRAC M03)</span>
+                            </div>
+                            <div>
+                                <div><strong>Seçenek B (Düşük Sıcaklık Sistemik Koruması):</strong></div>
+                                <span class="product-pill product-pill-highlight">Chorus 50 WG (%50 Cyprodinil - 30 g/100 L - FRAC 9)</span>
+                                <span class="product-pill">Danua 50 WG / Koranil (%50 Cyprodinil - 30 g)</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <strong>Dithianon PHI:</strong> 14 gün &bull; <strong>Cyprodinil PHI:</strong> 7 gün
+                            </div>
+                        </div>
+
+                        <div class="info-callout mt-auto">
+                            <small class="d-block text-secondary">
+                                <strong>Direnç Rotasyonu Kuralı:</strong> Bu evrede kontakt (FRAC M09 / M04) veya Anilinopirimidin (FRAC 9) grubu kullanarak, tam çiçeklenmedeki SDHI+QoI (FRAC 7+11) ve Triazol (FRAC 3) cephanesini sonraya saklayın!
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. EVRE: TAM ÇİÇEKLENME (EN KRİTİK MONİLYA DÖNEMİ) -->
+                <div class="col-lg-6" id="stage4">
+                    <div class="stage-card p-4" style="border-top: 5px solid #e74c3c; background: #fffcfc;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge" style="background: #fde8e8; color: #c0392b;"><i class="bi bi-exclamation-circle-fill me-1"></i>BBCH 65 / F (Tam Çiçek)</span>
+                            <span class="badge-frac" style="background: #fde8e8; color: #c0392b; border-color: #f5b7b1;">FRAC 7 + FRAC 11 (Zirve)</span>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-danger">4. Uygulama: Tam Çiçeklenme (Çiçek Monilyası 2. İlaçlama)</h4>
+                        <p class="text-muted small mb-3">Ağaçtaki çiçeklerin %50 - %70'i tamamen açtığı dönem (En Tehlikeli Dönem)</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık:</h6>
+                            <p class="small text-secondary mb-0"><strong>Çiçek Monilyası (<em>Monilinia laxa</em>)</strong> - Mantar sporları açık çiçeklerin tepecik (stigma) ve dişicik borusundan girerek odun dokusuna ilerler ve dal kurumalarına yol açar.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Birinci Sınıf Ürünler:</h6>
+                            <div class="mb-2">
+                                <strong>1. Tercih (SDHI + Strobilurin İkili Etki):</strong><br>
+                                <span class="product-pill product-pill-highlight">Signum WG (%26.7 Boscalid + %6.7 Pyraclostrobin - 100 g/100 L)</span>
+                                <span class="product-pill product-pill-highlight">Bellis (%25.2 Boscalid + %12.8 Pyraclostrobin - 40 g/100 L)</span>
+                                <span class="product-pill">Lusen SC 500 (Fluopyram + Trifloxystrobin - 25 ml/100 L)</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>2. Tercih (Yeni Nesil DMI Triazol):</strong><br>
+                                <span class="product-pill product-pill-highlight">Revyona (75 g/l Mefentrifluconazole - 100 ml/100 L - FRAC 3)</span>
+                                <span class="product-pill">Orius 25 EW / Toppel 25 WP (Tebuconazole - 60 ml/100 L)</span>
+                            </div>
+                            <div>
+                                <strong>Biyolojik / Kalıntısız Alternatif:</strong><br>
+                                <span class="product-pill">Serenade SC (Bacillus amyloliquefaciens QST 713 - FRAC BM02 - PHI 0 gün)</span>
+                            </div>
+                        </div>
+
+                        <div class="danger-callout mt-auto">
+                            <small class="d-block text-danger">
+                                <strong>Arı Koruma ve Uygulama Şartı:</strong> Çiçeklenme döneminde arı faaliyetine zarar vermemek için ilaçlama kesinlikle <u>akşamüstü arıların kovana çekildiği saatlerde</u> yapılmalıdır. İnsektisit karıştırılmamalıdır!
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. EVRE: TAÇ YAPRAK DÖKÜMÜ - KÜRKTE ÇIKIŞ -->
+                <div class="col-lg-6" id="stage5">
+                    <div class="stage-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge"><i class="bi bi-feather me-1"></i>BBCH 69/G – 71/H</span>
+                            <div>
+                                <span class="badge-frac">FRAC 9 + 12</span>
+                                <span class="badge-irac">IRAC 4C / 7C</span>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-dark">5. Uygulama: Taç Yaprak Dökümü & Kürkten Çıkış</h4>
+                        <p class="text-muted small mb-3">Çiçek taç yaprakları dökülüp küçük çağla meyveler kadehten (kürkten) sıyrıldığında</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                            <p class="small text-secondary mb-0"><strong>Yaprak Delen (Çil) 3. İlaçlama</strong> &bull; Monilya 3. İlaçlama (Yağışlı iklimde) &bull; Erik Koşnili (Hareketli Nimfler) &bull; Şeftali Gövde Kanlı Biti.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Etken Madde & Ürünler:</h6>
+                            <div class="mb-2">
+                                <strong>Fungisit Rotasyonu:</strong><br>
+                                <span class="product-pill product-pill-highlight">Switch 62.5 WG (%37.5 Cyprodinil + %25 Fludioxonil - 35 g/100 L)</span>
+                                <span class="product-pill">Fizion (%50 Trifloxystrobin - 12.5 g/100 L - FRAC 11)</span>
+                                <span class="product-pill">Superprex 500 FW / Dodine (%65 Dodine - 80-100 ml - FRAC U12)</span>
+                            </div>
+                            <div>
+                                <strong>İnsektisit (Zararlı Eşiği Aşıldığında):</strong><br>
+                                <span class="product-pill product-pill-highlight">Breaker (240 g/l Sulfoxaflor - 25 ml/100 L - IRAC 4C)</span>
+                                <span class="product-pill">Admiral (Pyriproxyfen - 50 ml - IRAC 7C)</span>
+                                <span class="product-pill">İnsektisit (240 g/l Tau-fluvalinate - Kanlı bit için)</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <strong>Switch PHI:</strong> 7-21 gün &bull; <strong>Breaker PHI:</strong> 14 gün
+                            </div>
+                        </div>
+
+                        <div class="note-callout mt-auto">
+                            <small class="d-block text-secondary">
+                                <strong>Kürkten Çıkış Kuralı:</strong> Çağla meyvesi kürkünü atarken mantar sporlarının meyve kabuğuna yapışıp çil lekesi oluşturmasını önlemek için gecikilmemelidir.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. EVRE: YEŞİL ÇAĞLA & MEYVE İRİLEŞMESİ -->
+                <div class="col-lg-6" id="stage6">
+                    <div class="stage-card p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge"><i class="bi bi-circle me-1"></i>BBCH 72/I – 75</span>
+                            <div>
+                                <span class="badge-irac">IRAC 28 (Diamid)</span>
+                                <span class="badge-frac">FRAC 3 + BM01</span>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-dark">6. Uygulama: Yeşil Meyve & İrileşme (Güve 1. Döl)</h4>
+                        <p class="text-muted small mb-3">Çağla dönemi ve meyve çekirdeğinin sertleşip meyvenin irileşme evresi</p>
+                        <hr class="mt-0">
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                            <p class="small text-secondary mb-0"><strong>Şeftali Güvesi (<em>Anarsia lineatella</em>)</strong> &bull; <strong>Doğu Meyve Güvesi (<em>Grapholita molesta</em>) 1. Döl Larvaları</strong> &bull; Meyve Çil ve Pas Lekeleri.</p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Önerilen Etken Madde & Ürünler:</h6>
+                            <div class="mb-2">
+                                <strong>1. Sınıf Güve İnsektisiti (Ryanodin Modülatörü):</strong><br>
+                                <span class="product-pill product-pill-highlight">Coragen 20 SC (200 g/l Chlorantraniliprole - 20 ml/100 L - IRAC 28)</span>
+                                <span class="product-pill">Bisect / Ryno-A / Billboard (200 g/l Chlorantraniliprole - 20 ml)</span>
+                            </div>
+                            <div>
+                                <strong>Kombine Fungisit Koruması:</strong><br>
+                                <span class="product-pill product-pill-highlight">Regev (400 g/l Tea Tree Oil + 200 g/l Difenoconazole - 25 ml/100 L)</span>
+                                <span class="product-pill">Merpan (%80 Captan - 200 g - FRAC M04)</span>
+                            </div>
+                            <div class="mt-2 small text-muted">
+                                <strong>Coragen PHI:</strong> 14 gün &bull; <strong>Regev PHI:</strong> 21 gün &bull; Faydalı parazitoidlere dost.
+                            </div>
+                        </div>
+
+                        <div class="info-callout mt-auto">
+                            <small class="d-block text-secondary">
+                                <strong>Tuzak Takibi Kuralı:</strong> Eşeysel çekici feromon tuzaklarında haftalık yakalanan kelebek sayısı eşiği aştığında ve ilk larva çıkışı başladığında atılmalıdır. Coragen hem ovisid (yumurta) hem larvisid etkilidir.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. EVRE: RENK DÖNÜMÜ & HASAT ÖNCESİ (KRİTİK PHI EVRESİ) -->
+                <div class="col-lg-12" id="stage7">
+                    <div class="stage-card p-4" style="border-top: 5px solid #27ae60; background: #fafdfb;">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                            <span class="bbch-badge" style="background: #eafaf1; color: #27ae60;"><i class="bi bi-basket2-fill me-1"></i>BBCH 81 – 85 (Renk Dönümü & Hasat Öncesi)</span>
+                            <div class="d-flex gap-2">
+                                <span class="badge-phi">Kısa Bekleme Süreli (PHI 1-3 Gün)</span>
+                                <span class="badge-frac">FRAC 17 / FRAC 3</span>
+                            </div>
+                        </div>
+                        <h4 class="fw-bold mb-1 text-success">7. Uygulama: Renk Dönümü & Hasat Öncesi Koruma (Meyve Monilyası)</h4>
+                        <p class="text-muted small mb-3">Meyveler sararmaya ve olgunlaşma rengine dönmeye başladığında (Hasada 1-14 gün kala)</p>
+                        <hr class="mt-0">
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-crosshair me-1 text-danger"></i>Hedef Hastalık / Zararlı:</h6>
+                                <p class="small text-secondary mb-2">
+                                    <strong>Meyve Monilyası (<em>Monilinia fructigena / laxa</em>)</strong> - Hasat sırasında ve depolamada kahverengi çürüklük.<br>
+                                    <strong>Güve 2. Döl Larva Vuruğu</strong> (Geç olgunlaşan çeşitlerde).
+                                </p>
+                                <div class="danger-callout p-3 mb-0">
+                                    <h6 class="fw-bold text-danger mb-1"><i class="bi bi-shield-exclamation me-1"></i>Gıda Güvenliği & İhracat Toleransı:</h6>
+                                    <small class="text-secondary">Bu evrede atılacak ilaçların hasat öncesi bekleme süresi (PHI) <u>kesinlikle</u> hasat tarihini geçmemelidir. Kalıntı analizi riski taşımayan maddeler seçilmelidir.</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="fw-bold text-dark mb-1"><i class="bi bi-capsule me-1 text-primary"></i>Onaylı Kısa PHI'lı Ürünler:</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered bg-white mb-0 small">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Ticari Ürün</th>
+                                                <th>Etken Madde</th>
+                                                <th>Doz (100 L)</th>
+                                                <th>FRAC</th>
+                                                <th>PHI</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong class="text-success">SPARK</strong></td>
+                                                <td>%50 Fenpyrazamine</td>
+                                                <td>50 g</td>
+                                                <td><span class="badge-frac">FRAC 17</span></td>
+                                                <td><span class="badge bg-success">1 GÜN</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong class="text-success">REVYONA</strong></td>
+                                                <td>75 g/l Mefentrifluconazole</td>
+                                                <td>100 ml</td>
+                                                <td><span class="badge-frac">FRAC 3</span></td>
+                                                <td><span class="badge bg-success">3 GÜN</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong class="text-success">LUSEN SC 500</strong></td>
+                                                <td>Fluopyram + Trifloxystrobin</td>
+                                                <td>25 ml</td>
+                                                <td><span class="badge-frac">FRAC 7+11</span></td>
+                                                <td><span class="badge bg-success">3 GÜN</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong class="text-primary">SERENADE SC</strong></td>
+                                                <td>Bacillus amyloliquefaciens</td>
+                                                <td>Dozaj etiketi</td>
+                                                <td><span class="badge-frac">FRAC BM02</span></td>
+                                                <td><span class="badge bg-primary">0 GÜN</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>SIGNUM WG</strong></td>
+                                                <td>Boscalid + Pyraclostrobin</td>
+                                                <td>100 g</td>
+                                                <td><span class="badge-frac">FRAC 7+11</span></td>
+                                                <td><span class="badge bg-warning text-dark">7 GÜN</span></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TAB 2: FRAC & IRAC DİRENÇ MATRİSİ -->
+        <div class="tab-pane fade" id="matrix-content" role="tabpanel">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <h4 class="fw-bold text-dark mb-2"><i class="bi bi-shield-check text-primary me-2"></i>Direnç Mekanizması ve Rotasyon Prensipleri</h4>
+                <p class="text-muted small mb-4">
+                    Kimyasal mücadelede en sık düşülen hata, ticari ilaç ismi değiştiğinde etken maddenin ve etki mekanizmasının da değiştiğinin sanılmasıdır. 
+                    Aşağıdaki gruplandırma tablosu, kayısıda kullanılan etken maddelerin biyokimyasal etki yerlerini ve güvenli kullanım sınırlarını gösterir.
+                </p>
+
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <div class="card border border-primary border-opacity-25 rounded-3 p-3 h-100">
+                            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-virus me-2"></i>Fungisit Direnç Grupları (FRAC)</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped small mb-0">
+                                    <thead>
+                                        <tr class="table-primary">
+                                            <th>Grup</th>
+                                            <th>Kimyasal Sınıf & Etki Yeri</th>
+                                            <th>Etken Maddeler (BKÜ)</th>
+                                            <th>Direnç Riski & Kural</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC 3</span></td>
+                                            <td>DMI (Sterol Biyosentez İnhibitörü)</td>
+                                            <td>Tebuconazole, Mefentrifluconazole, Difenoconazole</td>
+                                            <td><strong>Orta Risk:</strong> Sezonda en fazla 2 kez. Asla üst üste atılmaz.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC 7</span></td>
+                                            <td>SDHI (Süksinat Dehidrogenaz İnhibitörü)</td>
+                                            <td>Boscalid, Fluxapyroxad, Fluopyram, Isopyrazam</td>
+                                            <td><strong>Orta-Yüksek Risk:</strong> Çoğunlukla QoI ile kombine kullanılır. Sezonda max 2.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC 9</span></td>
+                                            <td>Anilinopirimidin (Metiyonin Biyosentezi)</td>
+                                            <td>Cyprodinil (Chorus, Danua, Koranil)</td>
+                                            <td><strong>Orta Risk:</strong> Soğuk bahar günlerinde etkilidir. Max 2 uygulama.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC 11</span></td>
+                                            <td>QoI (Strobilurin - Hücresel Solunum)</td>
+                                            <td>Pyraclostrobin, Trifloxystrobin</td>
+                                            <td><strong>Yüksek Risk:</strong> Tek başına monilyada tek taraflı direnç oluşturabilir.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC 17</span></td>
+                                            <td>Hidroksianilid / SBI Sınıf III</td>
+                                            <td>Fenpyrazamine (Spark)</td>
+                                            <td><strong>Düşük-Orta:</strong> Diğer gruplarla çapraz direnci yoktur. Hasat öncesi kurtarıcıdır.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-frac">FRAC M</span></td>
+                                            <td>Multi-site (Çok Noktadan Temas Etkili)</td>
+                                            <td>Bakır (M01), Ziram (M03), Captan (M04), Dithianon (M09)</td>
+                                            <td><strong>DİRENÇ RİSKİ SIFIR:</strong> Direnç gelişmez. Tank karışımlarında direnç kırıcıdır.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-6">
+                        <div class="card border border-danger border-opacity-25 rounded-3 p-3 h-100">
+                            <h5 class="fw-bold text-danger mb-3"><i class="bi bi-bug me-2"></i>İnsektisit Direnç Grupları (IRAC)</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped small mb-0">
+                                    <thead>
+                                        <tr class="table-danger">
+                                            <th>Grup</th>
+                                            <th>Etki Mekanizması</th>
+                                            <th>Etken Maddeler (BKÜ)</th>
+                                            <th>Zararlı & Kural</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td><span class="badge-irac">IRAC 28</span></td>
+                                            <td>Ryanodin Reseptör Modülatörleri (Diamidler)</td>
+                                            <td>Chlorantraniliprole (Coragen, Bisect, Ryno-A)</td>
+                                            <td><strong>Şeftali & Doğu Meyve Güvesi:</strong> Aynı zararlı dölüne karşı max 1-2 kez uygulanmalıdır.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-irac">IRAC 7C</span></td>
+                                            <td>Juvenil Hormon Taklitçileri (JHA)</td>
+                                            <td>Pyriproxyfen (Admiral)</td>
+                                            <td><strong>Erik Koşnili & Kabuklu Bit:</strong> Gömlek değiştirmeyi önler. Kış sonu veya nimf çıkışında 1 kez.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-irac">IRAC 4C</span></td>
+                                            <td>Nikotinik Asetilkolin Reseptör Agonisti (Sulfoksiminler)</td>
+                                            <td>Sulfoxaflor (Breaker)</td>
+                                            <td><strong>Koşnil & Emici Zararlılar:</strong> Neonikotinoid direncini kırmak için geliştirilmiştir.</td>
+                                        </tr>
+                                        <tr>
+                                            <td><span class="badge-irac">IRAC 3A</span></td>
+                                            <td>Sodyum Kanal Modülatörleri (Piretroidler)</td>
+                                            <td>Tau-fluvalinate (İnsektisit)</td>
+                                            <td><strong>Kanlı Bit & Yaprakbitleri:</strong> Arılara dikkat edilmeli, çiçek sonu atılmalıdır.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-success bg-opacity-10 rounded-3 border border-success border-opacity-25">
+                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-check-circle-fill me-2"></i>Direnç Korumak İçin Doğru Davranışlar (Altın Kurallar):</h6>
+                            <ul class="small mb-0 text-secondary ps-3">
+                                <li>Pembe tomurcukta FRAC 9 (Cyprodinil) kullandıysanız, tam çiçeklenmede FRAC 7+11 (Signum/Bellis) veya FRAC 3 (Revyona) tercih edin.</li>
+                                <li>Sezonda tek bir mantar grubunu (örn. yalnızca Triazol veya yalnızca SDHI) 2 defadan fazla tekrarlamayın.</li>
+                                <li>Güve mücadelesinde ilk döle IRAC 28 attıysanız, gerekirse ikinci döle farklı sınıftan bir insektisit planlayın.</li>
+                                <li>Tank karışımlarına temas etkili koruyucular (Captan, Dithianon vb.) eklemek direnç gelişimini geciktirir.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-danger bg-opacity-10 rounded-3 border border-danger border-opacity-25">
+                            <h6 class="fw-bold text-danger mb-2"><i class="bi bi-x-circle-fill me-2"></i>Kaçınılması Gereken Hatalar:</h6>
+                            <ul class="small mb-0 text-secondary ps-3">
+                                <li>Farklı marka adı taşıyan fakat aynı aktif maddeye sahip ilaçları (örn. Toppel sonrası Orius; her ikisi de Tebuconazole) üst üste kullanmak.</li>
+                                <li>Çiçeklenme başladığında (BBCH 60 sonrası) bakırlı preparat atmak (Çiçek yakması ve fito-toksisite yapar).</li>
+                                <li>Etiket dozunun altında (eksik) ilaç kullanarak zararlı veya mantarda bağışıklık geliştirmek.</li>
+                                <li>Hasat aralığı (PHI) uzun olan ilaçları renk dönümünden sonra uygulamak (İhracat ve sofralık analizinde kalıntı çıkar).</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 3: BKÜ RESMİ VERİTABANI VE ARAMA LİSTESİ -->
+        <div class="tab-pane fade" id="database-content" role="tabpanel">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-1"><i class="bi bi-search text-success me-2"></i>BKÜ Dashboard Kayısı İlaç Arama & Doz Rehberi</h4>
+                        <p class="text-muted small mb-0">Sistem veritabanındaki 182 adet resmi ruhsatlı kayısı ilacı arasında anlık filtreleme yapın.</p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="bkuSearchInput" class="form-control form-control-sm rounded-pill" placeholder="Ürün adı, etken madde veya hastalık ara..." style="min-width: 280px;" onkeyup="filterBkuTable()">
+                        <select id="targetFilterSelect" class="form-select form-select-sm rounded-pill" onchange="filterBkuTable()">
+                            <option value="">Tüm Hedefler</option>
+                            <option value="monilya">Çiçek Monilyası</option>
+                            <option value="yaprak delen">Yaprak Delen / Çil</option>
+                            <option value="güve">Şeftali / Doğu Meyve Güvesi</option>
+                            <option value="koşnil">Erik Koşnili</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                    <table class="table table-hover table-striped table-bordered small align-middle" id="bkuTable">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th>Ticari Adı</th>
+                                <th>Hedef Hastalık / Zararlı</th>
+                                <th>Aktif Madde & Oran</th>
+                                <th>Tavsiye Dozu</th>
+                                <th>PHI (Gün)</th>
+                                <th>Grup / Kod</th>
+                                <th>Detay</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bkuTableBody">
+                            <!-- Populated via JavaScript from custom database -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 text-muted small">
+                    <span id="recordCountDisplay">Yükleniyor...</span>
+                    <span>Kaynak: <code>bku.dashboard.html</code> / T.C. Tarım ve Orman Bakanlığı Ruhsat Verisi</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: TANK KARIŞIMI, FİTOTOKSİSİTE VE YASAKLI MADDE REHBERİ -->
+        <div class="tab-pane fade" id="rules-content" role="tabpanel">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+                <h4 class="fw-bold text-danger mb-3"><i class="bi bi-cone-striped me-2"></i>Tank Karışımı Uyumluluğu, Fitotoksisite ve Mevzuat Uyarıları</h4>
+                
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-4">
+                        <div class="card h-100 border-warning border-opacity-50 p-3 bg-warning bg-opacity-10">
+                            <h5 class="fw-bold text-dark"><i class="bi bi-droplet text-warning me-2"></i>Su Kalitesi & pH</h5>
+                            <p class="small text-secondary mb-2">İlaçlama suyunun pH'sı etkinliği doğrudan belirler:</p>
+                            <ul class="small text-secondary ps-3 mb-0">
+                                <li>İdeal su pH aralığı <strong>5.8 – 6.5</strong> olmalıdır.</li>
+                                <li>Alkali sularda (pH > 7.5) özellikle Chlorantraniliprole ve Cyprodinil aktifleri hidroliz olarak etkinliğini kaybeder. Tank hazırlığında pH düzenleyici (asitleyici) kullanılmalıdır.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100 border-danger border-opacity-50 p-3 bg-danger bg-opacity-10">
+                            <h5 class="fw-bold text-danger"><i class="bi bi-fire me-2"></i>Fitotoksisite (Yakma) Riskleri</h5>
+                            <p class="small text-secondary mb-2">Çiçek ve taze yaprak dokularını korumak için:</p>
+                            <ul class="small text-secondary ps-3 mb-0">
+                                <li><strong>Bakır:</strong> Pembe tomurcuktan sonra (BBCH 59 sonrası) bakırlı preparat atmayınız. Çiçek tepeciğini ve taç yaprakları yakar.</li>
+                                <li><strong>Yağ - Kükürt Ayrımı:</strong> Kışlık yağlar veya yazlık beyaz yağlar ile kükürtlü bileşikler arasında en az <strong>21-30 gün</strong> ara olmalıdır.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card h-100 border-dark border-opacity-50 p-3 bg-light">
+                            <h5 class="fw-bold text-dark"><i class="bi bi-ban text-danger me-2"></i>Mevzuat & Yasaklı Aktifler</h5>
+                            <p class="small text-secondary mb-2">Veritabanındaki yasaklı maddeler listesine göre:</p>
+                            <ul class="small text-secondary ps-3 mb-0">
+                                <li><strong>İminoctadine tris (albesilate):</strong> (Belico, Bellkute) yasaklı aktifler listesindedir; yerine Signum, Revyona veya Chorus tercih edilmelidir.</li>
+                                <li><strong>Malathion:</strong> Organofosfatlı gruptur. AB ve yeni ruhsat kısıtlamaları nedeniyle iç kurdunda seçici Diamidler (Coragen) tercih edilmelidir.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 border">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-layers me-2 text-primary"></i>Doğru Tank Karışım Sırası (Sıralama Kuralı):</h6>
+                    <ol class="small text-secondary mb-0">
+                        <li>Önce tanka suyun en az yarısı doldurulur ve karıştırıcı çalıştırılır.</li>
+                        <li>Varsa Su Düzenleyici / pH Asitleyici eklenir.</li>
+                        <li>Suda Dağılabilen Granüller (WG) ve Islanabilir Tozlar (WP) eklenir ve tamamen çözünmesi beklenir.</li>
+                        <li>Süspansiyon Konsantreler (SC) ve Akıcı Konsantreler eklenir.</li>
+                        <li>Emülsiyon Konsantreler (EC) eklenir.</li>
+                        <li>Varsa en son Yayıcı-Yapıştırıcı eklenir ve tank suyla tamamlanır.</li>
+                    </ol>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<!-- BBCH Modal (Full Resolution Image Viewer) -->
+<div class="modal fade" id="bbchModal" tabindex="-1" aria-labelledby="bbchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0 py-3">
+                <h5 class="modal-title fw-bold" id="bbchModalLabel">
+                    <i class="bi bi-image text-warning me-2"></i>Kayısı Fenolojik Gelişim Evreleri (BBCH Skalası)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0 text-center bg-light">
+                <img src="assets/images/kayisi_fenoloji_bbch.jpg" alt="Kayısı BBCH Fenoloji Tablosu" class="img-fluid w-100" style="max-height: 85vh; object-fit: contain;">
+            </div>
+            <div class="modal-footer bg-white border-top py-2 d-flex justify-content-between">
+                <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Orijinal Görsel: BBCH Skalasına Göre Kayısı Gelişim Dönemleri (00/A - 97/99)</span>
+                <div>
+                    <a href="assets/images/kayisi_fenoloji_bbch.jpg" download="kayisi_fenolojik_bbch_skalasi.jpg" class="btn btn-sm btn-outline-primary rounded-pill me-2">
+                        <i class="bi bi-download me-1"></i>Görseli İndir
+                    </a>
+                    <button type="button" class="btn btn-sm btn-secondary rounded-pill" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="bg-dark text-white py-4 mt-5 text-center text-muted small">
+    <div class="container">
+        <p class="mb-1 text-light">Kayısı Entegre Mücadele & Bitki Koruma Portalı &copy; 2026 Foliar App</p>
+        <p class="mb-0 opacity-75">Resmi BKÜ Verileri ve FRAC/IRAC Bilimsel Standartları ile Hazırlanmıştır.</p>
+    </div>
+</footer>
+
+<!-- Embedded Kayısı Database & Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Embedded Kayisi Database from bku_custom_database.json
+    const KAYISI_DB = [{"bitki": "KAYISI", "hedef": "Kayısı Erik koşnili", "ad": "Admiral", "aktif": "100 g/l Pyriproxyfen", "grup": "İnsektisit", "dozDeger": 50, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "50 ml/100 lt", "phi": 21, "tarih": "12.04.2026", "uyari": "Grup: IRAC 7C"}, {"bitki": "KAYISI", "hedef": "Kayısı çiçek monilyası", "ad": "Bellis", "aktif": "% 25.2 Boscalid + % 12.8 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 40, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "40 gr/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC 7, FRAC 11"}, {"bitki": "KAYISI", "hedef": "Kayısı Erik koşnili", "ad": "Breaker", "aktif": "240 g/l Sulfoxaflor", "grup": "İnsektisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: IRAC 4C"}, {"bitki": "KAYISI", "hedef": "Kayısı doğu meyve güvesi", "ad": "Coragen", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 17.5, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "17.5 ml/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: IRAC 28"}, {"bitki": "KAYISI", "hedef": "Kayısı yaprak delen", "ad": "Delan", "aktif": "%50 Dithianon", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "100 ml", "phi": 28, "tarih": "12.04.2026", "uyari": "Grup: FRAC M07"}, {"bitki": "KAYISI", "hedef": "Kayısı çiçek. Monilyası", "ad": "Dodine", "aktif": "% 65 Dodine", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "100 gr", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC U12"}, {"bitki": "KAYISI", "hedef": "Kayısı yaprak delen", "ad": "Dodine", "aktif": "% 65 Dodine", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "100 gr", "phi": 56, "tarih": "12.04.2026", "uyari": "Grup: FRAC U12"}, {"bitki": "KAYISI", "hedef": "Kayısı Yaprak delen", "ad": "Merpan", "aktif": "% 80 Captan", "grup": "Fungisit", "dozDeger": 200, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "200 gr/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC M04"}, {"bitki": "KAYISI", "hedef": "Kayısı Yaprak delen", "ad": "Novicure", "aktif": "% 40 metalik bakır eşdeğer tribazik bakır sülfat", "grup": "Fungisit", "dozDeger": 300, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "300 g/100 lt", "phi": 21, "tarih": "12.04.2026", "uyari": "Grup: FRAC M01"}, {"bitki": "KAYISI", "hedef": "Kayısı çiçek monilyası", "ad": "Revyona", "aktif": "75 g/l Mefentrifluconazole", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "100 ml/100 lt", "phi": 3, "tarih": "12.04.2026", "uyari": "Grup: FRAC 3"}, {"bitki": "KAYISI", "hedef": "Kayısı çiçek monilyası", "ad": "Toppel", "aktif": "% 25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 gr", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC 3"}, {"bitki": "KAYISI", "hedef": "Kayısı çiçek monilyası", "ad": "Violent", "aktif": "% 70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC 1"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "FYFANON", "aktif": "440 g/l Malathion", "grup": "İnsektisit", "dozDeger": 200, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "200 ml/100 L su", "phi": 14, "tarih": "09.06.2023", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "PLATIN MALATHION", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 100, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "100 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "NİVATHİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MALATHİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MALATION EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "AGROFARM MALATHİON EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "HEKTHİON EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KASTİLL", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "QINITIUM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KAPADOKIA", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "SAFETHİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CAPRIS", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CHİNK", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TRENTO", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su, larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MALATON EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su, larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TRELON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su, larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MUST-İ", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su, larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "GANDECO", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "RYNO-A", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "BİSECT", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "BILLBOARD", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CONELLA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CANLATİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 L su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "EPPET", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MAKMAN", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TONGRA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "NATUGREN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TOLYPAREN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ECLİPSO", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "VAİNEST", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "OLMERT", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ALDAVEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KLAXONE", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "AXLERON", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "UMTAS", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "EGGMEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ESSUGO", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "RHANİS EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "HARKOLİN", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "SECTOJEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "VEFCOVER", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ONSUVAR", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ROYBOSS", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CLORITA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ENTOJEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ANTİQUE", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KİNG'S GLORY", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "IPOMAN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ONCAGEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ROYTHİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "RONNİE", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CLEVEROLE", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ARINGEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TEMPORA", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "ONTHİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TARANTULA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "WOLTHER", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "SEPİON", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KALENDA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CARPAGE", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "KOLLBEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CENDER", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "TAVIRA", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "SHENZI", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CHIRAG", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml/ 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "PLAIN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml/ 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "CROPTRANİL", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "MAKROLEN", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "% MALATHİON EM", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml /100 L su", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi (Anarsia lineatella)", "ad": "LARVOLİ", "aktif": "650 g/l Malathion", "grup": "İnsektisit", "dozDeger": 150, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "150 ml/100 l su larva", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: İnsektisit"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)", "ad": "Regev", "aktif": "400 g/l tea tree oil + 200 g/l Difenoconazole", "grup": "Fungisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/100 L su", "phi": 21, "tarih": "27.03.2025", "uyari": "Grup: FRAC 3"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)", "ad": "Switch", "aktif": "% 37.5 Cyprodinil + % 25 Fludioxonil", "grup": "Fungisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/100 L su", "phi": 21, "tarih": "27.03.2025", "uyari": "Grup: FRAC 9, FRAC 12"}, {"bitki": "KAYISI", "hedef": "Yaprak delen (Çil)", "ad": "Fizion", "aktif": "% 50 Trifloxystrobin", "grup": "Fungisit", "dozDeger": 12.5, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "12.5 gr/100 lt", "phi": 14, "tarih": "12.04.2026", "uyari": "Grup: FRAC 11"}, {"bitki": "KAYISI", "hedef": "Yaprak delen (çil) (Wilsonomyces carpophylus = Stigmina carpophila)", "ad": "Ziram DF", "aktif": "% 76 Ziram", "grup": "Fungisit", "dozDeger": 250, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "250 gr / 100 l su", "phi": 56, "tarih": "30.05.2026", "uyari": "Grup: FRAC M03"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)", "ad": "Signum", "aktif": "% 26.7 Boscalid + % 6.7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "100 g / 100 l su", "phi": 7, "tarih": "25.02.2005", "uyari": "Grup: FRAC 7, FRAC 11"}, {"bitki": "KAYISI", "hedef": "ŞEFTALİ GÖVDE KANLI BİTİ", "ad": "İnsektisit", "aktif": "240 g/l Tau-fluvalinate", "grup": "İnsektisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "(Nimf, ergin)", "phi": 14, "tarih": "15.05.2025", "uyari": "ŞEFTALİ GÖVDE KANLI BİTİ (Pterochloroides persicae) | Şeftali yaprakbiti (Myzus persicae)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "REGEV (İTHAL)", "aktif": "400 g/l Tea tree oil + 200 g/l Difenoconazole", "grup": "Fungisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/100 L su", "phi": 21, "tarih": "27.03.2025", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SWITCH 62.5 WG (İTHAL)", "aktif": "%37,5 Cyprodinil + %25 Fludioxonil", "grup": "Fungisit", "dozDeger": 35, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "35 g/ 100 l su", "phi": 7, "tarih": "08.01.2024", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi", "ad": "FYFANON 440 EW (İTHAL)", "aktif": "440 g/l Malathion", "grup": "İnsektisit", "dozDeger": 200, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "200 ml/100 L su / Ruhsatlı Bku / Grubu / Dozu / Son İlaçlama ile Hasat Arası Süre / Tavsiye Tarihi / Uyarı Mevcut ?", "phi": 14, "tarih": "09.06.2023", "uyari": "Şeftali güvesi (Anarsia lineatella)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "REVYONA (İTHAL)", "aktif": "75 g/l Mefentrifluconazole", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "100 ml / 100 L su", "phi": 3, "tarih": "29.11.2022", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ACCEPT EC (İTHAL)", "aktif": "200 g/l Cyprodinil", "grup": "Fungisit", "dozDeger": 75, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "75 ml / 100 L su", "phi": 7, "tarih": "26.09.2022", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SERCADİS (İTHAL)", "aktif": "300 g/l Fluxapyroxad", "grup": "Fungisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/100 L su", "phi": 21, "tarih": "05.08.2020", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "LUSEN SC 500 (İTHAL)", "aktif": "250 g/l Fluopyram+ 250 g/l Trifloxystrobin", "grup": "Fungisit", "dozDeger": 25, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "25 ml/ 100 L su", "phi": 3, "tarih": "03.07.2020", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SPARK (İTHAL)", "aktif": "%50 Fenpyrazamine", "grup": "Fungisit", "dozDeger": 50, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "50 g/100 L su", "phi": 1, "tarih": "03.08.2018", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ORİUS 25 EW (İTHAL)", "aktif": "250 g/l Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "60 ml/100 L su", "phi": 14, "tarih": "06.07.2018", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KORANİL® 500 SC (İMAL)", "aktif": "500 g/l Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "30 ml/100 L su", "phi": 3, "tarih": "06.06.2016", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "EMBRELİA 140 SC (İTHAL)", "aktif": "100 g/l Isopyrazam + 40 g/l Difenoconazole", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "100 ml/100 L su", "phi": 21, "tarih": "10.10.2014", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Şeftali güvesi", "ad": "CORAGEN 20 SC (İTHAL)", "aktif": "200 g/l Chlorantraniliprole", "grup": "İnsektisit", "dozDeger": 20, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "20,0 ml / 100 l su", "phi": 14, "tarih": "09.09.2014", "uyari": "Şeftali güvesi (Anarsia lineatella)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SİGNUM WG (İTHAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "100 g / 100 l su", "phi": 7, "tarih": "25.02.2005", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "QUALY 300 EC (İTHAL)", "aktif": "300 g/l Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MONCERA (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "TAQAT WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MENTA METAFOR 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60g/100l su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "DANUA 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 g/100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "BESTDODİNE 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 80, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "80 ml/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SERENADE SC (İTHAL)", "aktif": "%1,34 Bacillus amyloliquefaciens (B. subtilis) strain QST 713 min.1x10 üzeri 9 cfu/ml", "grup": "Biyolojik Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MİRACLE 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "QUARTETTE® 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "BELİCO 40 WP (İMAL)", "aktif": "%40 Iminoctadine tris (albesilate)", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "BELLUM (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 100, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "100 g / 100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "BESTDODİNE 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "HEKTAŞ METİS (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MANDATE (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "FUDİNE 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "DAGRO CURE 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ERZEN 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CORE-PREX 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 80, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "80 ml/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "HARVEST 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "RAGE 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60g/100l su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "PİVOT 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "FOURMEN 70 WG (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KORANİL 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "TOPPEL 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KOR-PREX DODİNE 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "EKHON 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 gr / 100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SARPA 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ROXEN 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "JAGUAR MİCRO WG (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "FOLİCUR WP 25 (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "HERON WG (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "EFDAL TEBUZOL 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KORITUS (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 g / 100 lt. su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CHORUS 50 WG (İTHAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ISOS 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 gr / 100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SUPERPREX 500 FW (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SARFREX 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CARPAZ 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 gr / 100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "AMORİUM 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SURVITOP 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KORPREX® 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "COLONY 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "FUDİNE 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MAGNESYA SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "VECTOR 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "TEBİCUR 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "TECOL 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "DELAN 70 WG (İTHAL)", "aktif": "%70 Dithianon", "grup": "Fungisit", "dozDeger": 50, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "50 g / 100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SECTION WG (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "BELLKUTE 40 WP (İTHAL)", "aktif": "%40 Iminoctadine tris (albesilate)", "grup": "Fungisit", "dozDeger": 50, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "50g/100l su", "phi": 28, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SELFREX 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "RUBİN 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "AGSHİNE 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KORPHANATE 70 WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CHITA 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 80, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "80 ml / 100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "DODİLENE 500 SC (İTHAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 80, "dozBirim": "ml", "dozHacim": 100, "dozTip": "su", "dozText": "80 ml / 100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "PESTİGE (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "COPCİDE WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KEERMONY (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SORİA WG (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "JAMMER (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "TAKDİNE 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "DEFENDER 70 WG (İMAL)", "aktif": "%70 Dithianon", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "RALLY WP 25 (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SOLİZOL 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ERTARDODİNE 500 SC (İMAL)", "aktif": "500 g/l Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SUMITOP WP (İTHAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ATACUR 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "KUKU (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CORE-PREX 65 WP (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "COM-PASS 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "HEKTAŞ CLICK® (İMAL)", "aktif": "%70 Dithianon", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "VECHTOR WG (İMAL)", "aktif": "%26,7 Boscalid + %6,7 Pyraclostrobin", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SPARTA 25 WP (İMAL)", "aktif": "%25 Tebuconazole", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "VOLITAN 12 EC (İMAL)", "aktif": "125 g/l Myclobutanil", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "CAMADA (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 60, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "60 g/100 L su", "phi": 14, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "SELFREX 65 WG (İMAL)", "aktif": "%65 Dodine", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "ACS PRODIUS WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 g / 100 L su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "EFDAL KİP 50 WG (İMAL)", "aktif": "%50 Cyprodinil", "grup": "Fungisit", "dozDeger": 30, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "30 g / 100 l su", "phi": 7, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "MELYTOP WP (İTHAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}, {"bitki": "KAYISI", "hedef": "Çiçek monilyası", "ad": "EGEİ WP (İMAL)", "aktif": "%70 Thiophanate-methyl", "grup": "Fungisit", "dozDeger": 0, "dozBirim": "g", "dozHacim": 100, "dozTip": "su", "dozText": "", "phi": 0, "tarih": "", "uyari": "Çiçek monilyası (Monilinia laxa = Sclerotinia laxa)"}];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // User permissions and roles
+        const userRole = localStorage.getItem('userRole');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        if (userRole !== 'admin') {
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            if (allHidden.includes('apricot_management_guide.html')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            allHidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) {
+                    const li = navLink.closest('li') || navLink.closest('.dropdown-item') || navLink;
+                    li.style.setProperty('display', 'none', 'important');
+                }
+            });
+        }
+
+        if (userRole === 'admin') {
+            const adminUsers = document.getElementById('adminUsers');
+            const adminLogs = document.getElementById('adminLogs');
+            if (adminUsers) adminUsers.style.display = 'block';
+            if (adminLogs) adminLogs.style.display = 'block';
+        }
+
+        renderBkuTable(KAYISI_DB);
+    });
+
+    function renderBkuTable(data) {
+        const tbody = document.getElementById('bkuTableBody');
+        const countSpan = document.getElementById('recordCountDisplay');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+        countSpan.textContent = `Toplam ${data.length} kayıt listeleniyor.`;
+
+        data.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            // Format PHI badge
+            let phiBadge = '<span class="badge bg-secondary">-</span>';
+            if (item.phi !== undefined && item.phi !== null) {
+                if (item.phi <= 3) {
+                    phiBadge = `<span class="badge bg-success">${item.phi} gün</span>`;
+                } else if (item.phi <= 14) {
+                    phiBadge = `<span class="badge bg-warning text-dark">${item.phi} gün</span>`;
+                } else {
+                    phiBadge = `<span class="badge bg-danger">${item.phi} gün</span>`;
+                }
+            }
+
+            // FRAC / IRAC
+            let groupBadge = item.uyari || item.grup || '-';
+            if (groupBadge.includes('FRAC')) {
+                groupBadge = `<span class="badge-frac">${groupBadge}</span>`;
+            } else if (groupBadge.includes('IRAC')) {
+                groupBadge = `<span class="badge-irac">${groupBadge}</span>`;
+            }
+
+            tr.innerHTML = `
+                <td><strong>${item.ad || '-'}</strong></td>
+                <td><small class="text-secondary">${item.hedef || '-'}</small></td>
+                <td><span class="text-dark fw-semibold">${item.aktif || '-'}</span></td>
+                <td><code>${item.dozText || (item.dozDeger ? item.dozDeger + ' ' + (item.dozBirim || '') : '-')}</code></td>
+                <td>${phiBadge}</td>
+                <td><small>${groupBadge}</small></td>
+                <td>
+                    <a href="bku_dashboard.html?q=${encodeURIComponent(item.ad || '')}" target="_blank" class="btn btn-xs btn-outline-secondary py-0 px-2" title="Dashboard'da İncele">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function filterBkuTable() {
+        const query = document.getElementById('bkuSearchInput').value.toLowerCase().trim();
+        const targetFilter = document.getElementById('targetFilterSelect').value.toLowerCase().trim();
+
+        const filtered = KAYISI_DB.filter(item => {
+            const textMatch = !query || 
+                (item.ad && item.ad.toLowerCase().includes(query)) ||
+                (item.aktif && item.aktif.toLowerCase().includes(query)) ||
+                (item.hedef && item.hedef.toLowerCase().includes(query));
+
+            const targetMatch = !targetFilter || 
+                (item.hedef && item.hedef.toLowerCase().includes(targetFilter));
+
+            return textMatch && targetMatch;
+        });
+
+        renderBkuTable(filtered);
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userPermissions');
+        window.location.href = 'login.html';
+    }
+</script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

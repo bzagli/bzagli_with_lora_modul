@@ -1,0 +1,4141 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulama Programı Yönetimi - Bahçe Yönetimi</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- HTML2PDF Library for High-Quality PDF Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+
+    <style>
+        :root {
+            --primary-navy: #1a252f;
+            --accent-green: #2e7d32;
+            --light-green: #4caf50;
+            --accent-blue: #0288d1;
+            --glass-bg: rgba(255, 255, 255, 0.92);
+            --glass-border: rgba(255, 255, 255, 0.6);
+            --shadow-sm: 0 4px 15px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: 'Outfit', 'Inter', sans-serif;
+            background-color: #f4f7f6;
+            color: #2c3e50;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+
+        .hero-banner {
+            background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 50%, #40916c 100%);
+            color: white;
+            padding: 30px 0 55px;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            margin-bottom: -35px;
+            position: relative;
+        }
+
+        .hero-banner::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 15px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .stat-card {
+            background: white;
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--shadow-sm);
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+
+        .card-custom {
+            background: white;
+            border: none;
+            border-radius: 20px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-custom-header {
+            padding: 16px 24px;
+            background: #fafbfc;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #miniMap {
+            height: 240px;
+            width: 100%;
+            border-radius: 14px;
+            z-index: 1;
+        }
+
+        /* Matrix Table Full-Width Fit */
+        .matrix-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .matrix-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 10px 4px;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .matrix-table th:first-child {
+            text-align: left;
+            padding-left: 16px;
+            width: 17%;
+        }
+
+        .matrix-table th:not(:first-child):not(:last-child) {
+            width: 10.5%;
+        }
+
+        .matrix-table th:last-child {
+            width: 9.5%;
+        }
+
+        .matrix-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            text-align: center;
+        }
+
+        .matrix-table td:first-child {
+            text-align: left;
+            padding-left: 16px;
+        }
+
+        /* Variety Accordion Header Row */
+        .variety-header-row {
+            background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%);
+            border-top: 2px solid #a5d6a7;
+            border-bottom: 1.5px solid #c8e6c9;
+            user-select: none;
+        }
+
+        .group-title-cell {
+            cursor: pointer;
+        }
+
+        .group-title-cell:hover {
+            background: #c8e6c9 !important;
+        }
+
+        .variety-child-row {
+            transition: all 0.2s ease;
+        }
+
+        .variety-child-row td:first-child {
+            padding-left: 28px !important;
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .matrix-cell-btn {
+            width: 100%;
+            padding: 5px 2px;
+            border-radius: 10px;
+            border: 1px dashed #cbd5e1;
+            background: #f8fafc;
+            color: #64748b;
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            position: relative;
+            word-break: break-word;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        .group-cell-btn {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+
+        .group-cell-btn:hover {
+            border-color: #22c55e;
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .matrix-cell-btn:hover {
+            transform: scale(1.03);
+            filter: brightness(1.08);
+        }
+
+        .matrix-cell-btn .cell-time {
+            font-size: 0.68rem;
+            opacity: 0.95;
+            font-weight: 600;
+            margin-top: 1px;
+        }
+
+        .concurrent-tag {
+            font-size: 0.58rem;
+            background: rgba(255, 255, 255, 0.35);
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 0 4px;
+            margin-top: 1px;
+            font-weight: 800;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        /* Color Legend Bar */
+        .color-legend-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 8px 14px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .legend-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .day-overload {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+        }
+
+        .badge-active-prog {
+            background: #2e7d32;
+            color: white;
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 20px;
+        }
+
+        /* 24-Hour / 27-Hour Cycle Visualizer Styling */
+        .timeline-24h-container {
+            display: flex;
+            height: 44px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            margin-top: 10px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .timeline-hour-slot {
+            flex: 1;
+            border-right: 1px solid rgba(255,255,255,0.4);
+            position: relative;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 2px;
+            font-size: 0.62rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .timeline-hour-slot:nth-child(even) {
+            background: rgba(0,0,0,0.02);
+        }
+
+        .timeline-active-block {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 6px;
+            z-index: 2;
+        }
+
+        .color-preset-swatch {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .color-preset-swatch:hover, .color-preset-swatch.active {
+            transform: scale(1.2);
+            border-color: #22c55e !important;
+        }
+
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .hero-banner {
+                padding: 10px 0;
+                margin-bottom: 10px;
+                background: none;
+                color: black;
+            }
+            .card-custom {
+                box-shadow: none;
+                border: 1px solid #ddd;
+            }
+            .variety-child-row {
+                display: table-row !important;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="fertilization.html"><i class="bi bi-flower1 me-1 text-success"></i>Gübreleme Yönetimi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold active" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Header Banner -->
+<header class="hero-banner">
+    <div class="container-fluid px-4 text-center">
+        <h2 class="fw-bold mb-1"><i class="bi bi-calendar-check me-2"></i>Sulama Parselleri ve Shift Programlama</h2>
+        <p class="opacity-75 mb-0" id="selectedGardenTitle">Ana Pompa (Pompa 1) ve Kayısı (Pompa 2) çift pompa takipli sulama planı.</p>
+    </div>
+</header>
+
+<main class="container-fluid px-4 mb-5">
+    <!-- Stat Cards Row -->
+    <div class="row g-3 mb-4 no-print pt-2">
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-layers-fill"></i>
+                </div>
+                <div class="text-muted small fw-bold">TOPLAM VARDİYA & ALT PARSEL</div>
+                <h3 class="fw-bold mb-0 text-dark" id="statShiftCount">0</h3>
+                <div class="small text-muted" id="statVarietyCount">12 Ana Shift Grubu (2 Pompa)</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-info bg-opacity-10 text-info">
+                    <i class="bi bi-water"></i>
+                </div>
+                <div class="text-muted small fw-bold">POMPA 1 (ANA BAHÇE)</div>
+                <h3 class="fw-bold mb-0 text-dark" id="statAnaHours">0 Saat</h3>
+                <div class="small text-muted" id="diablotinaInfo">Diablotina: 11.1 & 11.4 (4er Sa), 11.2 & 11.3 (3er Sa)</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="text-muted small fw-bold">POMPA 2 (KAYISI POMPASI)</div>
+                <h3 class="fw-bold mb-0 text-dark" id="statKayisiHours">0 Saat</h3>
+                <div class="small text-muted">Nelson, Madrigal, Memphis, Bolero</div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-lg-3">
+            <div class="stat-card">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-droplet-half"></i>
+                </div>
+                <div class="text-muted small fw-bold">GÜBRE TANKI UYGULAMASI</div>
+                <h3 class="fw-bold mb-0 text-dark" id="statFertCount">0 Shift/Gün</h3>
+                <div class="small text-muted" id="statTotalWaterDisplay">Tahmini Su: 0 m³</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Horizontal Split Layout -->
+    <!-- SECTION 1 (TOP): Configurations, Settings & Duration Inputs (no-print) -->
+    <div class="row g-4 mb-4 no-print">
+        
+        <!-- Col 1: Program Selector -->
+        <div class="col-12 col-md-6">
+            <div class="card-custom h-100">
+                <div class="card-custom-header">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-folder2-open text-success me-2"></i>Sulama Programları</h5>
+                    <button class="btn btn-sm btn-success rounded-pill px-3 shadow-sm fw-bold" onclick="createNewProgramModal()">
+                        <i class="bi bi-plus-lg me-1"></i>Yeni
+                    </button>
+                </div>
+                <div class="card-body p-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">KAYITLI PROGRAM SEÇ</label>
+                        <select class="form-select rounded-3" id="programSelect" onchange="onProgramSelected()">
+                            <option value="">-- Kayıtlı Program Bulunamadı --</option>
+                        </select>
+                    </div>
+                    
+                    <div id="programDetailsBox" class="p-3 bg-light rounded-3 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold text-dark" id="progTitleDisplay">-</span>
+                            <div>
+                                <span id="progActiveBadge" class="badge badge-active-prog d-none me-1"><i class="bi bi-check-circle-fill me-1"></i>Aktif</span>
+                                <span id="saveStatusDisplay" class="badge bg-secondary-subtle text-dark border rounded-pill px-2 py-1 small"></span>
+                            </div>
+                        </div>
+                        <p class="small text-muted mb-2" id="progDescDisplay">-</p>
+                        <div class="d-flex gap-2 mt-3 flex-wrap">
+                            <button class="btn btn-sm btn-success flex-fill rounded-pill fw-bold" onclick="saveCurrentProgramToServer(true)">Kaydet</button>
+                            <button class="btn btn-sm btn-outline-success flex-fill rounded-pill fw-bold" onclick="saveAsNewProgramModal()">Farklı Kaydet</button>
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm btn-outline-primary flex-fill rounded-pill fw-bold" onclick="setActiveProgram()">Aktif Yap</button>
+                            <button class="btn btn-sm btn-outline-secondary flex-fill rounded-pill fw-bold" onclick="duplicateProgram()">Klonla</button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="deleteProgram()"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Col 2: Pompa Ayarları -->
+        <div class="col-12 col-md-6">
+            <div class="card-custom h-100">
+                <div class="card-custom-header">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-sliders text-warning me-2"></i>Pompa Genel Ayarları</h5>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row g-3">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted fw-bold mb-1">🍏 Pompa 1 (Ana Kuyu) Başlangıç</label>
+                            <input type="time" id="pump1StartInput" class="form-control rounded-3 border-info fw-bold" value="06:00" onchange="onPumpStartHoursChanged()">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted fw-bold mb-1">🍑 Pompa 2 (Kayısı) Başlangıç</label>
+                            <input type="time" id="pump2StartInput" class="form-control rounded-3 border-warning fw-bold" value="06:00" onchange="onPumpStartHoursChanged()">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted fw-bold mb-1">Genel Debi (m³/sa)</label>
+                            <input type="number" id="flowRateInput" class="form-control rounded-3" value="45" step="5" onchange="recalculateTotals()">
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small text-muted fw-bold mb-1">Max Günlük Limit (Saat)</label>
+                            <input type="number" id="maxDailyLimitInput" class="form-control rounded-3" value="24" max="24" onchange="recalculateTotals()">
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="diosaTintosaTogetherCheck" onchange="onDiosaTintosaTogetherChanged()">
+                        <label class="form-check-label fw-bold small text-dark" for="diosaTintosaTogetherCheck">
+                            <i class="bi bi-link-45deg me-1 text-primary"></i> Diosa (7. Shift) ve Tintosa (8. Shift) Birlikte Sula (Eşzamanlı)
+                        </label>
+                    </div>
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="cancelKarma11Check" onchange="onCancelKarma11Changed()">
+                        <label class="form-check-label fw-bold small text-dark" for="cancelKarma11Check">
+                            <i class="bi bi-gear-wide-connected me-1 text-info"></i> Dioblatina Karma Sırasını İptal Et (Manuel Düzenleme)
+                        </label>
+                    </div>
+
+                    <div class="mt-3 p-3 bg-success bg-opacity-10 text-success rounded-3 border border-success border-opacity-25 small fw-bold">
+                        <i class="bi bi-info-circle-fill me-1"></i> Pompa 1 (Ana Kuyu) ve Pompa 2 (Kayısı Pompası) başlangıç saatlerini ayarlayabilir, süreleri düzenleyerek saatlerin çakışmadan 7 gün içine sıralı dağılmasını sağlayabilirsiniz.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2 (BOTTOM): Weekly Scheduler Matrix Grid & Timelines (Full Width) -->
+    <div class="row g-4">
+        <!-- Main Weekly Scheduler Grid (col-12) -->
+        <div class="col-12">
+            <div class="card-custom">
+                <div class="card-custom-header flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <h5 class="fw-bold mb-0 text-dark" id="activeProgramHeading">
+                            <i class="bi bi-grid-3x3-gap-fill text-success me-2"></i>Haftalık Sulama Matrisi
+                        </h5>
+                    </div>
+                    <div class="d-flex gap-2 no-print flex-wrap ms-auto">
+                        <button class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold" onclick="openBulkDurationModal()">
+                            <i class="bi bi-clock-history me-1"></i>Süreleri Ayarla & Planla
+                        </button>
+                        <button class="btn btn-sm btn-success rounded-pill px-3 shadow-sm fw-bold" onclick="saveCurrentProgramToServer(true)">Kaydet</button>
+                        <button class="btn btn-sm btn-outline-success rounded-pill px-3 fw-bold" onclick="saveAsNewProgramModal()">Farklı Kaydet</button>
+                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-bold" onclick="toggleAllVarietyGroups()">Tümünü Aç/Kapat</button>
+                        <button class="btn btn-sm btn-outline-warning text-dark rounded-pill px-3 fw-bold" onclick="clearAllVarietyShifts()">Sıfırla</button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold" onclick="clearFullProgramSchedule()">Temizle</button>
+                        <button class="btn btn-sm btn-outline-secondary rounded-pill fw-bold" onclick="window.print()">Yazdır</button>
+                    </div>
+                </div>
+
+                <!-- Calendar Week Auto-Fill Control Bar -->
+                <div class="p-3 bg-light border-bottom no-print">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-6 d-flex align-items-center gap-2">
+                            <i class="bi bi-calendar-check-fill text-success fs-5"></i>
+                            <label for="weekStartDateInput" class="small fw-bold text-muted mb-0">HAFTA BAŞLANGICI:</label>
+                            <input type="date" id="weekStartDateInput" class="form-control form-control-sm rounded-3 border-success fw-bold text-dark" style="max-width: 150px;" onchange="onWeekDateChanged()">
+                        </div>
+                    </div>
+                    <div class="mt-2 d-flex justify-content-between align-items-center">
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success" id="selectedWeekRangeDisplay" style="font-size: 0.78rem;">
+                            📅 - Haftası
+                        </span>
+                        <span class="small text-muted" style="font-size:0.72rem;">
+                            *Mevcut haftalık çizelgenizi "Yazdır" butonuyla ekranda göründüğü gibi alabilirsiniz.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card-body p-0 table-responsive">
+                    <table class="matrix-table" id="matrixTable">
+                        <thead id="matrixTableHead">
+                            <!-- Dynamic Table Header -->
+                        </thead>
+                        <tbody id="matrixTableBody">
+                            <!-- Dynamic Table Content -->
+                        </tbody>
+                        <tfoot id="matrixTableFoot">
+                            <!-- Dynamic Totals Footer -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 24-Hour Cycle Visualizer (Full Width) -->
+    <div class="row g-4 mt-1 no-print">
+        <div class="col-12">
+            <div class="card-custom p-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1 text-dark"><i class="bi bi-bar-chart-steps text-info me-2"></i>Günlük 24/27 Saat Çatışma & Pompa Çalışma Zaman Çizelgesi</h5>
+                        <p class="text-muted small mb-0">Seçilen gün için Pompa 1 (Ana Bahçe) ve Pompa 2 (Kayısı) eşzamanlı çalışma saatleri ve vardiya çakışmaları visualizer modülü.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="timelineDaySelect" class="small fw-bold text-muted mb-0">GÜN SEÇ:</label>
+                        <select id="timelineDaySelect" class="form-select form-select-sm rounded-3 border-info fw-bold" style="width: 140px;" onchange="render24HourTimeline()">
+                            <option value="0">Pazartesi</option>
+                            <option value="1">Salı</option>
+                            <option value="2">Çarşamba</option>
+                            <option value="3">Perşembe</option>
+                            <option value="4">Cuma</option>
+                            <option value="5">Cumartesi</option>
+                            <option value="6">Pazar</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="timelineContainer" class="p-3 bg-light rounded-3 border">
+                    <!-- Timeline Visualizer Rendered Dynamically -->
+                </div>
+                <div id="timelineDetailsBox" class="mt-3">
+                    <!-- Dynamic Details -->
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Bulk Duration Modal -->
+<div class="modal fade" id="bulkDurationModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-clock-history me-2"></i>Parsel Sulama Süreleri Girişi ve 7 Günlük Planlama</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-primary bg-opacity-10 border-0 rounded-3 small mb-4 text-primary fw-bold">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Sulama Süresi Formülü: Parsellerin çalışma sürelerini (saat olarak) giriniz. Sistem, Pompa 1 ve Pompa 2 için başlangıç saatlerini ve vardiya sıralarını otomatik hesaplayıp 7 günlük haftaya uygulayacaktır.
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-3 mb-4">
+                    <div class="card-header bg-warning bg-opacity-20 border-0 fw-bold text-dark d-flex justify-content-between align-items-center">
+                        <span>🍊 POMPA 2 - Kayısı Vardiyaları</span>
+                        <span class="badge bg-warning text-dark rounded-pill" id="bulkKayisiTotalBadge">Toplam: 16 Sa</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3" id="bulkKayisiInputsContainer">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-3">
+                    <div class="card-header bg-info bg-opacity-20 border-0 fw-bold text-dark d-flex justify-content-between align-items-center">
+                        <span>🍎 POMPA 1 - Ana Pompa (Nektarin / Şeftali / Elma) Vardiyaları</span>
+                        <span class="badge bg-info text-white rounded-pill" id="bulkAnaTotalBadge">Toplam: 24 Sa</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3" id="bulkAnaInputsContainer">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white rounded-bottom-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-warning rounded-pill px-4 text-dark fw-bold shadow-sm" onclick="applyBulkDurations()">
+                    <i class="bi bi-magic me-1"></i>Süreleri Uygula & Çizelgeyi Oluştur
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cell Schedule & Color Preset Edit Modal -->
+<div class="modal fade" id="cellEditModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-success text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="cellModalTitle"><i class="bi bi-calendar-event me-2"></i>Sulama Hücresi Düzenle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <input type="hidden" id="cellShiftId">
+                <input type="hidden" id="cellDayIndex">
+                <input type="hidden" id="cellTargetMode" value="single">
+                <input type="hidden" id="cellGroupTitle" value="">
+                <input type="hidden" id="cellSelectedColorKey" value="auto">
+
+                <div class="mb-3 p-3 bg-light rounded-3 border">
+                    <div class="small fw-bold text-muted mb-1">VARDİYA & PARSEL:</div>
+                    <div class="fw-bold text-dark fs-6 mb-2" id="modalShiftNameDisplay">-</div>
+                    <div class="small fw-bold text-muted mb-1">GÜN & TARİH:</div>
+                    <div class="badge bg-success bg-opacity-10 text-success border border-success" id="modalDayNameDisplay">-</div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Başlangıç Saat</label>
+                        <input type="time" id="cellStartTimeInput" class="form-control rounded-3 fw-bold" value="06:00" onchange="onModalTimeChanged()">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold text-muted mb-1">Bitiş Saat</label>
+                        <input type="time" id="cellEndTimeInput" class="form-control rounded-3 fw-bold" value="10:00" onchange="onModalTimeChanged()">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-1">Sulama Süresi (Saat)</label>
+                    <input type="number" id="cellDurationInput" class="form-control rounded-3 border-success fw-bold text-success fs-5" value="4" step="0.5" min="0" max="24" onchange="onModalDurationChanged()">
+                </div>
+
+                <div class="card border-0 bg-light p-3 rounded-3 mb-3">
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" id="cellFertigationCheck" onchange="toggleFertInputs()">
+                        <label class="form-check-label fw-bold text-dark small" for="cellFertigationCheck">
+                            <i class="bi bi-droplet-half text-warning me-1"></i>Bu Vardiyada Gübreleme / İlaç Verilecek (Gübre Tankı)
+                        </label>
+                    </div>
+                    <div id="fertInputsBox" class="d-none">
+                        <label class="form-label small fw-bold text-muted mb-1">Gübreleme Notları / Formül</label>
+                        <input type="text" id="cellFertNotesInput" class="form-control form-control-sm rounded-3" placeholder="Örn: 25 Kg Nitrat + 5L Hümik Asit">
+                    </div>
+                </div>
+
+                <!-- Custom Color Presets Selection -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-2 d-flex justify-content-between">
+                        <span>RENK PALETİ SEÇİMİ</span>
+                        <span id="selectedColorLabel" class="text-primary fw-bold">Otomatik (Zamana Göre)</span>
+                    </label>
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        <div class="color-preset-swatch active border border-dark bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center text-dark small fw-bold" onclick="selectColorPreset('auto')" title="Otomatik Vardiya Rengi">A</div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%);" onclick="selectColorPreset('emerald')" title="Zümrüt Yeşil (Sabah)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);" onclick="selectColorPreset('sky')" title="Gökyüzü Mavi (Öğle)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);" onclick="selectColorPreset('purple')" title="Menekşe Mor (İkindi)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);" onclick="selectColorPreset('orange')" title="Alev Turuncu (Akşam)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #0f172a 0%, #334155 100%);" onclick="selectColorPreset('navy')" title="Koyu Lacivert (Gece)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #c026d3 0%, #e879f9 100%);" onclick="selectColorPreset('magenta')" title="Canlı Magenta (Şafak)"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);" onclick="selectColorPreset('red')" title="Mercan Kırmızı"></div>
+                        <div class="color-preset-swatch" style="background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);" onclick="selectColorPreset('teal')" title="Turkuaz Teal"></div>
+                        <input type="color" id="cellCustomColorPicker" class="form-control form-control-color rounded-circle border-0 ms-auto" style="width:30px; height:30px; cursor:pointer;" onchange="onCustomColorPicked(this.value)" title="Özel Renk Seç">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-outline-danger me-auto rounded-pill px-3" onclick="clearCellSchedule()">Temizle</button>
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="saveCellSchedule()">Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Program Create / Edit Modal -->
+<div class="modal fade" id="programModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="programModalTitle"><i class="bi bi-folder-plus me-2"></i>Yeni Sulama Programı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Program Başlığı</label>
+                    <input type="text" id="progTitleInput" class="form-control rounded-3 fw-bold" placeholder="Örn: 03.08.2026 - 09.08.2026 Haftası Sulama Planı">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Açıklama / Notlar</label>
+                    <textarea id="progDescInput" class="form-control rounded-3" rows="3" placeholder="Örn: Hava sıcaklıkları yüksek, gece sulamalarına ağırlık verildi."></textarea>
+                </div>
+                <div class="form-check form-switch mt-3">
+                    <input class="form-check-input" type="checkbox" id="progActiveInput" checked>
+                    <label class="form-check-label fw-bold small text-dark" for="progActiveInput">
+                        Bu Programı Aktif Sulama Çizelgesi Yap
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer bg-light rounded-bottom-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-success rounded-pill px-4 fw-bold shadow-sm" onclick="saveProgramModal()">Programı Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const DAYS = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+    
+    // High-Contrast Color Palette & Custom Presets
+    const FERTIGATION_STYLE = {
+        bg: "linear-gradient(135deg, #b45309 0%, #d97706 100%)",
+        border: "#78350f",
+        text: "#ffffff",
+        shadow: "rgba(217, 119, 6, 0.4)"
+    };
+
+    const COLOR_PRESETS = {
+        'emerald': { name: "Zümrüt Yeşil", bg: "linear-gradient(135deg, #059669 0%, #10b981 100%)", border: "#047857", text: "#ffffff", shadow: "rgba(16, 185, 129, 0.4)" },
+        'sky': { name: "Gökyüzü Mavi", bg: "linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)", border: "#0369a1", text: "#ffffff", shadow: "rgba(56, 189, 248, 0.4)" },
+        'purple': { name: "Menekşe Mor", bg: "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)", border: "#6d28d9", text: "#ffffff", shadow: "rgba(168, 85, 247, 0.4)" },
+        'orange': { name: "Alev Turuncusu", bg: "linear-gradient(135deg, #ea580c 0%, #f97316 100%)", border: "#c2410c", text: "#ffffff", shadow: "rgba(249, 115, 22, 0.4)" },
+        'navy': { name: "Koyu Lacivert", bg: "linear-gradient(135deg, #0f172a 0%, #334155 100%)", border: "#38bdf8", text: "#ffffff", shadow: "rgba(15, 23, 42, 0.5)" },
+        'magenta': { name: "Canlı Magenta", bg: "linear-gradient(135deg, #c026d3 0%, #e879f9 100%)", border: "#a21caf", text: "#ffffff", shadow: "rgba(232, 121, 249, 0.4)" },
+        'red': { name: "Mercan Kırmızı", bg: "linear-gradient(135deg, #dc2626 0%, #f87171 100%)", border: "#b91c1c", text: "#ffffff", shadow: "rgba(220, 38, 38, 0.4)" },
+        'teal': { name: "Turkuaz Teal", bg: "linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%)", border: "#0f766e", text: "#ffffff", shadow: "rgba(13, 148, 136, 0.4)" }
+    };
+
+    function getColorForTimeWindow(startTime, endTime, hasFert, customColorKey) {
+        if (customColorKey && customColorKey !== 'auto') {
+            if (COLOR_PRESETS[customColorKey]) {
+                return COLOR_PRESETS[customColorKey];
+            }
+            if (customColorKey.startsWith('#')) {
+                return {
+                    bg: customColorKey,
+                    border: '#0f172a',
+                    text: '#ffffff',
+                    shadow: 'rgba(0,0,0,0.3)'
+                };
+            }
+        }
+
+        if (hasFert) return FERTIGATION_STYLE;
+
+        const startM = timeToMinutes(startTime);
+        
+        // 02:00 - 06:00 -> Erken Sabah / Şafak (Canlı Magenta Pembe)
+        if (startM >= 120 && startM < 360) {
+            return COLOR_PRESETS['magenta'];
+        }
+
+        // 06:00 - 10:00 -> Sabah Vardiyası (Zümrüt Yeşili)
+        if (startM >= 360 && startM < 600) {
+            return COLOR_PRESETS['emerald'];
+        }
+
+        // 10:00 - 14:00 -> Öğle Vardiyası (Okyanus / Elektrik Mavisi)
+        if (startM >= 600 && startM < 840) {
+            return COLOR_PRESETS['sky'];
+        }
+
+        // 14:00 - 18:00 -> İkindi Vardiyası (Menekşe Mor)
+        if (startM >= 840 && startM < 1080) {
+            return COLOR_PRESETS['purple'];
+        }
+
+        // 18:00 - 22:00 -> Akşam Vardiyası (Alev Turuncusu)
+        if (startM >= 1080 && startM < 1320) {
+            return COLOR_PRESETS['orange'];
+        }
+
+        // 22:00 - 02:00 -> Gece Vardiyası (Koyu Slate Siyahı/Lacivert & Mavi Çerçeve)
+        if (startM >= 1320 || startM < 120) {
+            return COLOR_PRESETS['navy'];
+        }
+
+        // Fallback
+        return COLOR_PRESETS['emerald'];
+    }
+
+    // Canonical 12-Shift Garden Structure with Pump Allocations (Pompa 1: Ana Pompa, Pompa 2: Kayısı)
+    const CANONICAL_SHIFTS = [
+        { mainNum: 1, name: "Nelson", title: "Nelson 1 Shift", subParcels: ["1.1", "1.2", "1.3"], pumpId: "kayisi", pumpName: "Kayısı Pompası (Pompa 2)", pumpBadgeClass: "bg-warning text-dark" },
+        { mainNum: 2, name: "Madrigal", title: "Madrigal 2 Shift", subParcels: ["2.1", "2.2", "2.3"], pumpId: "kayisi", pumpName: "Kayısı Pompası (Pompa 2)", pumpBadgeClass: "bg-warning text-dark" },
+        { mainNum: 3, name: "Memphis", title: "Memphis 3 Shift", subParcels: ["3.1", "3.2", "3.3"], pumpId: "kayisi", pumpName: "Kayısı Pompası (Pompa 2)", pumpBadgeClass: "bg-warning text-dark" },
+        { mainNum: 4, name: "Bolero", title: "Bolero 4 Shift", subParcels: ["4.1", "4.2", "4.3", "4.4"], pumpId: "kayisi", pumpName: "Kayısı Pompası (Pompa 2)", pumpBadgeClass: "bg-warning text-dark" },
+        { mainNum: 5, name: "Esmeralda", title: "Esmeralda 5 Shift", subParcels: ["5.1", "5.2", "5.3", "5.4", "5.5", "5.6"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 6, name: "Kinolea", title: "Kinolea 6 Shift", subParcels: ["6.1", "6.2"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 7, name: "Diosa", title: "Diosa 7 Shift", subParcels: ["7.1", "7.2", "7.3"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 8, name: "Tintosa", title: "Tintosa 8 Shift", subParcels: ["8.0"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 9, name: "Canoppe", title: "Canoppe 9 Shift", subParcels: ["9.1", "9.2", "9.3", "9.4", "9.5", "9.6"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 10, name: "Bayblone", title: "Bayblone 10 Shift", subParcels: ["10.1", "10.2", "10.3"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 11, name: "Dioblatina", title: "Dioblatina 11 Shift", subParcels: ["11.1", "11.2", "11.3", "11.4"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" },
+        { mainNum: 12, name: "Filoe", title: "Filoe 12 Shift", subParcels: ["12.1", "12.2"], pumpId: "ana", pumpName: "Ana Pompa (Pompa 1)", pumpBadgeClass: "bg-info text-white" }
+    ];
+
+    let selectedGardenId = localStorage.getItem('selected_garden_id') || 'default';
+    let mapInstance = null;
+    let mapLayersGroup = null;
+
+    let gardenParcels = []; // Loaded from api/get_map.php or generated
+    let collapsedVarietyGroups = {}; // Track expanded/collapsed state
+
+    let allPrograms = [];   // Loaded from api/get_irrigation_schedules.php
+    let activeProgram = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        setupGardenHeader();
+        initDefaultWeekDatePicker();
+        initMiniMap();
+        const hasIrrigationParcels = await loadGardenMapData();
+        if (!hasIrrigationParcels) return;
+        await loadSchedulesFromServer();
+    });
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+
+    function setupGardenHeader() {
+        const gardenName = localStorage.getItem('selected_garden_name') || 'Varsayılan Bahçe';
+        document.getElementById('selectedGardenTitle').innerText = `${gardenName} - Sulama Parselleri Haftalık Çalışma Çizelgesi`;
+    }
+
+    // Calendar Week Date Helper Functions
+    function getMondayOfCurrentWeek(d) {
+        const date = d ? new Date(d) : new Date();
+        const day = date.getDay();
+        const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(date.setDate(diff));
+    }
+
+    function formatDateToYYYYMMDD(d) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function formatDateToDDMMYYYY(d) {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}.${mm}.${yyyy}`;
+    }
+
+    function initDefaultWeekDatePicker() {
+        const monday = getMondayOfCurrentWeek(new Date());
+        document.getElementById('weekStartDateInput').value = formatDateToYYYYMMDD(monday);
+        updateWeekRangeDisplay();
+    }
+
+    function getWeekDateObjects() {
+        const inputVal = document.getElementById('weekStartDateInput').value;
+        const startDate = inputVal ? new Date(inputVal + "T00:00:00") : getMondayOfCurrentWeek();
+        
+        const dates = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(startDate);
+            d.setDate(startDate.getDate() + i);
+            dates.push(d);
+        }
+        return dates;
+    }
+
+    function updateWeekRangeDisplay() {
+        const dateObjs = getWeekDateObjects();
+        const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+        const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+        document.getElementById('selectedWeekRangeDisplay').innerText = `📅 ${startStr} - ${endStr} Haftası`;
+    }
+
+    function onWeekDateChanged() {
+        updateWeekRangeDisplay();
+        renderMatrix();
+    }
+
+    // Sub-parcel custom time mapping (Specifically for Diablotina 11.1-11.4 and general defaults)
+    function getSubParcelDefaultTime(subName, mainNum) {
+        const cancelKarma = activeProgram && activeProgram.cancelKarma11;
+        if (!cancelKarma) {
+            if (subName === '11.1') return { startTime: '18:00', endTime: '22:00', duration: 4, customColor: 'auto' };
+            if (subName === '11.2') return { startTime: '22:00', endTime: '01:00', duration: 3, customColor: 'auto' };
+            if (subName === '11.3') return { startTime: '01:00', endTime: '04:00', duration: 3, customColor: 'auto' };
+            if (subName === '11.4') return { startTime: '04:00', endTime: '08:00', duration: 4, customColor: 'auto' };
+        }
+
+        const defaultShiftTimes = {
+            1: { startTime: '06:00', endTime: '10:00', duration: 4 },
+            2: { startTime: '10:00', endTime: '14:00', duration: 4 },
+            3: { startTime: '14:00', endTime: '18:00', duration: 4 },
+            4: { startTime: '18:00', endTime: '22:00', duration: 4 },
+            5: { startTime: '22:00', endTime: '02:00', duration: 4 },
+            6: { startTime: '02:00', endTime: '06:00', duration: 4 },
+            7: { startTime: '06:00', endTime: '10:00', duration: 4 },
+            8: { startTime: '10:00', endTime: '14:00', duration: 4 },
+            9: { startTime: '14:00', endTime: '18:00', duration: 4 },
+            10: { startTime: '18:00', endTime: '22:00', duration: 4 },
+            11: { startTime: '22:00', endTime: '02:00', duration: 4 },
+            12: { startTime: '02:00', endTime: '06:00', duration: 4 }
+        };
+
+        const def = defaultShiftTimes[mainNum] || { startTime: '06:00', endTime: '10:00', duration: 4 };
+        return { ...def, customColor: 'auto' };
+    }
+
+
+
+    function exportScheduleToPDF() {
+        const dateObjs = getWeekDateObjects();
+        const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+        const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+        const gardenName = (localStorage.getItem('selected_garden_name') || 'Bahce').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const fileName = `${gardenName}_Sulama_Programi_${startStr}_${endStr}.pdf`;
+
+        const matrixElem = document.getElementById('matrixTable');
+        const legendElem = document.querySelector('.color-legend-bar');
+        if (!matrixElem) return;
+
+        // Create printable container and MUST append to document.body so html2canvas can measure layout dimensions!
+        const pdfContainer = document.createElement('div');
+        pdfContainer.className = 'pdf-export-container';
+        pdfContainer.style.position = 'absolute';
+        pdfContainer.style.left = '-9999px';
+        pdfContainer.style.top = '0';
+        pdfContainer.style.width = '1200px'; // Explicit width for high-res A4 landscape
+        pdfContainer.style.padding = '8px';
+        pdfContainer.style.backgroundColor = '#ffffff';
+        pdfContainer.style.color = '#1e293b';
+        pdfContainer.style.fontFamily = "'Outfit', 'Inter', sans-serif";
+
+        const gardenTitle = localStorage.getItem('selected_garden_name') || 'Bahçe Yönetimi';
+        const progTitle = activeProgram ? activeProgram.title : 'Haftalık Sulama Çizelgesi';
+
+        let pdfHtml = `
+            <style>
+                .pdf-export-container * {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    box-sizing: border-box !important;
+                }
+                .pdf-export-container table {
+                    width: 100% !important;
+                    table-layout: fixed !important;
+                    border-collapse: separate !important;
+                    border-spacing: 0 !important;
+                    margin: 0 !important;
+                }
+                .pdf-export-container tr {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }
+                .pdf-export-container tr.variety-header-row {
+                    height: 28px !important;
+                    background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%) !important;
+                }
+                .pdf-export-container tr.variety-header-row td {
+                    padding: 3px 6px !important;
+                    vertical-align: middle !important;
+                    height: 28px !important;
+                    font-size: 0.72rem !important;
+                }
+                .pdf-export-container tr.variety-child-row {
+                    height: 24px !important;
+                }
+                .pdf-export-container tr.variety-child-row td {
+                    padding: 2px 2px !important;
+                    vertical-align: middle !important;
+                    height: 24px !important;
+                    font-size: 0.62rem !important;
+                }
+                .pdf-export-container td, .pdf-export-container th {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    line-height: 1.15 !important;
+                    vertical-align: middle !important;
+                }
+                .pdf-export-container .matrix-cell-btn {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    min-height: 22px !important;
+                    padding: 1px 2px !important;
+                    font-size: 0.60rem !important;
+                    line-height: 1.1 !important;
+                    display: block !important;
+                    width: 100% !important;
+                    text-align: center !important;
+                    border-radius: 6px !important;
+                }
+                .pdf-export-container .matrix-cell-btn .cell-time {
+                    font-size: 0.54rem !important;
+                }
+                .pdf-export-container .color-legend-bar {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                    margin-bottom: 6px !important;
+                    padding: 4px 8px !important;
+                    font-size: 0.66rem !important;
+                }
+                .pdf-export-container .legend-color-dot {
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                }
+            </style>
+
+            <div style="text-align: center; margin-top: 0; margin-bottom: 6px; border-bottom: 2px solid #2e7d32; padding-top: 1px; padding-bottom: 3px;">
+                <h3 style="color: #1b4332; margin: 0 0 2px 0; font-size: 16px; font-weight: bold; line-height: 1.15;">
+                    🌿 ${gardenTitle} - HAFTALIK SULAMA VE ŞİFT ÇİZELGESİ
+                </h3>
+                <p style="color: #475569; margin: 0; font-size: 10.5px; font-weight: 600;">
+                    Tarih Aralığı: <strong>${startStr} - ${endStr} Haftası</strong> | Program: <strong>${progTitle}</strong>
+                </p>
+                <div style="font-size: 8.5px; color: #64748b; margin-top: 1px;">
+                    * Pompa 1 (Ana Bahçe) & Pompa 2 (Kayısı Pompası) Çift Pompa Takipli Sulama Planı
+                </div>
+            </div>
+        `;
+
+        if (legendElem) {
+            pdfHtml += `
+                <div class="color-legend-bar" style="margin-bottom: 6px; padding: 4px 8px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.66rem;">
+                    ${legendElem.innerHTML}
+                </div>
+            `;
+        }
+
+        pdfContainer.innerHTML = pdfHtml;
+
+        const clonedTableWrapper = matrixElem.parentElement.cloneNode(true);
+        clonedTableWrapper.querySelectorAll('.variety-child-row').forEach(row => {
+            row.style.display = 'table-row';
+        });
+        clonedTableWrapper.querySelectorAll('.no-print').forEach(el => {
+            el.remove();
+        });
+
+        pdfContainer.appendChild(clonedTableWrapper);
+
+        // MUST append to document.body so DOM layout engine computes valid dimensions!
+        document.body.appendChild(pdfContainer);
+
+        const opt = {
+            margin:       [4, 4, 4, 4],
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', scrollX: 0, scrollY: 0 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' },
+            pagebreak:    { mode: ['css', 'legacy'], avoid: ['tr', 'td', '.matrix-cell-btn', '.variety-header-row', '.variety-child-row', '.color-legend-bar'] }
+        };
+
+        if (typeof html2pdf !== 'undefined') {
+            html2pdf().set(opt).from(pdfContainer).save().then(() => {
+                if (pdfContainer.parentNode) pdfContainer.parentNode.removeChild(pdfContainer);
+            }).catch(err => {
+                console.error("PDF export error:", err);
+                if (pdfContainer.parentNode) pdfContainer.parentNode.removeChild(pdfContainer);
+            });
+        } else {
+            if (pdfContainer.parentNode) pdfContainer.parentNode.removeChild(pdfContainer);
+            window.print();
+        }
+    }
+
+    function exportScheduleToHTML() {
+        const dateObjs = getWeekDateObjects();
+        const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+        const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+        const gardenName = (localStorage.getItem('selected_garden_name') || 'Bahce').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const fileName = `${gardenName}_Sulama_Programi_${startStr}_${endStr}.html`;
+
+        const matrixElem = document.getElementById('matrixTable');
+        const legendElem = document.querySelector('.color-legend-bar');
+        if (!matrixElem) return;
+
+        const gardenTitle = localStorage.getItem('selected_garden_name') || 'Bahçe Yönetimi';
+        const progTitle = activeProgram ? activeProgram.title : 'Haftalık Sulama Çizelgesi';
+
+        const clonedTableWrapper = matrixElem.parentElement.cloneNode(true);
+        clonedTableWrapper.querySelectorAll('.variety-child-row').forEach(row => {
+            row.style.display = 'table-row';
+        });
+        clonedTableWrapper.querySelectorAll('.no-print').forEach(el => {
+            el.remove();
+        });
+
+        const fullHtml = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${gardenTitle} - Haftalık Sulama Çizelgesi (${startStr} - ${endStr})</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Outfit', 'Inter', sans-serif;
+            background-color: #f4f7f6;
+            color: #2c3e50;
+            padding: 20px;
+        }
+        .html-report-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin: 0 auto;
+            max-width: 1400px;
+        }
+        .report-header {
+            text-align: center;
+            border-bottom: 3px solid #2e7d32;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .color-legend-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 10px 16px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 16px;
+        }
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #475569;
+        }
+        .legend-color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .matrix-table {
+            width: 100%;
+            table-layout: fixed;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .matrix-table th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            padding: 10px 4px;
+            border-bottom: 2px solid #e2e8f0;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .matrix-table th:first-child { text-align: left; padding-left: 16px; width: 17%; }
+        .matrix-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            text-align: center;
+        }
+        .matrix-table td:first-child { text-align: left; padding-left: 16px; }
+        .variety-header-row {
+            background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%);
+            border-top: 2px solid #a5d6a7;
+            border-bottom: 1.5px solid #c8e6c9;
+        }
+        .variety-child-row td:first-child {
+            padding-left: 28px !important;
+            border-left: 4px solid #2e7d32;
+        }
+        .matrix-cell-btn {
+            width: 100%;
+            padding: 6px 4px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            color: #ffffff;
+            font-size: 0.78rem;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .matrix-cell-btn .cell-time {
+            font-size: 0.68rem;
+            opacity: 0.95;
+            font-weight: 600;
+            margin-top: 1px;
+        }
+        @media print {
+            body { background: white; padding: 0; }
+            .html-report-card { box-shadow: none; padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="html-report-card">
+        <div class="report-header">
+            <h2 style="color: #1b4332; margin: 0 0 6px 0; font-weight: bold;">
+                🌿 ${gardenTitle} - HAFTALIK SULAMA VE ŞİFT ÇİZELGESİ
+            </h2>
+            <p style="color: #475569; margin: 0; font-size: 14px; font-weight: 600;">
+                Tarih Aralığı: <strong>${startStr} - ${endStr} Haftası</strong> | Program: <strong>${progTitle}</strong>
+            </p>
+            <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
+                * Pompa 1 (Ana Bahçe) & Pompa 2 (Kayısı Pompası) Çift Pompa Takipli Sulama Planı
+            </div>
+        </div>
+
+        ${legendElem ? `<div class="color-legend-bar">${legendElem.innerHTML}</div>` : ''}
+
+        <div class="table-responsive">
+            ${clonedTableWrapper.innerHTML}
+        </div>
+
+        <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+            Oluşturulma Tarihi: ${new Date().toLocaleString('tr-TR')} | Bahçe Yönetimi Sulama Sistemi
+        </div>
+    </div>
+<script src="assets/js/season_archive_manager.js?v=19"><\/script>
+<script src="assets/js/interactive_enhancements.js?v=27"><\/script>
+<\/body>
+<\/html>`;
+
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    function clearAllVarietyShifts() {
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        if (!confirm("Tüm vardiyaların sulama saatleri sıfırlanacaktır. Onaylıyor musunuz?")) {
+            return;
+        }
+
+        // Ensure baseSettings is initialized
+        initializeBaseSettings(activeProgram);
+
+        gardenParcels.forEach(p => {
+            activeProgram.matrix[p.id] = Array(7).fill(null);
+            activeProgram.baseSettings[p.id] = null;
+        });
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert("Tüm vardiyaların sulama saatleri başarıyla sıfırlandı.");
+    }
+
+    function clearVarietyGroupRowSchedule(groupTitle, evt) {
+        if (evt) evt.stopPropagation();
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        if (!confirm(`"${groupTitle}" vardiyasının 7 günlük tüm sulama saatleri sıfırlanacaktır. Onaylıyor musunuz?`)) {
+            return;
+        }
+
+        // Ensure baseSettings is initialized
+        initializeBaseSettings(activeProgram);
+
+        const groups = groupParcelsByCanonicalShift();
+        const groupParcels = groups[groupTitle] ? groups[groupTitle].parcels : [];
+
+        groupParcels.forEach(p => {
+            activeProgram.matrix[p.id] = Array(7).fill(null);
+            activeProgram.baseSettings[p.id] = null;
+        });
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+    }
+
+    function clearFullProgramSchedule() {
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        if (!confirm(`"${activeProgram.title}" programındaki TÜM gün ve vardiya kayıtları temizlenecektir. Emin misiniz?`)) {
+            return;
+        }
+
+        // Ensure baseSettings is initialized
+        initializeBaseSettings(activeProgram);
+
+        gardenParcels.forEach(p => {
+            activeProgram.matrix[p.id] = Array(7).fill(null);
+            activeProgram.baseSettings[p.id] = null;
+        });
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert("Sulama programındaki tüm kayıtlar başarıyla temizlendi.");
+    }
+
+    function initMiniMap() {
+        // Harita kutusu sayfada yoksa (yerleşimden çıkarılmış) başlatma hatası tüm sayfayı durdurmasın.
+        if (!document.getElementById('miniMap')) return;
+        mapInstance = L.map('miniMap').setView([37.855, 34.098], 15);
+        
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            maxZoom: 20,
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: 'Google Satellite'
+        }).addTo(mapInstance);
+
+        mapLayersGroup = L.layerGroup().addTo(mapInstance);
+    }
+
+    async function loadGardenMapData() {
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${encodeURIComponent(selectedGardenId)}&t=${Date.now()}`);
+            let data = [];
+            if (res.ok) {
+                data = await res.json();
+            }
+
+            gardenParcels = [];
+            if (mapLayersGroup) mapLayersGroup.clearLayers();
+
+            const bounds = L.latLngBounds();
+            let hasBounds = false;
+
+            const irrigationItems = Array.isArray(data)
+                ? data.filter(item => item && item.type === 'irrigation' && item.id && item.name)
+                : [];
+
+            irrigationItems.forEach((item, index) => {
+                    const parcelName = String(item.name).trim();
+                    const canonicalGroup = CANONICAL_SHIFTS.find(group =>
+                        group.subParcels.some(code => code.toLocaleLowerCase('tr-TR') === parcelName.toLocaleLowerCase('tr-TR'))
+                    );
+                    const numberMatch = parcelName.match(/\d+/);
+                    const mainNum = canonicalGroup ? canonicalGroup.mainNum : (numberMatch ? Number(numberMatch[0]) : index + 1);
+                    const parcelObj = {
+                        id: item.id,
+                        name: parcelName,
+                        mainNum,
+                        groupTitle: canonicalGroup ? canonicalGroup.title : parcelName,
+                        varietyName: canonicalGroup ? canonicalGroup.name : parcelName,
+                        pumpId: item.pumpId || (canonicalGroup ? canonicalGroup.pumpId : 'ana'),
+                        pumpName: item.pumpName || (canonicalGroup ? canonicalGroup.pumpName : 'Ana Pompa (Pompa 1)'),
+                        pumpBadgeClass: canonicalGroup ? canonicalGroup.pumpBadgeClass : 'bg-info text-white',
+                        area: item.area || 0,
+                        color: item.color || '#2e7d32',
+                        coordinates: Array.isArray(item.coordinates) ? item.coordinates : []
+                    };
+
+                    gardenParcels.push(parcelObj);
+
+                    if (mapLayersGroup && parcelObj.coordinates.length > 0) {
+                        const latLngs = parcelObj.coordinates.map(c => [c.lat, c.lng]);
+                        const polygon = L.polygon(latLngs, {
+                            color: parcelObj.color,
+                            fillColor: parcelObj.color,
+                            fillOpacity: 0.45,
+                            weight: 2
+                        }).addTo(mapLayersGroup);
+
+                        polygon.bindTooltip(`<b>${parcelObj.groupTitle}</b><br>Parsel: ${parcelObj.name}`, {
+                            permanent: true,
+                            direction: 'center',
+                            className: 'premium-tooltip'
+                        });
+
+                        latLngs.forEach(ll => bounds.extend(ll));
+                        hasBounds = true;
+                    }
+            });
+
+            if (hasBounds && mapInstance) {
+                mapInstance.fitBounds(bounds, { padding: [20, 20] });
+            }
+
+            renderShiftList();
+            return gardenParcels.length > 0;
+
+        } catch (err) {
+            console.error("Map fetch error:", err);
+            const shiftBox = document.getElementById('shiftListContainer');
+            if (shiftBox) shiftBox.innerHTML = `<div class="text-danger p-2">Harita yüklenemedi.</div>`;
+            return false;
+        }
+    }
+
+    function groupParcelsByCanonicalShift() {
+        const groups = {};
+
+        gardenParcels.forEach(p => {
+            const groupKey = p.groupTitle || `${p.varietyName} ${p.mainNum} Shift`;
+            if (!groups[groupKey]) {
+                groups[groupKey] = {
+                    mainNum: p.mainNum || 99,
+                    name: p.varietyName || 'Diğer',
+                    title: groupKey,
+                    pumpId: p.pumpId || 'ana',
+                    pumpName: p.pumpName || 'Ana Pompa (Pompa 1)',
+                    pumpBadgeClass: p.pumpBadgeClass || 'bg-info text-white',
+                    parcels: []
+                };
+            }
+            groups[groupKey].parcels.push(p);
+        });
+        return groups;
+    }
+
+    function renderShiftList() {
+        const container = document.getElementById('shiftListContainer');
+        const badge = document.getElementById('shiftListBadge');
+        if (!container || !badge) return;
+        
+        badge.innerText = `${gardenParcels.length} Alt Parsel`;
+
+        if (gardenParcels.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-warning mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Bu bahçeye ait sulama parseli bulunamadı.
+                    <a href="garden_map.html?setup=1" class="alert-link ms-1">İnteraktif Haritalar'da sulama parseli oluşturun.</a>
+                </div>`;
+            document.getElementById('statShiftCount').innerText = '0';
+            const tbody = document.getElementById('matrixTableBody');
+            if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="text-center p-4 text-muted">Sulama programı oluşturmak için önce bu bahçenin sulama parsellerini tanımlayın.</td></tr>`;
+            return;
+        }
+
+        const groups = groupParcelsByCanonicalShift();
+
+        let html = '';
+        let groupIdx = 0;
+
+        for (const [groupTitle, groupData] of Object.entries(groups)) {
+            groupIdx++;
+            const accId = `acc_shift_${groupIdx}`;
+            const parcels = groupData.parcels;
+
+            const shiftItems = parcels.map(p => `
+                <div class="d-flex justify-content-between align-items-center py-1 px-2 border-bottom">
+                    <div>
+                        <span class="d-inline-block rounded-circle me-1" style="width: 8px; height: 8px; background-color: ${p.color};"></span>
+                        <strong class="text-dark">Parsel ${p.name}</strong>
+                    </div>
+                    <span class="badge bg-light text-muted border" style="font-size:0.68rem;">${p.area ? p.area + ' da' : ''}</span>
+                </div>
+            `).join('');
+
+            html += `
+                <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button py-2 px-3 bg-light fw-bold text-success small" type="button" data-bs-toggle="collapse" data-bs-target="#${accId}" aria-expanded="true">
+                            <i class="bi bi-tag-fill me-2 text-success opacity-75"></i>${groupTitle}
+                            <span class="badge ${groupData.pumpBadgeClass} rounded-pill ms-2" style="font-size:0.65rem;">${groupData.pumpId === 'ana' ? '🍏 Pompa 1 (Ana)' : '🍑 Pompa 2 (Kayısı)'}</span>
+                        </button>
+                    </h2>
+                    <div id="${accId}" class="accordion-collapse collapse show">
+                        <div class="accordion-body p-2 bg-white">
+                            ${shiftItems}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+        document.getElementById('statShiftCount').innerText = gardenParcels.length;
+    }
+
+
+
+    function ensureGardenParcels() {
+        return gardenParcels;
+    }
+
+    function initializeBaseSettings(program) {
+        if (!program) return;
+        ensureGardenParcels();
+
+        if (!program.baseSettings) {
+            program.baseSettings = {};
+        }
+        if (!program.parcelStages) {
+            program.parcelStages = {};
+        }
+        if (!program.matrix) {
+            program.matrix = {};
+        }
+        const allowedParcelIds = new Set(gardenParcels.map(parcel => String(parcel.id)));
+        [program.matrix, program.baseSettings, program.parcelStages].forEach(collection => {
+            Object.keys(collection).forEach(parcelId => {
+                if (!allowedParcelIds.has(String(parcelId))) delete collection[parcelId];
+            });
+        });
+        if (!program.pump1StartTime) program.pump1StartTime = "06:00";
+        if (!program.pump2StartTime) program.pump2StartTime = "06:00";
+        program.cancelKarma11 = true;
+        if (program.diosaTintosaTogether === undefined) {
+            program.diosaTintosaTogether = false;
+        }
+        if (!program.splitShifts) {
+            program.splitShifts = {};
+        }
+        gardenParcels.forEach(p => {
+            if (program.parcelStages[p.id] === undefined) {
+                if (p.name === '1.2') {
+                    program.parcelStages[p.id] = 2;
+                } else {
+                    program.parcelStages[p.id] = 1;
+                }
+            }
+            if (!program.matrix[p.id]) {
+                program.matrix[p.id] = Array(7).fill(null);
+            }
+            if (program.baseSettings[p.id] !== undefined && program.baseSettings[p.id] !== null) return;
+
+            let found = null;
+            if (program.matrix && program.matrix[p.id]) {
+                for (let d = 0; d < 7; d++) {
+                    const cell = program.matrix[p.id][d];
+                    if (cell && parseFloat(cell.duration) > 0) {
+                        found = {
+                            duration: parseFloat(cell.duration),
+                            startTime: cell.startTime || "06:00",
+                            endTime: cell.endTime || "10:00",
+                            hasFert: !!cell.hasFert,
+                            fertNotes: cell.fertNotes || "",
+                            customColor: cell.customColor || 'auto'
+                        };
+                        break;
+                    }
+                }
+            }
+            program.baseSettings[p.id] = found;
+        });
+    }
+
+    async function loadSchedulesFromServer() {
+        try {
+            const res = await fetch(`api/get_irrigation_schedules.php?garden_id=${encodeURIComponent(selectedGardenId)}&t=${Date.now()}`);
+            if (!res.ok) throw new Error('Sulama programları sunucudan alınamadı.');
+            allPrograms = await res.json();
+        } catch (e) {
+            console.warn("API get error, falling back to localStorage", e);
+            const local = localStorage.getItem(`irrigation_sched_${selectedGardenId}`);
+            if (local) {
+                try {
+                    allPrograms = JSON.parse(local);
+                } catch (parseError) {
+                    console.warn('Yerel sulama programı verisi okunamadı.', parseError);
+                    allPrograms = [];
+                }
+            }
+        }
+
+        if (!Array.isArray(allPrograms)) allPrograms = [];
+
+        if (allPrograms.length === 0) {
+            const dateObjs = getWeekDateObjects();
+            const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+            const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+
+            const defaultProg = createDefaultProgramObj(`${startStr} - ${endStr} Haftalık Sulama Programı`);
+            allPrograms.push(defaultProg);
+            saveCurrentProgramToServer(false);
+        }
+
+        allPrograms.forEach(p => initializeBaseSettings(p));
+
+        activeProgram = allPrograms.find(p => p.isActive) || allPrograms[0];
+        
+        updateProgramDropdown();
+        renderMatrix();
+    }
+
+    function createDefaultProgramObj(title) {
+        ensureGardenParcels();
+        const matrixData = {};
+        const baseSettings = {};
+
+        gardenParcels.forEach(p => {
+            const timeConfig = getSubParcelDefaultTime(p.name, p.mainNum);
+            matrixData[p.id] = Array(7).fill(null).map(() => ({
+                duration: timeConfig.duration,
+                startTime: timeConfig.startTime,
+                endTime: timeConfig.endTime,
+                hasFert: false,
+                fertNotes: "",
+                customColor: timeConfig.customColor || 'auto'
+            }));
+
+            baseSettings[p.id] = {
+                duration: timeConfig.duration,
+                startTime: timeConfig.startTime,
+                endTime: timeConfig.endTime,
+                hasFert: false,
+                fertNotes: "",
+                customColor: timeConfig.customColor || 'auto'
+            };
+        });
+
+        return {
+            id: `prog_${Date.now()}`,
+            title: title,
+            description: "Pompa 1 (Nektarin/Şeftali) ve Pompa 2 (Kayısı) için 24sa aşımına duyarlı kaydırmalı döngülü haftalık sulama programı",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            matrix: matrixData,
+            baseSettings: baseSettings,
+            pump1StartTime: "06:00",
+            pump2StartTime: "06:00",
+            cancelKarma11: true,
+            diosaTintosaTogether: false,
+            splitShifts: {}
+        };
+    }
+
+    function copyMondayToAllDays(silent = false) {
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        if (!silent && !confirm("Pazartesi günkü sulama saatleri ve süreleri (değiştirilmeden) Salı'dan Pazar'a tüm günlere kopyalanacaktır. Onaylıyor musunuz?")) {
+            return;
+        }
+
+        gardenParcels.forEach(p => {
+            if (!activeProgram.matrix[p.id]) {
+                activeProgram.matrix[p.id] = Array(7).fill(null);
+            }
+            
+            const mondayData = activeProgram.matrix[p.id][0];
+            const defaultTime = getSubParcelDefaultTime(p.name, p.mainNum);
+
+            const targetData = mondayData || {
+                duration: defaultTime.duration,
+                startTime: defaultTime.startTime,
+                endTime: defaultTime.endTime,
+                hasFert: false,
+                fertNotes: "",
+                customColor: defaultTime.customColor || 'auto'
+            };
+
+            for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+                activeProgram.matrix[p.id][dayIdx] = JSON.parse(JSON.stringify(targetData));
+            }
+        });
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        if (!silent) alert("Pazartesi sulama programı süreleri korunarak tüm haftaya (Salı - Pazar) başarıyla uygulandı!");
+    }
+
+    function updateProgramDropdown() {
+        const select = document.getElementById('programSelect');
+        select.innerHTML = allPrograms.map(p => `
+            <option value="${p.id}" ${activeProgram && activeProgram.id === p.id ? 'selected' : ''}>
+                ${p.title} ${p.isActive ? '(Aktif)' : ''}
+            </option>
+        `).join('');
+
+        const detailsBox = document.getElementById('programDetailsBox');
+        if (activeProgram) {
+            detailsBox.classList.remove('d-none');
+            document.getElementById('progTitleDisplay').innerText = activeProgram.title;
+            document.getElementById('progDescDisplay').innerText = activeProgram.description || 'Açıklama girilmedi.';
+            document.getElementById('activeProgramHeading').innerHTML = `<i class="bi bi-grid-3x3-gap-fill text-success me-2"></i>${activeProgram.title}`;
+            
+            const badge = document.getElementById('progActiveBadge');
+            if (activeProgram.isActive) badge.classList.remove('d-none');
+            else badge.classList.add('d-none');
+
+            // Sync Cancel Karma checkbox and description
+            const cancelKarmaCheck = document.getElementById('cancelKarma11Check');
+            if (cancelKarmaCheck) {
+                cancelKarmaCheck.checked = !!activeProgram.cancelKarma11;
+            }
+            const diablotinaInfo = document.getElementById('diablotinaInfo');
+            if (diablotinaInfo) {
+                if (activeProgram.cancelKarma11) {
+                    diablotinaInfo.innerText = "Dioblatina: Eşzamanlı / Manuel";
+                } else {
+                    diablotinaInfo.innerText = "Dioblatina: 11.1 & 11.4 (4er Sa), 11.2 & 11.3 (3er Sa)";
+                }
+            }
+            // Sync Diosa & Tintosa checkbox
+            const diosaTintosaTogetherCheck = document.getElementById('diosaTintosaTogetherCheck');
+            if (diosaTintosaTogetherCheck) {
+                diosaTintosaTogetherCheck.checked = !!activeProgram.diosaTintosaTogether;
+            }
+        } else {
+            detailsBox.classList.add('d-none');
+        }
+    }
+
+    function onProgramSelected() {
+        const val = document.getElementById('programSelect').value;
+        activeProgram = allPrograms.find(p => p.id === val) || null;
+        collapsedVarietyGroups = {};
+        updateProgramDropdown();
+        renderMatrix();
+    }
+
+    function onDiosaTintosaTogetherChanged() {
+        if (!activeProgram) return;
+        activeProgram.diosaTintosaTogether = document.getElementById('diosaTintosaTogetherCheck').checked;
+        
+        autoSequenceShiftsAcrossWeek('ana');
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+    }
+
+    function onCancelKarma11Changed() {
+        if (!activeProgram) return;
+        const check = document.getElementById('cancelKarma11Check');
+        if (check) activeProgram.cancelKarma11 = check.checked;
+        
+        const diablotinaInfo = document.getElementById('diablotinaInfo');
+        if (diablotinaInfo) {
+            if (activeProgram.cancelKarma11) {
+                diablotinaInfo.innerText = "Dioblatina: Eşzamanlı / Manuel";
+            } else {
+                diablotinaInfo.innerText = "Dioblatina: 11.1 & 11.4 (4er Sa), 11.2 & 11.3 (3er Sa)";
+            }
+        }
+        
+        autoSequenceShiftsAcrossWeek('ana');
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+    }
+
+    function timeToMinutes(timeStr) {
+        if (!timeStr) return 0;
+        const parts = timeStr.split(':');
+        return (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    }
+
+    function minutesToTime(mins) {
+        mins = (mins + 1620) % 1620;
+        const h = Math.floor(mins / 60).toString().padStart(2, '0');
+        const m = (mins % 60).toString().padStart(2, '0');
+        return `${h}:${m}`;
+    }
+
+    function onModalTimeChanged() {
+        const startStr = document.getElementById('cellStartTimeInput').value;
+        const endStr = document.getElementById('cellEndTimeInput').value;
+
+        if (!startStr || !endStr) return;
+
+        let startM = timeToMinutes(startStr);
+        let endM = timeToMinutes(endStr);
+
+        if (endM < startM) {
+            endM += 1440;
+        }
+
+        const diffMins = endM - startM;
+        if (diffMins >= 0) {
+            const hours = (diffMins / 60).toFixed(1);
+            const parsedH = parseFloat(hours);
+            document.getElementById('cellDurationInput').value = (parsedH % 1 === 0) ? Math.round(parsedH) : parsedH;
+        }
+    }
+
+    function onModalDurationChanged() {
+        const startStr = document.getElementById('cellStartTimeInput').value;
+        const duration = parseFloat(document.getElementById('cellDurationInput').value);
+
+        if (!startStr || isNaN(duration) || duration <= 0) return;
+
+        let startM = timeToMinutes(startStr);
+        let endM = (startM + Math.round(duration * 60)) % 1440;
+
+        document.getElementById('cellEndTimeInput').value = minutesToTime(endM);
+    }
+
+    function calculateDayPumpStats(dayShiftEntries) {
+        if (!dayShiftEntries || dayShiftEntries.length === 0) {
+            return { totalPumpHours: 0, totalPumpMinutes: 0, mergedIntervals: [], minStartStr: "", maxEndStr: "", concurrentGroups: [] };
+        }
+
+        const validEntries = dayShiftEntries.filter(e => e && e.startTime && parseFloat(e.duration) > 0);
+        if (validEntries.length === 0) {
+            return { totalPumpHours: 0, totalPumpMinutes: 0, mergedIntervals: [], minStartStr: "", maxEndStr: "", concurrentGroups: [] };
+        }
+
+        let minStartStr = "";
+        let maxEndStr = "";
+        let minStartMins = Infinity;
+        let maxEndMins = -Infinity;
+        
+        validEntries.forEach(e => {
+            let startM = timeToMinutes(e.startTime);
+            let durationMins = Math.round(parseFloat(e.duration) * 60);
+            let endM = startM + durationMins;
+            if (startM < minStartMins) {
+                minStartMins = startM;
+                minStartStr = e.startTime;
+            }
+            if (endM > maxEndMins) {
+                maxEndMins = endM;
+                maxEndStr = e.endTime || minutesToTime(endM % 1440);
+            }
+        });
+
+        let minRawStart = Math.min(...validEntries.map(e => timeToMinutes(e.startTime)));
+
+        let intervals = [];
+        validEntries.forEach(entry => {
+            let startM = timeToMinutes(entry.startTime);
+            if (startM < minRawStart) {
+                startM += 1440;
+            }
+            let durationMins = Math.round(parseFloat(entry.duration) * 60);
+            let endM = startM + durationMins;
+
+            if (durationMins > 0) {
+                intervals.push({
+                    start: startM,
+                    end: endM,
+                    shiftId: entry.shiftId,
+                    shiftName: entry.shiftName,
+                    groupTitle: entry.groupTitle,
+                    pumpId: entry.pumpId,
+                    startTimeStr: entry.startTime,
+                    endTimeStr: entry.endTime,
+                    hasFert: entry.hasFert,
+                    customColor: entry.customColor
+                });
+            }
+        });
+
+        if (intervals.length === 0) {
+            return { totalPumpHours: 0, totalPumpMinutes: 0, mergedIntervals: [], minStartStr: "", maxEndStr: "", concurrentGroups: [] };
+        }
+
+        intervals.sort((a, b) => a.start - b.start);
+
+        let merged = [];
+        intervals.forEach(inv => {
+            if (merged.length === 0) {
+                merged.push({ start: inv.start, end: inv.end });
+            } else {
+                let last = merged[merged.length - 1];
+                if (inv.start <= last.end) {
+                    last.end = Math.max(last.end, inv.end);
+                } else {
+                    merged.push({ start: inv.start, end: inv.end });
+                }
+            }
+        });
+
+        let totalPumpMinutes = merged.reduce((acc, curr) => acc + (curr.end - curr.start), 0);
+        let totalPumpHours = (totalPumpMinutes / 60).toFixed(1);
+        if (totalPumpHours.endsWith('.0')) totalPumpHours = Math.round(totalPumpHours);
+
+        return {
+            totalPumpHours: parseFloat(totalPumpHours),
+            totalPumpMinutes: totalPumpMinutes,
+            mergedIntervals: merged,
+            minStartStr: minStartStr,
+            maxEndStr: maxEndStr,
+            concurrentGroups: Object.values(
+                intervals.reduce((acc, inv) => {
+                    const key = `${inv.startTimeStr}-${inv.endTimeStr}`;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            startTimeStr: inv.startTimeStr,
+                            endTimeStr: inv.endTimeStr,
+                            start: inv.start % 1440,
+                            end: inv.end % 1440,
+                            durationHours: ((inv.end - inv.start) / 60).toFixed(1),
+                            hasFert: inv.hasFert,
+                            customColor: inv.customColor,
+                            shifts: []
+                        };
+                    }
+                    acc[key].shifts.push(inv.shiftName);
+                    return acc;
+                }, {})
+            )
+        };
+    }
+
+    function toggleVarietyGroup(groupTitle) {
+        collapsedVarietyGroups[groupTitle] = !collapsedVarietyGroups[groupTitle];
+        renderMatrix();
+    }
+
+    function toggleAllVarietyGroups() {
+        const groups = groupParcelsByCanonicalShift();
+        const keys = Object.keys(groups);
+        const shouldCollapse = keys.some(k => !collapsedVarietyGroups[k]);
+        keys.forEach(k => collapsedVarietyGroups[k] = shouldCollapse);
+        renderMatrix();
+    }
+
+    function checkIfShiftGroupParcelsAreIdentical(groupTitle) {
+        if (!activeProgram || !activeProgram.matrix) return true;
+        
+        const groups = groupParcelsByCanonicalShift();
+        const groupData = groups[groupTitle];
+        if (!groupData || groupData.parcels.length <= 1) return true;
+        
+        const firstParcelId = groupData.parcels[0].id;
+        
+        for (let d = 0; d < 7; d++) {
+            const firstCell = activeProgram.matrix[firstParcelId] ? activeProgram.matrix[firstParcelId][d] : null;
+            
+            for (let i = 1; i < groupData.parcels.length; i++) {
+                const otherParcelId = groupData.parcels[i].id;
+                const otherCell = activeProgram.matrix[otherParcelId] ? activeProgram.matrix[otherParcelId][d] : null;
+                
+                if (!firstCell && !otherCell) continue;
+                if (!firstCell || !otherCell) return false;
+                
+                if (firstCell.duration !== otherCell.duration ||
+                    firstCell.startTime !== otherCell.startTime ||
+                    firstCell.endTime !== otherCell.endTime ||
+                    firstCell.hasFert !== otherCell.hasFert ||
+                    firstCell.customColor !== otherCell.customColor) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function calculateParcelCycleStats(parcelId) {
+        if (!activeProgram || !activeProgram.matrix || !activeProgram.matrix[parcelId]) {
+            return { activeDaysCount: 0, totalHours: 0, dailyDur: 0, avgIntervalHours: 0 };
+        }
+        
+        const daysData = activeProgram.matrix[parcelId];
+        let activeDays = [];
+        let totalHours = 0;
+        
+        for (let d = 0; d < 7; d++) {
+            const cell = daysData[d];
+            if (cell && parseFloat(cell.duration) > 0) {
+                activeDays.push({
+                    day: d,
+                    startMins: timeToMinutes(cell.startTime || '06:00'),
+                    duration: parseFloat(cell.duration)
+                });
+                totalHours += parseFloat(cell.duration);
+            }
+        }
+        
+        if (activeDays.length === 0) {
+            return { activeDaysCount: 0, totalHours: 0, dailyDur: 0, avgIntervalHours: 0 };
+        }
+        
+        if (activeDays.length === 1) {
+            return { activeDaysCount: 1, totalHours: totalHours, dailyDur: activeDays[0].duration, avgIntervalHours: 168 };
+        }
+        
+        let absTimes = activeDays.map(ad => ad.day * 1440 + ad.startMins);
+        absTimes.sort((a, b) => a - b);
+        
+        let intervals = [];
+        for (let i = 0; i < absTimes.length - 1; i++) {
+            intervals.push(absTimes[i+1] - absTimes[i]);
+        }
+        intervals.push((absTimes[0] + 10080) - absTimes[absTimes.length - 1]);
+        
+        const avgIntervalMins = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+        const avgIntervalHours = Math.round((avgIntervalMins / 60) * 10) / 10;
+        
+        return {
+            activeDaysCount: activeDays.length,
+            totalHours: Math.round(totalHours * 10) / 10,
+            dailyDur: activeDays[0].duration,
+            avgIntervalHours: avgIntervalHours
+        };
+    }
+
+    function getParcelCycleHours(parcelId) {
+        if (!activeProgram || !activeProgram.matrix) return 0;
+        
+        const parcel = gardenParcels.find(p => p.id === parcelId);
+        if (!parcel) return 0;
+        
+        const pumpId = (parcel.pumpId === 'kayisi' || (parcel.mainNum && parcel.mainNum <= 4) || (parcel.varietyName && (parcel.varietyName.toLowerCase().includes('kayıs') || parcel.varietyName.toLowerCase().includes('kayis')))) ? 'kayisi' : 'ana';
+        
+        // Find the first day of the week where this parcel is active
+        for (let d = 0; d < 7; d++) {
+            const cell = activeProgram.matrix[parcelId] ? activeProgram.matrix[parcelId][d] : null;
+            if (cell && parseFloat(cell.duration) > 0) {
+                const groups = groupParcelsByCanonicalShift();
+                let totalCycleHours = 0;
+                
+                let together = activeProgram && activeProgram.diosaTintosaTogether;
+                let combinedDiosaTintosaActive = false;
+                let combinedMaxDur = 0;
+
+                for (const [groupTitle, groupData] of Object.entries(groups)) {
+                    if (groupData.pumpId !== pumpId) continue;
+                    
+                    let groupActive = false;
+                    let maxDur = 0;
+                    let seqSum = 0;
+                    const activeGroupParcels = [];
+                    
+                    groupData.parcels.forEach(p => {
+                        const pCell = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][d] : null;
+                        if (pCell && parseFloat(pCell.duration) > 0) {
+                            groupActive = true;
+                            const dur = parseFloat(pCell.duration);
+                            activeGroupParcels.push({ p, dur });
+                            if (dur > maxDur) maxDur = dur;
+                            seqSum += dur;
+                        }
+                    });
+                    
+                    if (groupActive) {
+                        const isSplit = activeProgram.splitShifts && activeProgram.splitShifts[groupData.mainNum] && activeGroupParcels.length > 1;
+                        if (together && (groupData.mainNum === 7 || groupData.mainNum === 8)) {
+                            combinedDiosaTintosaActive = true;
+                            if (maxDur > combinedMaxDur) combinedMaxDur = maxDur;
+                        } else if (isSplit) {
+                            const N = activeGroupParcels.length;
+                            const half = Math.ceil(N / 2);
+                            const firstHalf = activeGroupParcels.slice(0, half);
+                            const secondHalf = activeGroupParcels.slice(half);
+                            const max1 = firstHalf.length > 0 ? Math.max(...firstHalf.map(item => item.dur)) : 0;
+                            const max2 = secondHalf.length > 0 ? Math.max(...secondHalf.map(item => item.dur)) : 0;
+                            totalCycleHours += (max1 + max2);
+                        } else {
+                            if (groupData.mainNum === 11) {
+                                const cancelKarma = activeProgram && activeProgram.cancelKarma11;
+                                if (cancelKarma) {
+                                    totalCycleHours += maxDur;
+                                } else {
+                                    totalCycleHours += seqSum;
+                                }
+                            } else {
+                                totalCycleHours += maxDur;
+                            }
+                        }
+                    }
+                }
+                if (together && combinedDiosaTintosaActive) {
+                    totalCycleHours += combinedMaxDur;
+                }
+                return Math.round(Math.max(24, totalCycleHours) * 10) / 10;
+            }
+        }
+        return 0;
+    }
+
+    function renderMatrix() {
+
+        const tbody = document.getElementById('matrixTableBody');
+        const tfoot = document.getElementById('matrixTableFoot');
+        const thead = document.getElementById('matrixTableHead');
+
+        const dateObjs = getWeekDateObjects();
+
+        const headerThs = DAYS.map((dName, idx) => {
+            const dateStr = formatDateToDDMMYYYY(dateObjs[idx]);
+            return `
+                <th>
+                    <div>${dName}</div>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success mt-1" style="font-size:0.65rem; padding: 2px 4px;">${dateStr}</span>
+                </th>
+            `;
+        }).join('');
+
+        thead.innerHTML = `
+            <tr>
+                <th>ÇEŞİT VARDİYASI / PARSEL</th>
+                ${headerThs}
+                <th>BRÜT SÜRE</th>
+            </tr>
+        `;
+
+        if (!activeProgram) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center p-4">Program seçilmedi.</td></tr>`;
+            return;
+        }
+
+        const getVisualBlocks = (parcelId) => {
+            const shiftCells = activeProgram.matrix && activeProgram.matrix[parcelId] 
+                ? activeProgram.matrix[parcelId] 
+                : Array(7).fill(null);
+            const blocks = Array(7).fill(null).map(() => []);
+
+            for (let d = 0; d < 7; d++) {
+                const cell = shiftCells[d];
+                if (cell && parseFloat(cell.duration) > 0) {
+                    const startM = timeToMinutes(cell.startTime || '06:00');
+                    const durM = Math.round(parseFloat(cell.duration) * 60);
+                    const endM = startM + durM;
+
+                    if (endM > 1440) {
+                        // Block 1 (day d)
+                        blocks[d].push({
+                            duration: (1440 - startM) / 60,
+                            startTime: cell.startTime || '06:00',
+                            endTime: '00:00',
+                            hasFert: !!cell.hasFert,
+                            fertNotes: cell.fertNotes || "",
+                            customColor: cell.customColor || 'auto',
+                            isSplitStart: true,
+                            originalDayIdx: d
+                        });
+
+                        // Block 2 (day d+1 % 7)
+                        const nextDay = (d + 1) % 7;
+                        blocks[nextDay].push({
+                            duration: (endM - 1440) / 60,
+                            startTime: '00:00',
+                            endTime: minutesToTime(endM % 1440),
+                            hasFert: !!cell.hasFert,
+                            fertNotes: cell.fertNotes || "",
+                            customColor: cell.customColor || 'auto',
+                            isSplitEnd: true,
+                            originalDayIdx: d
+                        });
+                    } else {
+                        // Normal block
+                        blocks[d].push({
+                            duration: parseFloat(cell.duration),
+                            startTime: cell.startTime || '06:00',
+                            endTime: cell.endTime || '10:00',
+                            hasFert: !!cell.hasFert,
+                            fertNotes: cell.fertNotes || "",
+                            customColor: cell.customColor || 'auto',
+                            originalDayIdx: d
+                        });
+                    }
+                }
+            }
+            return blocks;
+        };
+
+        const parcelVisualBlocks = {};
+        gardenParcels.forEach(p => {
+            parcelVisualBlocks[p.id] = getVisualBlocks(p.id);
+        });
+
+        // Calculate sequence numbers (1, 2, 3...) for each day and pump based on chronological order of execution
+        const dayPumpSequences = Array(7).fill(null).map(() => ({
+            kayisi: [],
+            ana: []
+        }));
+
+        gardenParcels.forEach(p => {
+            const blocks = parcelVisualBlocks[p.id];
+            if (blocks) {
+                for (let d = 0; d < 7; d++) {
+                    const dayBlocks = blocks[d] || [];
+                    dayBlocks.forEach(block => {
+                        const pumpId = p.pumpId || 'ana';
+                        dayPumpSequences[d][pumpId].push({
+                            parcelId: p.id,
+                            block: block,
+                            startTimeMins: timeToMinutes(block.startTime)
+                        });
+                    });
+                }
+            }
+        });
+
+        const blockSequenceMap = {}; // Key: `${parcelId}_${day}_${startTime}` -> Sequence number
+        for (let d = 0; d < 7; d++) {
+            ['kayisi', 'ana'].forEach(pumpId => {
+                const list = dayPumpSequences[d][pumpId];
+                // Sort by startTime mins
+                list.sort((a, b) => a.startTimeMins - b.startTimeMins);
+                
+                // Assign sequence numbers based on unique start times
+                let currentSeq = 0;
+                let lastStartMins = -1;
+                list.forEach(item => {
+                    if (item.startTimeMins !== lastStartMins) {
+                        currentSeq++;
+                        lastStartMins = item.startTimeMins;
+                    }
+                    const key = `${item.parcelId}_${d}_${item.block.startTime}`;
+                    blockSequenceMap[key] = currentSeq;
+                });
+            });
+        }
+
+        const groups = groupParcelsByCanonicalShift();
+        let dayEntriesPerDay = Array(7).fill(null).map(() => []);
+        let kayisiDayEntriesPerDay = Array(7).fill(null).map(() => []);
+        let anaDayEntriesPerDay = Array(7).fill(null).map(() => []);
+
+        let brutWeeklyHours = 0;
+        let dailyFertCount = Array(7).fill(0);
+
+        // Sort groups dynamically in chronological order of their first shift start time
+        const sortedGroupEntries = Object.entries(groups).sort((a, b) => {
+            const getGroupEarliestAbsoluteStartTime = (groupData) => {
+                let minAbsMins = Infinity;
+                groupData.parcels.forEach(parcel => {
+                    const blocks = parcelVisualBlocks[parcel.id];
+                    if (blocks) {
+                        for (let d = 0; d < 7; d++) {
+                            const dayBlocks = blocks[d] || [];
+                            dayBlocks.forEach(block => {
+                                let absStart = d * 1440 + timeToMinutes(block.startTime);
+                                if (absStart < minAbsMins) {
+                                    minAbsMins = absStart;
+                                }
+                            });
+                        }
+                    }
+                });
+                return minAbsMins;
+            };
+
+            const aPump = a[1].pumpId || 'ana';
+            const bPump = b[1].pumpId || 'ana';
+            if (aPump !== bPump) {
+                return aPump === 'kayisi' ? -1 : 1;
+            }
+            return getGroupEarliestAbsoluteStartTime(a[1]) - getGroupEarliestAbsoluteStartTime(b[1]);
+        });
+
+        let tbodyHtml = '';
+        let previousPumpId = null;
+
+        for (const [groupTitle, groupData] of sortedGroupEntries) {
+            // Insert divider when pump changes
+            if (previousPumpId && previousPumpId !== groupData.pumpId) {
+                tbodyHtml += `
+                    <tr class="pump-divider-row no-print">
+                        <td colspan="9" style="background: #f8fafc; border: none; padding: 15px 10px; text-align: center; vertical-align: middle;">
+                            <div class="d-flex align-items-center gap-2">
+                                <hr class="flex-grow-1" style="border-top: 2px dashed #cbd5e1; margin: 0; opacity: 0.8;">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-2 fw-bold text-uppercase shadow-sm" style="font-size: 0.72rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-water me-1"></i> POMPA 1 (ANA BAHÇE POMPASI) SULAMALARI BAŞLANGICI
+                                </span>
+                                <hr class="flex-grow-1" style="border-top: 2px dashed #cbd5e1; margin: 0; opacity: 0.8;">
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            previousPumpId = groupData.pumpId;
+
+            const parcels = groupData.parcels;
+            if (collapsedVarietyGroups[groupTitle] === undefined) {
+                collapsedVarietyGroups[groupTitle] = checkIfShiftGroupParcelsAreIdentical(groupTitle);
+            }
+            const isCollapsed = !!collapsedVarietyGroups[groupTitle];
+            const safeGroupClass = `group_${groupTitle.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+            let groupDailyHours = Array(7).fill(0);
+            let groupTotalRowHours = 0;
+
+            const groupHeaderCells = DAYS.map((dName, dIdx) => {
+                let activeCount = 0;
+                let firstData = null;
+                let allSame = true;
+
+                let minStartM = 1440;
+                let maxEndM = 0;
+                let hasActive = false;
+
+                parcels.forEach(parcel => {
+                    const blocks = parcelVisualBlocks[parcel.id][dIdx] || [];
+                    blocks.forEach(block => {
+                        hasActive = true;
+                        const sM = timeToMinutes(block.startTime);
+                        const eM = (block.endTime === '00:00' || block.endTime === '24:00') ? 1440 : timeToMinutes(block.endTime);
+                        if (sM < minStartM) minStartM = sM;
+                        if (eM > maxEndM) maxEndM = eM;
+                    });
+                    if (blocks.length > 0) {
+                        const block = blocks[0];
+                        activeCount++;
+                        if (!firstData) firstData = block;
+                        else if (firstData.duration !== block.duration || firstData.startTime !== block.startTime || firstData.endTime !== block.endTime || firstData.isSplitStart !== block.isSplitStart || firstData.isSplitEnd !== block.isSplitEnd) {
+                            allSame = false;
+                        }
+                    } else if (firstData) {
+                        allSame = false;
+                    }
+                });
+
+                if (hasActive && maxEndM > minStartM) {
+                    const dailyPumpDur = (maxEndM - minStartM) / 60;
+                    groupDailyHours[dIdx] = dailyPumpDur;
+                    groupTotalRowHours += dailyPumpDur;
+                }
+
+                let contentHtml = `<i class="bi bi-plus-lg opacity-50"></i>`;
+                let cellClass = "matrix-cell-btn group-cell-btn";
+                let styleAttr = '';
+
+                if (activeCount > 0 && firstData) {
+                    const theme = getColorForTimeWindow(firstData.startTime, firstData.endTime, firstData.hasFert, firstData.customColor);
+                    styleAttr = `style="background: ${theme.bg}; border: 1.5px solid ${theme.border}; color: ${theme.text}; box-shadow: 0 2px 6px ${theme.shadow};"`;
+
+                    const firstActiveParcel = parcels.find(parcel => {
+                        const blocks = parcelVisualBlocks[parcel.id][dIdx] || [];
+                        return blocks.length > 0;
+                    });
+                    let seqNumHtml = '';
+                    if (firstActiveParcel) {
+                        const block = parcelVisualBlocks[firstActiveParcel.id][dIdx][0];
+                        const seqKey = `${firstActiveParcel.id}_${dIdx}_${block.startTime}`;
+                        const seqNum = blockSequenceMap[seqKey] || 1;
+                        seqNumHtml = `<span class="badge bg-white text-dark border me-1">${seqNum}</span>`;
+                    }
+
+                    if (allSame) {
+                        let splitIndicator = '';
+                        if (firstData.isSplitStart) {
+                            splitIndicator = ' <i class="bi bi-arrow-right-short ms-1 opacity-75"></i>';
+                        } else if (firstData.isSplitEnd) {
+                            splitIndicator = ' <i class="bi bi-arrow-left-short me-1 opacity-75"></i>';
+                        }
+                        const durText = firstData.duration.toFixed(1).replace('.0', '');
+                        contentHtml = `
+                            <div class="fw-bold">${seqNumHtml}${durText} Sa (Tümü)${splitIndicator}</div>
+                            <div class="cell-time">${firstData.startTime}-${firstData.endTime}</div>
+                        `;
+                    } else {
+                        cellClass += " active-cell";
+                        let minStartM = 1440;
+                        let maxEndM = 0;
+                        parcels.forEach(p => {
+                            const blocks = parcelVisualBlocks[p.id][dIdx] || [];
+                            blocks.forEach(b => {
+                                const sM = timeToMinutes(b.startTime);
+                                const eM = (b.endTime === '00:00' || b.endTime === '24:00') ? 1440 : timeToMinutes(b.endTime);
+                                if (sM < minStartM) minStartM = sM;
+                                if (eM > maxEndM) maxEndM = eM;
+                            });
+                        });
+
+                        const overallStartStr = minStartM < 1440 ? minutesToTime(minStartM) : '06:00';
+                        const overallEndStr = maxEndM > 0 ? minutesToTime(maxEndM) : '14:00';
+
+                        contentHtml = `
+                            <div class="fw-bold">${seqNumHtml}${activeCount}/${parcels.length} Parsel</div>
+                            <div class="cell-time">Karma Saat</div>
+                            <div class="cell-time fw-bold" style="font-size:0.75rem; margin-top:2px;">${overallStartStr}-${overallEndStr}</div>
+                        `;
+                    }
+                }
+
+                const targetDayIdx = firstData ? firstData.originalDayIdx : dIdx;
+
+                return `
+                    <td>
+                        <button class="${cellClass}" ${styleAttr} onclick="openGroupCellModal('${groupTitle}', ${targetDayIdx}, event)" title="${groupTitle} - Tüm ${parcels.length} parsellere uygulayın">
+                            ${contentHtml}
+                        </button>
+                    </td>
+                `;
+            }).join('');
+
+            tbodyHtml += `
+                <tr class="variety-header-row">
+                    <td class="text-start ps-3 group-title-cell" onclick="toggleVarietyGroup('${groupTitle}')">
+                        <div class="d-flex justify-content-between align-items-center w-100">
+                            <div>
+                                <i class="bi bi-chevron-${isCollapsed ? 'right' : 'down'} me-2 text-success"></i>
+                                <strong class="text-success fs-6">🌱 ${groupTitle}</strong>
+                                <span class="badge ${groupData.pumpBadgeClass} rounded-pill ms-2" style="font-size:0.65rem;"><i class="bi bi-water me-1"></i>${groupData.pumpId === 'ana' ? 'Pompa 1 (Ana)' : 'Pompa 2 (Kayısı)'}</span>
+                            </div>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill no-print me-2" onclick="clearVarietyGroupRowSchedule('${groupTitle}', event)" title="${groupTitle} haftalık tüm saatlerini sıfırla" style="font-size:0.68rem;">
+                                <i class="bi bi-x-circle me-1"></i>Sıfırla
+                            </button>
+                        </div>
+                    </td>
+                    ${groupHeaderCells}
+                    <td class="fw-bold text-dark fs-6">${groupTotalRowHours.toFixed(1).replace('.0', '')} Sa</td>
+                </tr>
+            `;
+
+            parcels.forEach(parcel => {
+                let rowHours = 0;
+
+                const cellsHtml = DAYS.map((dayName, dayIdx) => {
+                    const blocks = parcelVisualBlocks[parcel.id][dayIdx] || [];
+                    if (blocks.length === 0) {
+                        return `
+                            <td>
+                                <button class="matrix-cell-btn" onclick="openCellModal('${parcel.id}', ${dayIdx})">
+                                    <i class="bi bi-plus-lg opacity-50"></i>
+                                </button>
+                            </td>
+                        `;
+                    }
+
+                    const buttonsHtml = blocks.map(block => {
+                        rowHours += block.duration;
+                        brutWeeklyHours += block.duration;
+
+                        const entryObj = {
+                            shiftId: parcel.id,
+                            shiftName: parcel.name,
+                            groupTitle: groupTitle,
+                            pumpId: groupData.pumpId,
+                            startTime: block.startTime,
+                            endTime: block.endTime,
+                            duration: block.duration,
+                            hasFert: block.hasFert,
+                            customColor: block.customColor
+                        };
+
+                        dayEntriesPerDay[dayIdx].push(entryObj);
+                        if (groupData.pumpId === 'kayisi') kayisiDayEntriesPerDay[dayIdx].push(entryObj);
+                        else anaDayEntriesPerDay[dayIdx].push(entryObj);
+
+                        if (block.hasFert) {
+                            dailyFertCount[dayIdx]++;
+                        }
+
+                        const theme = getColorForTimeWindow(block.startTime, block.endTime, block.hasFert, block.customColor);
+                        const styleAttr = `style="background: ${theme.bg}; border: 1.5px solid ${theme.border}; color: ${theme.text}; box-shadow: 0 2px 6px ${theme.shadow};"`;
+
+                        let splitIndicator = '';
+                        if (block.isSplitStart) {
+                            splitIndicator = ' <i class="bi bi-arrow-right-short ms-1 opacity-75"></i>';
+                        } else if (block.isSplitEnd) {
+                            splitIndicator = ' <i class="bi bi-arrow-left-short me-1 opacity-75"></i>';
+                        }
+
+                        const fertBadge = block.hasFert ? `<i class="bi bi-droplet-half me-1" style="color:#ffecb3;"></i>` : '';
+
+                        const concurrentShifts = dayEntriesPerDay[dayIdx].filter(e => e.startTime === block.startTime && e.endTime === block.endTime);
+                        const isConcurrent = concurrentShifts.length > 1;
+
+                        const seqKey = `${parcel.id}_${dayIdx}_${block.startTime}`;
+                        const seqNum = blockSequenceMap[seqKey] || 1;
+                        const seqNumHtml = `<span class="badge bg-white text-dark border me-1">${seqNum}</span>`;
+
+                        const contentHtml = `
+                            <div class="fw-bold">${fertBadge}${seqNumHtml}${block.duration.toFixed(1).replace('.0', '')} Sa${splitIndicator}</div>
+                            <div class="cell-time">${block.startTime}-${block.endTime}</div>
+                            ${isConcurrent ? `<span class="concurrent-tag"><i class="bi bi-layers me-1"></i>Eşzamanlı</span>` : ''}
+                        `;
+
+                        return `
+                            <button class="matrix-cell-btn py-1" ${styleAttr} onclick="openCellModal('${parcel.id}', ${block.originalDayIdx})">
+                                ${contentHtml}
+                            </button>
+                        `;
+                    }).join('');
+
+                    return `
+                        <td>
+                            <div class="d-flex flex-column gap-1">
+                                ${buttonsHtml}
+                            </div>
+                        </td>
+                    `;
+                }).join('');
+
+                tbodyHtml += `
+                    <tr class="variety-child-row ${safeGroupClass}" style="display: ${isCollapsed ? 'none' : 'table-row'};">
+                        <td style="vertical-align: middle;">
+                            <div class="fw-bold text-dark ps-2">└ Parsel ${parcel.name}</div>
+                            <div class="small text-muted ps-2" style="font-size: 0.68rem; line-height: 1.25;">
+                                ${parcel.area ? parcel.area + ' dönüm' : 'Alt Shift'}
+                            </div>
+                        </td>
+                        ${cellsHtml}
+                        <td class="fw-bold text-success bg-light fs-6" style="vertical-align: middle;">${rowHours} Sa</td>
+                    </tr>
+                `;
+            });
+        }
+
+        tbody.innerHTML = tbodyHtml;
+
+        let totalNetWeeklyPumpHours = 0;
+        let totalKayisiWeeklyHours = 0;
+        let totalAnaWeeklyHours = 0;
+
+        const maxLimit = parseFloat(document.getElementById('maxDailyLimitInput').value) || 24;
+
+        const footCells = DAYS.map((dayName, idx) => {
+            const kayisiStats = calculateDayPumpStats(kayisiDayEntriesPerDay[idx]);
+            const anaStats = calculateDayPumpStats(anaDayEntriesPerDay[idx]);
+
+            totalKayisiWeeklyHours += kayisiStats.totalPumpHours;
+            totalAnaWeeklyHours += anaStats.totalPumpHours;
+
+            const totalPumpHours = Math.max(kayisiStats.totalPumpHours, anaStats.totalPumpHours);
+            totalNetWeeklyPumpHours += totalPumpHours;
+
+            const isOverload = anaStats.totalPumpHours > maxLimit || kayisiStats.totalPumpHours > 24;
+            const overloadClass = isOverload ? 'day-overload' : '';
+
+            const p1Text = anaStats.minStartStr ? `P1: ${anaStats.totalPumpHours}Sa (${anaStats.minStartStr}-${anaStats.maxEndStr})` : `P1: 0 Sa`;
+            const p2Text = kayisiStats.minStartStr ? `P2: ${kayisiStats.totalPumpHours}Sa (${kayisiStats.minStartStr}-${kayisiStats.maxEndStr})` : `P2: 0 Sa`;
+
+            return `
+                <td class="${overloadClass}" style="vertical-align: middle;">
+                    <div class="fw-bold text-dark" style="font-size:0.7rem; line-height: 1.3;">
+                        <div class="text-info" title="Pompa 1 (Ana)">${p1Text}</div>
+                        <div class="text-warning" title="Pompa 2 (Kayısı)">${p2Text}</div>
+                    </div>
+                    ${isOverload ? '<div class="badge bg-danger mt-1" style="font-size:0.58rem; display:block; text-align:center;">Limit Aşıldı!</div>' : ''}
+                </td>
+            `;
+        }).join('');
+
+        tfoot.innerHTML = `
+            <tr>
+                <td class="text-start ps-3">GERÇEK POMPA SÜRESİ (P1: Ana / P2: Kayısı)</td>
+                ${footCells}
+                <td class="text-primary fs-6">P1: ${totalAnaWeeklyHours}Sa<br>P2: ${totalKayisiWeeklyHours}Sa</td>
+            </tr>
+        `;
+
+        document.getElementById('statAnaHours').innerText = `${totalAnaWeeklyHours} Saat`;
+        document.getElementById('statKayisiHours').innerText = `${totalKayisiWeeklyHours} Saat`;
+
+        const flowRate = parseFloat(document.getElementById('flowRateInput').value) || 45;
+        const totalWaterM3 = Math.round((totalKayisiWeeklyHours + totalAnaWeeklyHours) * flowRate);
+        document.getElementById('statTotalWaterDisplay').innerText = `Tahmini Su: ${totalWaterM3.toLocaleString('tr-TR')} m³`;
+
+        const totalFertEvents = dailyFertCount.reduce((a, b) => a + b, 0);
+        document.getElementById('statFertCount').innerText = `${totalFertEvents} Uygulama`;
+
+        render24hTimeline(dayEntriesPerDay);
+    }
+
+    function render24hTimeline(dayEntriesPerDay) {
+        const dayIdx = parseInt(document.getElementById('timelineDaySelect').value) || 0;
+        const cycleMode = '24';
+        
+        const container = document.getElementById('timelineContainer');
+        const detailsBox = document.getElementById('timelineDetailsBox');
+        const dateObjs = getWeekDateObjects();
+        const dateStr = formatDateToDDMMYYYY(dateObjs[dayIdx]);
+
+        if (!dayEntriesPerDay) {
+            dayEntriesPerDay = Array(7).fill(null).map(() => []);
+            gardenParcels.forEach(parcel => {
+                const shiftCells = activeProgram && activeProgram.matrix && activeProgram.matrix[parcel.id] 
+                    ? activeProgram.matrix[parcel.id] 
+                    : Array(7).fill(null);
+                
+                const cellData = shiftCells[dayIdx];
+                if (cellData && cellData.duration > 0) {
+                    dayEntriesPerDay[dayIdx].push({
+                        shiftId: parcel.id,
+                        shiftName: parcel.name,
+                        groupTitle: parcel.groupTitle,
+                        pumpId: parcel.pumpId,
+                        startTime: cellData.startTime || '06:00',
+                        endTime: cellData.endTime || '10:00',
+                        duration: parseFloat(cellData.duration),
+                        hasFert: !!cellData.hasFert,
+                        customColor: cellData.customColor || 'auto'
+                    });
+                }
+            });
+        }
+
+        const currentDayEntries = dayEntriesPerDay[dayIdx] || [];
+        
+        // Filter into separate pump groups
+        const kayisiEntries = currentDayEntries.filter(e => e.pumpId === 'kayisi');
+        const anaEntries = currentDayEntries.filter(e => e.pumpId === 'ana');
+
+        const kayisiStats = calculateDayPumpStats(kayisiEntries);
+        const anaStats = calculateDayPumpStats(anaEntries);
+
+        const totalHours = cycleMode === '27' ? 27 : 24;
+        const totalMins = totalHours * 60;
+
+        let slotsHtml = '';
+        for (let h = 0; h < totalHours; h++) {
+            const displayLabel = h < 24 ? `${h}:00` : `+${h-24}h`;
+            slotsHtml += `<div class="timeline-hour-slot">${displayLabel}</div>`;
+        }
+
+        // Build Ana Pompa (Pompa 1) Timeline Blocks
+        let anaBlocksHtml = '';
+        anaStats.concurrentGroups.forEach(group => {
+            const startM = group.start;
+            const endM = group.end;
+            const leftPct = ((startM / totalMins) * 100).toFixed(2);
+            const widthPct = (((endM - startM) / totalMins) * 100).toFixed(2);
+
+            const shiftNames = group.shifts.join(', ');
+            const isMulti = group.shifts.length > 1;
+            const theme = getColorForTimeWindow(group.startTimeStr, group.endTimeStr, group.hasFert, group.customColor);
+
+            anaBlocksHtml += `
+                <div class="timeline-active-block" style="left: ${leftPct}%; width: ${widthPct}%; background: ${theme.bg}; border: 1px solid ${theme.border}; box-shadow: 0 2px 6px ${theme.shadow};" title="${shiftNames} (${group.startTimeStr} - ${group.endTimeStr})">
+                    ${isMulti ? '<i class="bi bi-layers-fill me-1"></i>' : ''}${shiftNames} (${group.durationHours}Sa)
+                </div>
+            `;
+        });
+
+        // Build Kayısı Pompa (Pompa 2) Timeline Blocks
+        let kayisiSlotsHtml = '';
+        for (let h = 0; h < 24; h++) {
+            kayisiSlotsHtml += `<div class="timeline-hour-slot">${h}:00</div>`;
+        }
+
+        let kayisiBlocksHtml = '';
+        kayisiStats.concurrentGroups.forEach(group => {
+            const startM = group.start;
+            const endM = group.end;
+            const leftPct = ((startM / 1440) * 100).toFixed(2);
+            const widthPct = (((endM - startM) / 1440) * 100).toFixed(2);
+
+            const shiftNames = group.shifts.join(', ');
+            const isMulti = group.shifts.length > 1;
+            const theme = getColorForTimeWindow(group.startTimeStr, group.endTimeStr, group.hasFert, group.customColor);
+
+            kayisiBlocksHtml += `
+                <div class="timeline-active-block" style="left: ${leftPct}%; width: ${widthPct}%; background: ${theme.bg}; border: 1px solid ${theme.border}; box-shadow: 0 2px 6px ${theme.shadow};" title="${shiftNames} (${group.startTimeStr} - ${group.endTimeStr})">
+                    ${isMulti ? '<i class="bi bi-layers-fill me-1"></i>' : ''}${shiftNames} (${group.durationHours}Sa)
+                </div>
+            `;
+        });
+
+        let alertHtml = '';
+        const limit1 = document.getElementById('maxDailyLimitInput') ? (parseFloat(document.getElementById('maxDailyLimitInput').value) || 24) : 24;
+        const limit2 = 24;
+
+        if (anaStats.totalPumpHours > limit1) {
+            alertHtml += `
+                <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-3 p-3 no-print">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-5"></i>
+                        <strong class="text-danger">🍏 Pompa 1 (Ana Bahçe) Limit Aşımı: ${anaStats.totalPumpHours} Saat</strong>
+                    </div>
+                    <p class="small text-muted mb-3">Pompa 1'in günlük çalışma limiti (${limit1} Sa) aşılmıştır. Çözmek için bir yöntem seçebilirsiniz:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="resolveOverloadScale('ana', ${dayIdx})">
+                            <i class="bi bi-calculator me-1"></i>Süreleri Orantılı Kısalt
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="resolveOverloadConcurrent('ana', ${dayIdx})">
+                            <i class="bi bi-layers me-1"></i>Eşzamanlı (Paralel) Yap
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="resolveOverloadShiftNext('ana', ${dayIdx})">
+                            <i class="bi bi-arrow-right-short me-1"></i>Ertesi Günlere Ötele
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="resolveOverloadDistribute('ana', ${dayIdx})">
+                            <i class="bi bi-calendar-plus me-1"></i>Son Şifti Yarına Taşı
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        if (kayisiStats.totalPumpHours > limit2) {
+            alertHtml += `
+                <div class="alert alert-warning border-0 shadow-sm rounded-3 mb-3 p-3 no-print">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
+                        <strong style="color: #856404;">🍑 Pompa 2 (Kayısı) Limit Aşımı: ${kayisiStats.totalPumpHours} Saat</strong>
+                    </div>
+                    <p class="small text-muted mb-3">Pompa 2'nin günlük çalışma limiti (${limit2} Sa) aşılmıştır. Çözmek için bir yöntem seçebilirsiniz:</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-warning text-dark rounded-pill fw-bold" onclick="resolveOverloadScale('kayisi', ${dayIdx})">
+                            <i class="bi bi-calculator me-1"></i>Süreleri Orantılı Kısalt
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning text-dark rounded-pill fw-bold" onclick="resolveOverloadConcurrent('kayisi', ${dayIdx})">
+                            <i class="bi bi-layers me-1"></i>Eşzamanlı (Paralel) Yap
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning text-dark rounded-pill fw-bold" onclick="resolveOverloadShiftNext('kayisi', ${dayIdx})">
+                            <i class="bi bi-arrow-right-short me-1"></i>Ertesi Günlere Ötele
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning text-dark rounded-pill fw-bold" onclick="resolveOverloadDistribute('kayisi', ${dayIdx})">
+                            <i class="bi bi-calendar-plus me-1"></i>Son Şifti Yarına Taşı
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            ${alertHtml}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-dark small">
+                        <i class="bi bi-water me-1 text-info"></i>🍏 POMPA 1: ANA BAHÇE POMPASI (5. - 12. Vardiyalar) 
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary ms-1" style="font-size:0.65rem;">${totalHours} Sa DÖNGÜ MODU</span>
+                    </span>
+                    <span class="badge bg-info text-white fw-bold">${anaStats.totalPumpHours} Saat Pompa Süresi</span>
+                </div>
+                <div class="timeline-24h-container">
+                    ${slotsHtml}
+                    ${anaBlocksHtml}
+                </div>
+            </div>
+
+            <div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-bold text-dark small"><i class="bi bi-water me-1 text-warning"></i>🍑 POMPA 2: KAYISI POMPASI (Nelson, Madrigal, Memphis, Bolero)</span>
+                    <span class="badge bg-warning text-dark fw-bold">${kayisiStats.totalPumpHours} Saat Pompa Süresi</span>
+                </div>
+                <div class="timeline-24h-container">
+                    ${kayisiSlotsHtml}
+                    ${kayisiBlocksHtml}
+                </div>
+            </div>
+        `;
+
+        detailsBox.innerHTML = `
+            <div class="fw-bold text-dark mb-2">${DAYS[dayIdx]} (${dateStr}) Günlük Pompa Çözümleme Özeti:</div>
+            <div class="row g-3">
+                <div class="col-12 col-md-6 border-end">
+                    <div class="fw-bold text-info mb-1">🍏 Pompa 1 (Ana Bahçe) - Toplam: ${anaStats.totalPumpHours} Sa</div>
+                    ${anaStats.concurrentGroups.length === 0 ? '<div class="text-muted">Sulama yok.</div>' : anaStats.concurrentGroups.map(g => `<div class="py-1 border-bottom"><strong>${g.shifts.join('&')}</strong> (${g.startTimeStr}-${g.endTimeStr} -> ${g.durationHours}Sa)</div>`).join('')}
+                </div>
+                <div class="col-12 col-md-6">
+                    <div class="fw-bold text-warning mb-1">🍑 Pompa 2 (Kayısı) - Toplam: ${kayisiStats.totalPumpHours} Sa</div>
+                    ${kayisiStats.concurrentGroups.length === 0 ? '<div class="text-muted">Sulama yok.</div>' : kayisiStats.concurrentGroups.map(g => `<div class="py-1 border-bottom"><strong>${g.shifts.join('&')}</strong> (${g.startTimeStr}-${g.endTimeStr} -> ${g.durationHours}Sa)</div>`).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    function shiftScheduleTimeByHours(cellData, hoursToAdd) {
+        if (!cellData || !cellData.startTime || parseFloat(cellData.duration) <= 0) return null;
+
+        let startM = timeToMinutes(cellData.startTime);
+        let newStartM = (startM + Math.round(hoursToAdd * 60)) % 1440;
+        if (newStartM < 0) newStartM += 1440;
+
+        let durationMins = Math.round(parseFloat(cellData.duration) * 60);
+        let newEndM = (newStartM + durationMins) % 1440;
+        if (newEndM < 0) newEndM += 1440;
+
+        return {
+            duration: cellData.duration,
+            startTime: minutesToTime(newStartM),
+            endTime: minutesToTime(newEndM),
+            hasFert: !!cellData.hasFert,
+            fertNotes: cellData.fertNotes || "",
+            customColor: cellData.customColor || 'auto'
+        };
+    }
+
+    function resolveOverloadScale(pumpId, dayIdx) {
+        if (!activeProgram || !activeProgram.matrix) return;
+        const maxLimit = pumpId === 'ana' ? (parseFloat(document.getElementById('maxDailyLimitInput').value) || 24) : 24;
+        
+        const groups = groupParcelsByCanonicalShift();
+        let activeGroups = [];
+        let totalHours = 0;
+        
+        for (const [groupTitle, groupData] of Object.entries(groups)) {
+            if (groupData.pumpId !== pumpId) continue;
+            
+            let maxDur = 0;
+            let groupActive = false;
+            groupData.parcels.forEach(p => {
+                const cell = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+                if (cell && parseFloat(cell.duration) > 0) {
+                    groupActive = true;
+                    if (parseFloat(cell.duration) > maxDur) {
+                        maxDur = parseFloat(cell.duration);
+                    }
+                }
+            });
+            if (groupActive) {
+                activeGroups.push({
+                    title: groupTitle,
+                    mainNum: groupData.mainNum,
+                    parcels: groupData.parcels,
+                    originalMaxDuration: maxDur
+                });
+                totalHours += maxDur;
+            }
+        }
+
+        if (totalHours <= maxLimit) return;
+
+        const scale = maxLimit / totalHours;
+        let currentStartM = timeToMinutes('06:00');
+        activeGroups.sort((a, b) => a.mainNum - b.mainNum);
+
+        activeGroups.forEach(g => {
+            let groupMaxMins = 0;
+            g.parcels.forEach(p => {
+                const cell = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+                if (cell && parseFloat(cell.duration) > 0) {
+                    const originalDur = parseFloat(cell.duration);
+                    const scaledDur = Math.round(originalDur * scale * 10) / 10;
+                    
+                    const startStr = minutesToTime(currentStartM);
+                    const durMins = Math.round(scaledDur * 60);
+                    const endM = (currentStartM + durMins) % 1440;
+                    const endStr = minutesToTime(endM);
+
+                    cell.duration = scaledDur;
+                    cell.startTime = startStr;
+                    cell.endTime = endStr;
+
+                    if (durMins > groupMaxMins) {
+                        groupMaxMins = durMins;
+                    }
+                }
+            });
+            currentStartM = (currentStartM + groupMaxMins) % 1440;
+        });
+
+        // Also update Tuesday-Sunday if Monday was scaled
+        if (dayIdx === 0) {
+            activeGroups.forEach(g => {
+                g.parcels.forEach(p => {
+                    const mondayData = activeProgram.matrix[p.id][0];
+                    for (let d = 1; d < 7; d++) {
+                        activeProgram.matrix[p.id][d] = mondayData ? JSON.parse(JSON.stringify(mondayData)) : null;
+                    }
+                });
+            });
+        }
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert(`${DAYS[dayIdx]} günü için sulama süreleri orantılı olarak kısaltıldı ve sıralandı!`);
+    }
+
+    function resolveOverloadConcurrent(pumpId, dayIdx) {
+        if (!activeProgram || !activeProgram.matrix) return;
+        
+        const groups = groupParcelsByCanonicalShift();
+        const affectedParcels = [];
+        
+        for (const [groupTitle, groupData] of Object.entries(groups)) {
+            if (groupData.pumpId !== pumpId) continue;
+            
+            groupData.parcels.forEach(p => {
+                const cell = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+                if (cell && parseFloat(cell.duration) > 0) {
+                    const dur = parseFloat(cell.duration);
+                    const startStr = '06:00';
+                    const endM = (timeToMinutes(startStr) + Math.round(dur * 60)) % 1440;
+                    
+                    cell.startTime = startStr;
+                    cell.endTime = minutesToTime(endM);
+                    affectedParcels.push(p.id);
+                }
+            });
+        }
+
+        // Also update Tuesday-Sunday if Monday was changed
+        if (dayIdx === 0) {
+            affectedParcels.forEach(pid => {
+                const mondayData = activeProgram.matrix[pid][0];
+                for (let d = 1; d < 7; d++) {
+                    activeProgram.matrix[pid][d] = mondayData ? JSON.parse(JSON.stringify(mondayData)) : null;
+                }
+            });
+        }
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert(`${DAYS[dayIdx]} günü için tüm aktif sulamalar saat 06:00'da eşzamanlı (paralel) başlayacak şekilde ayarlandı!`);
+    }
+
+    function resolveOverloadShiftNext(pumpId, dayIdx) {
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        const pumpParcels = gardenParcels.filter(p => {
+            const isKayisi = p.pumpId === 'kayisi' || (p.mainNum && p.mainNum <= 4) || (p.varietyName && (p.varietyName.toLowerCase().includes('kayıs') || p.varietyName.toLowerCase().includes('kayis')));
+            return pumpId === 'kayisi' ? isKayisi : !isKayisi;
+        });
+
+        for (let d = dayIdx; d < 6; d++) {
+            const dayEntries = [];
+            pumpParcels.forEach(p => {
+                const cellData = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][d] : null;
+                if (cellData && parseFloat(cellData.duration) > 0) {
+                    dayEntries.push({
+                        shiftId: p.id,
+                        shiftName: p.name,
+                        startTime: cellData.startTime,
+                        endTime: cellData.endTime,
+                        duration: parseFloat(cellData.duration),
+                        hasFert: cellData.hasFert,
+                        customColor: cellData.customColor
+                    });
+                }
+            });
+
+            const stats = calculateDayPumpStats(dayEntries);
+            const totalHours = stats.totalPumpHours;
+
+            if (totalHours > 24) {
+                const shiftOffset = totalHours - 24;
+                pumpParcels.forEach(p => {
+                    const currentDayData = activeProgram.matrix[p.id][d];
+                    activeProgram.matrix[p.id][d + 1] = shiftScheduleTimeByHours(currentDayData, shiftOffset);
+                });
+            } else {
+                pumpParcels.forEach(p => {
+                    activeProgram.matrix[p.id][d + 1] = activeProgram.matrix[p.id][d] ? JSON.parse(JSON.stringify(activeProgram.matrix[p.id][d])) : null;
+                });
+            }
+        }
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert(`${DAYS[dayIdx]} günü ve sonrasındaki günler için sulama saatleri aşım miktarı kadar ötelendi!`);
+    }
+
+    function resolveOverloadDistribute(pumpId, dayIdx) {
+        if (!activeProgram || !activeProgram.matrix) return;
+        if (dayIdx >= 6) {
+            alert("Pazar günkü sulamayı haftalık program dışına öteleyemezsiniz. Lütfen manuel düzenleme yapın.");
+            return;
+        }
+
+        const groups = groupParcelsByCanonicalShift();
+        let activeGroups = [];
+        
+        for (const [groupTitle, groupData] of Object.entries(groups)) {
+            if (groupData.pumpId !== pumpId) continue;
+            
+            let groupActive = false;
+            groupData.parcels.forEach(p => {
+                const cell = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+                if (cell && parseFloat(cell.duration) > 0) {
+                    groupActive = true;
+                }
+            });
+            if (groupActive) {
+                activeGroups.push({
+                    title: groupTitle,
+                    mainNum: groupData.mainNum,
+                    parcels: groupData.parcels
+                });
+            }
+        }
+
+        if (activeGroups.length <= 1) {
+            alert("Günde sadece 1 sulama grubu aktif, bunu diğer güne aktarmak günü tamamen boşaltacaktır. Lütfen süre kısaltmayı deneyin.");
+            return;
+        }
+
+        activeGroups.sort((a, b) => b.mainNum - a.mainNum);
+        const lastGroup = activeGroups[0];
+
+        if (!confirm(`${lastGroup.title} grubunu ${DAYS[dayIdx]} gününden kaldırıp ${DAYS[dayIdx+1]} gününün başına taşımak istiyor musunuz?`)) {
+            return;
+        }
+
+        lastGroup.parcels.forEach(p => {
+            const cellData = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+            if (cellData) {
+                if (!activeProgram.matrix[p.id][dayIdx+1]) {
+                    activeProgram.matrix[p.id][dayIdx+1] = {
+                        duration: cellData.duration,
+                        startTime: '06:00',
+                        endTime: cellData.endTime,
+                        hasFert: cellData.hasFert,
+                        fertNotes: cellData.fertNotes,
+                        customColor: cellData.customColor
+                    };
+                } else {
+                    activeProgram.matrix[p.id][dayIdx+1].duration = cellData.duration;
+                    activeProgram.matrix[p.id][dayIdx+1].startTime = '06:00';
+                }
+                const dur = parseFloat(activeProgram.matrix[p.id][dayIdx+1].duration);
+                const endM = (timeToMinutes('06:00') + Math.round(dur * 60)) % 1440;
+                activeProgram.matrix[p.id][dayIdx+1].endTime = minutesToTime(endM);
+                activeProgram.matrix[p.id][dayIdx] = null;
+            }
+        });
+
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+        alert(`${lastGroup.title} grubu başarıyla ${DAYS[dayIdx+1]} gününe taşındı.`);
+    }
+
+    function autoSequenceShiftsAcrossWeek(pumpId) {
+        if (!activeProgram || !activeProgram.matrix) return;
+
+        initializeBaseSettings(activeProgram);
+
+        // 1. Extract base configuration from activeProgram.baseSettings for each parcel
+        const baseConfigs = {};
+        gardenParcels.forEach(p => {
+            const cell = activeProgram.baseSettings[p.id];
+            if (cell && parseFloat(cell.duration) > 0) {
+                baseConfigs[p.id] = {
+                    duration: parseFloat(cell.duration),
+                    hasFert: !!cell.hasFert,
+                    fertNotes: cell.fertNotes || "",
+                    customColor: cell.customColor || 'auto'
+                };
+            }
+        });
+
+        // 2. Clear the matrix for this pump's parcels across all 7 days of the week
+        const pumpParcels = gardenParcels.filter(p => {
+            const isKayisi = p.pumpId === 'kayisi' || (p.mainNum && p.mainNum <= 4) || (p.varietyName && (p.varietyName.toLowerCase().includes('kayıs') || p.varietyName.toLowerCase().includes('kayis')));
+            return pumpId === 'kayisi' ? isKayisi : !isKayisi;
+        });
+
+        pumpParcels.forEach(p => {
+            activeProgram.matrix[p.id] = Array(7).fill(null);
+        });
+
+        // 3. Get canonical shift groups for this pump
+        const groups = groupParcelsByCanonicalShift();
+        const activeGroups = [];
+        for (const [groupTitle, groupData] of Object.entries(groups)) {
+            if (groupData.pumpId !== pumpId) continue;
+            const activeParcelsInGroup = groupData.parcels.filter(p => baseConfigs[p.id]);
+            if (activeParcelsInGroup.length > 0) {
+                activeGroups.push({
+                    ...groupData,
+                    activeParcels: activeParcelsInGroup
+                });
+            }
+        }
+
+        // Merge Diosa (7) and Tintosa (8) if activeProgram.diosaTintosaTogether is true
+        if (activeProgram && activeProgram.diosaTintosaTogether && pumpId === 'ana') {
+            const group7Idx = activeGroups.findIndex(g => g.mainNum === 7);
+            const group8Idx = activeGroups.findIndex(g => g.mainNum === 8);
+            if (group7Idx !== -1 || group8Idx !== -1) {
+                const parcels7 = group7Idx !== -1 ? activeGroups[group7Idx].activeParcels : [];
+                const parcels8 = group8Idx !== -1 ? activeGroups[group8Idx].activeParcels : [];
+                const mergedParcels = [...parcels7, ...parcels8];
+
+                if (mergedParcels.length > 0) {
+                    const mergedGroup = {
+                        mainNum: 7,
+                        name: "Diosa & Tintosa",
+                        title: "Diosa & Tintosa Shift",
+                        pumpId: "ana",
+                        activeParcels: mergedParcels
+                    };
+                    if (group7Idx !== -1 && group8Idx !== -1) {
+                        const minIdx = Math.min(group7Idx, group8Idx);
+                        const maxIdx = Math.max(group7Idx, group8Idx);
+                        activeGroups.splice(maxIdx, 1);
+                        activeGroups.splice(minIdx, 1);
+                    } else if (group7Idx !== -1) {
+                        activeGroups.splice(group7Idx, 1);
+                    } else if (group8Idx !== -1) {
+                        activeGroups.splice(group8Idx, 1);
+                    }
+                    activeGroups.push(mergedGroup);
+                }
+            }
+        }
+
+        // Sort active groups by mainNum
+        activeGroups.sort((a, b) => a.mainNum - b.mainNum);
+
+        if (activeGroups.length === 0) return;
+
+        // 4. Flatten active groups into stage-based loop steps
+        const loopSteps = [];
+        activeGroups.forEach(g => {
+            const cancelKarma = activeProgram && activeProgram.cancelKarma11;
+
+            if (g.mainNum === 11 && !cancelKarma) {
+                // Dioblatina 11 sequential steps
+                g.activeParcels.forEach(p => {
+                    loopSteps.push({
+                        mainNum: g.mainNum,
+                        parcels: [p],
+                        duration: baseConfigs[p.id].duration
+                    });
+                });
+            } else {
+                // Stage-based sub-parcel grouping
+                const stagesMap = {};
+                g.activeParcels.forEach(p => {
+                    const stage = (activeProgram.parcelStages && activeProgram.parcelStages[p.id]) ? parseInt(activeProgram.parcelStages[p.id]) : 1;
+                    if (!stagesMap[stage]) stagesMap[stage] = [];
+                    stagesMap[stage].push(p);
+                });
+
+                const sortedStages = Object.keys(stagesMap).map(Number).sort((a, b) => a - b);
+                sortedStages.forEach(sNum => {
+                    const stageParcels = stagesMap[sNum];
+                    const maxDur = Math.max(...stageParcels.map(p => baseConfigs[p.id].duration));
+                    loopSteps.push({
+                        mainNum: g.mainNum,
+                        stageNum: sNum,
+                        parcels: stageParcels,
+                        duration: maxDur
+                    });
+                });
+            }
+        });
+
+        const startHourStr = pumpId === 'kayisi' 
+            ? (document.getElementById('pump2StartInput')?.value || (activeProgram && activeProgram.pump2StartTime) || '06:00')
+            : (document.getElementById('pump1StartInput')?.value || (activeProgram && activeProgram.pump1StartTime) || '06:00');
+        const startHourM = timeToMinutes(startHourStr);
+
+        // 5. Schedule loop steps continuously across 7 days without overlaps
+        let currentAbsMins = startHourM;
+        const totalWeekMins = 7 * 1440;
+        let stepIdx = 0;
+
+        while (currentAbsMins < totalWeekMins && loopSteps.length > 0) {
+            const step = loopSteps[stepIdx];
+            const stepDurM = Math.round(step.duration * 60);
+
+            if (stepDurM <= 0) {
+                stepIdx = (stepIdx + 1) % loopSteps.length;
+                continue;
+            }
+
+            const startAbs = currentAbsMins;
+            const endAbs = currentAbsMins + stepDurM;
+
+            const dayIdx = Math.floor(startAbs / 1440);
+
+            if (dayIdx < 7) {
+                const localStartMins = startAbs % 1440;
+                const localEndMins = endAbs % 1440;
+
+                const startStr = minutesToTime(localStartMins);
+                const endStr = minutesToTime(localEndMins);
+
+                step.parcels.forEach(p => {
+                    const bc = baseConfigs[p.id];
+                    activeProgram.matrix[p.id][dayIdx] = {
+                        duration: bc.duration,
+                        startTime: startStr,
+                        endTime: endStr,
+                        hasFert: bc.hasFert,
+                        fertNotes: bc.fertNotes,
+                        customColor: bc.customColor
+                    };
+                    if (dayIdx === 0 && activeProgram.baseSettings[p.id]) {
+                        activeProgram.baseSettings[p.id].startTime = startStr;
+                        activeProgram.baseSettings[p.id].endTime = endStr;
+                    }
+                });
+            }
+
+            currentAbsMins = endAbs;
+            stepIdx = (stepIdx + 1) % loopSteps.length;
+        }
+    }
+
+    function recalculateTotals() {
+        renderMatrix();
+    }
+
+    function onPumpStartHoursChanged() {
+        if (activeProgram) {
+            activeProgram.pump1StartTime = document.getElementById('pump1StartInput')?.value || "06:00";
+            activeProgram.pump2StartTime = document.getElementById('pump2StartInput')?.value || "06:00";
+        }
+        autoSequenceShiftsAcrossWeek('ana');
+        autoSequenceShiftsAcrossWeek('kayisi');
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+    }
+
+    // Modal Operations for Cells & Custom Color Selection
+    let cellEditModalInstance = null;
+
+    function selectColorPreset(key) {
+        document.getElementById('cellSelectedColorKey').value = key;
+        
+        // Update UI Swatches
+        document.querySelectorAll('#colorPresetContainer .color-preset-swatch, #preset_auto').forEach(el => {
+            el.classList.remove('active');
+        });
+
+        const activeEl = document.getElementById(`preset_${key}`);
+        if (activeEl) activeEl.classList.add('active');
+
+        const label = document.getElementById('selectedColorLabel');
+        if (key === 'auto') {
+            label.innerText = 'Otomatik (Saat HSL)';
+        } else if (COLOR_PRESETS[key]) {
+            label.innerText = COLOR_PRESETS[key].name;
+        } else if (key.startsWith('#')) {
+            label.innerText = `Özel Renk (${key})`;
+        }
+    }
+
+    function onCustomColorPickerChanged() {
+        const hex = document.getElementById('cellCustomColorPicker').value;
+        selectColorPreset(hex);
+    }
+
+    let bulkDurationModalInstance = null;
+
+    function openBulkDurationModal() {
+        const kayisiContainer = document.getElementById('bulkKayisiInputsContainer');
+        const anaContainer = document.getElementById('bulkAnaInputsContainer');
+
+        if (!kayisiContainer || !anaContainer) return;
+
+        let kayisiHtml = '';
+        let anaHtml = '';
+
+        initializeBaseSettings(activeProgram);
+
+        CANONICAL_SHIFTS.forEach(shiftGroup => {
+            const isKayisi = shiftGroup.pumpId === 'kayisi' || shiftGroup.mainNum <= 4;
+            const badgeClass = isKayisi ? 'bg-warning text-dark' : 'bg-info text-white';
+            const borderClass = isKayisi ? 'border-warning' : 'border-info';
+            const textClass = isKayisi ? 'text-warning fw-bold' : 'text-info fw-bold';
+
+            let subInputsHtml = '';
+            shiftGroup.subParcels.forEach(subCode => {
+                const parcel = gardenParcels.find(p => p.name === subCode);
+                const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+                const cellData = activeProgram && activeProgram.baseSettings && activeProgram.baseSettings[parcelId] ? activeProgram.baseSettings[parcelId] : null;
+                const currentDur = cellData ? cellData.duration : 0;
+                const currentStage = (activeProgram && activeProgram.parcelStages && activeProgram.parcelStages[parcelId]) ? parseInt(activeProgram.parcelStages[parcelId]) : 1;
+
+                subInputsHtml += `
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <div class="p-2 border rounded-3 bg-white shadow-sm h-100">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="input_dur_${parcelId}" class="form-label small fw-bold text-dark mb-0">Parsel ${subCode}</label>
+                                <span class="badge bg-light text-secondary border" style="font-size:0.65rem;">Grup ${currentStage}</span>
+                            </div>
+                            <div class="input-group input-group-sm mb-1">
+                                <input type="number" id="input_dur_${parcelId}" class="form-control ${textClass} ${borderClass}" value="${currentDur}" min="0" max="24" step="0.5" oninput="calcBulkDurationTotals()">
+                                <span class="input-group-text bg-light text-muted fw-bold" style="font-size:0.7rem;">Sa</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="small text-muted" style="font-size:0.7rem;">Aşama:</span>
+                                <select id="select_stage_${parcelId}" class="form-select form-select-sm border-secondary fw-bold" onchange="calcBulkDurationTotals()" style="font-size:0.72rem; padding: 2px 4px;">
+                                    <option value="1" ${currentStage === 1 ? 'selected' : ''}>1. Grup (İlk / Eşzamanlı)</option>
+                                    <option value="2" ${currentStage === 2 ? 'selected' : ''}>2. Grup (Sonraki)</option>
+                                    <option value="3" ${currentStage === 3 ? 'selected' : ''}>3. Grup (Sonraki)</option>
+                                    <option value="4" ${currentStage === 4 ? 'selected' : ''}>4. Grup (Sonraki)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Special preset button for Nelson (1. Shift)
+            let specialPresetBtn = '';
+            if (shiftGroup.mainNum === 1) {
+                specialPresetBtn = `
+                    <button type="button" class="btn btn-sm btn-outline-success py-0 px-2 fw-bold" style="font-size:0.75rem;" onclick="setShift1PresetRampa()" title="1.1 ve 1.3'ü 06:00-14:00 (Grup 1), 1.2'yi 14:00-22:00 (Grup 2) olarak ayarla">
+                        ⚡ 1.1 & 1.3 Birlikte (06-14) ➔ 1.2 Sonra (14-22)
+                    </button>
+                `;
+            }
+
+            const groupBlockHtml = `
+                <div class="col-12 mb-3">
+                    <div class="p-3 border rounded-3 bg-white shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <strong class="text-dark fs-6">🌱 ${shiftGroup.title}</strong>
+                                <span class="badge ${badgeClass} rounded-pill" style="font-size:0.75rem;">${shiftGroup.subParcels.length} Bölme/Parsel</span>
+                                ${specialPresetBtn}
+                            </div>
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="small text-muted fw-bold">Hızlı Düzen:</span>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-primary py-0 px-2" style="font-size:0.72rem;" onclick="setShiftGroupConcurrent(${shiftGroup.mainNum})" title="Tüm alt parselleri aynı grupta eşzamanlı sula">Tümü Birlikte</button>
+                                    <button type="button" class="btn btn-outline-danger py-0 px-2" style="font-size:0.72rem;" onclick="setShiftGroupSequential(${shiftGroup.mainNum})" title="Alt parselleri sırayla sula">Tümü Sıralı</button>
+                                </div>
+                                <div class="input-group input-group-sm ms-1" style="max-width: 130px;">
+                                    <input type="number" id="master_dur_group_${shiftGroup.mainNum}" class="form-control form-control-sm" placeholder="Saat" min="0" max="24" step="0.5">
+                                    <button class="btn btn-outline-primary btn-sm" type="button" onclick="setShiftGroupSubDurations(${shiftGroup.mainNum})">Uygula</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2">
+                            ${subInputsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            if (isKayisi) kayisiHtml += groupBlockHtml;
+            else anaHtml += groupBlockHtml;
+        });
+
+        kayisiContainer.innerHTML = kayisiHtml;
+        anaContainer.innerHTML = anaHtml;
+
+        calcBulkDurationTotals();
+
+        if (!bulkDurationModalInstance) {
+            bulkDurationModalInstance = new bootstrap.Modal(document.getElementById('bulkDurationModal'));
+        }
+        bulkDurationModalInstance.show();
+    }
+
+    function setShift1PresetRampa() {
+        const p11 = gardenParcels.find(p => p.name === '1.1');
+        const p12 = gardenParcels.find(p => p.name === '1.2');
+        const p13 = gardenParcels.find(p => p.name === '1.3');
+
+        if (p11) {
+            const in11 = document.getElementById(`input_dur_${p11.id}`);
+            const st11 = document.getElementById(`select_stage_${p11.id}`);
+            if (in11) in11.value = 8;
+            if (st11) st11.value = 1;
+        }
+        if (p13) {
+            const in13 = document.getElementById(`input_dur_${p13.id}`);
+            const st13 = document.getElementById(`select_stage_${p13.id}`);
+            if (in13) in13.value = 8;
+            if (st13) st13.value = 1;
+        }
+        if (p12) {
+            const in12 = document.getElementById(`input_dur_${p12.id}`);
+            const st12 = document.getElementById(`select_stage_${p12.id}`);
+            if (in12) in12.value = 8;
+            if (st12) st12.value = 2;
+        }
+
+        calcBulkDurationTotals();
+    }
+
+    function setShiftGroupConcurrent(mainNum) {
+        const shiftGroup = CANONICAL_SHIFTS.find(s => s.mainNum === mainNum);
+        if (!shiftGroup) return;
+
+        shiftGroup.subParcels.forEach(subCode => {
+            const parcel = gardenParcels.find(p => p.name === subCode);
+            const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+            const stElem = document.getElementById(`select_stage_${parcelId}`);
+            if (stElem) stElem.value = 1;
+        });
+
+        calcBulkDurationTotals();
+    }
+
+    function setShiftGroupSequential(mainNum) {
+        const shiftGroup = CANONICAL_SHIFTS.find(s => s.mainNum === mainNum);
+        if (!shiftGroup) return;
+
+        shiftGroup.subParcels.forEach((subCode, idx) => {
+            const parcel = gardenParcels.find(p => p.name === subCode);
+            const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+            const stElem = document.getElementById(`select_stage_${parcelId}`);
+            if (stElem) stElem.value = idx + 1;
+        });
+
+        calcBulkDurationTotals();
+    }
+
+    function setShiftGroupSubDurations(mainNum) {
+        const masterElem = document.getElementById(`master_dur_group_${mainNum}`);
+        if (!masterElem || masterElem.value === '') return;
+        const val = parseFloat(masterElem.value) || 0;
+
+        setShiftGroupPreset(mainNum, val);
+    }
+
+    function setShiftGroupPreset(mainNum, hours) {
+        const shiftGroup = CANONICAL_SHIFTS.find(s => s.mainNum === mainNum);
+        if (!shiftGroup) return;
+
+        shiftGroup.subParcels.forEach(subCode => {
+            const parcel = gardenParcels.find(p => p.name === subCode);
+            const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+            const inputElem = document.getElementById(`input_dur_${parcelId}`);
+            if (inputElem) inputElem.value = hours;
+        });
+
+        calcBulkDurationTotals();
+    }
+
+    function calcBulkDurationTotals() {
+        let kayisiTotal = 0;
+        let anaTotal = 0;
+
+        CANONICAL_SHIFTS.forEach(shiftGroup => {
+            const isKayisi = shiftGroup.pumpId === 'kayisi' || shiftGroup.mainNum <= 4;
+
+            const stagesMap = {};
+            shiftGroup.subParcels.forEach(subCode => {
+                const parcel = gardenParcels.find(p => p.name === subCode);
+                const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+                const elem = document.getElementById(`input_dur_${parcelId}`);
+                const stElem = document.getElementById(`select_stage_${parcelId}`);
+                if (elem) {
+                    const dur = parseFloat(elem.value) || 0;
+                    const stage = stElem ? parseInt(stElem.value) || 1 : 1;
+                    if (dur > 0) {
+                        if (!stagesMap[stage]) stagesMap[stage] = [];
+                        stagesMap[stage].push(dur);
+                    }
+                }
+            });
+
+            let groupTime = 0;
+            Object.values(stagesMap).forEach(durs => {
+                groupTime += Math.max(...durs);
+            });
+
+            if (isKayisi) {
+                kayisiTotal += groupTime;
+            } else {
+                if (activeProgram && activeProgram.diosaTintosaTogether && (shiftGroup.mainNum === 7 || shiftGroup.mainNum === 8)) {
+                    if (shiftGroup.mainNum === 7) anaTotal += groupTime;
+                } else {
+                    anaTotal += groupTime;
+                }
+            }
+        });
+
+        const kayisiBadge = document.getElementById('bulkKayisiTotalBadge');
+        if (kayisiBadge) {
+            if (kayisiTotal > 24) {
+                const overflow = (kayisiTotal - 24).toFixed(1);
+                kayisiBadge.className = "badge bg-danger text-white rounded-pill px-3 py-2";
+                kayisiBadge.innerText = `Toplam Su Döngüsü: ${kayisiTotal.toFixed(1)} Sa (Aşım: ${overflow} Sa/Gün)`;
+            } else {
+                kayisiBadge.className = "badge bg-success text-white rounded-pill px-3 py-2";
+                kayisiBadge.innerText = `Toplam Su Döngüsü: ${kayisiTotal.toFixed(1)} Sa (Çakışmasız Sıralı)`;
+            }
+        }
+
+        const anaBadge = document.getElementById('bulkAnaTotalBadge');
+        if (anaBadge) {
+            if (anaTotal > 24) {
+                const overflow = (anaTotal - 24).toFixed(1);
+                anaBadge.className = "badge bg-danger text-white rounded-pill px-3 py-2";
+                anaBadge.innerText = `Toplam Su Döngüsü: ${anaTotal.toFixed(1)} Sa (Aşım: ${overflow} Sa/Gün)`;
+            } else {
+                anaBadge.className = "badge bg-info text-white rounded-pill px-3 py-2";
+                anaBadge.innerText = `Toplam Su Döngüsü: ${anaTotal.toFixed(1)} Sa (Çakışmasız Sıralı)`;
+            }
+        }
+    }
+
+    function applyBulkDurations() {
+        applyBulkDurationsOnly();
+    }
+
+    function applyBulkDurationsOnly() {
+        if (!activeProgram) return;
+
+        initializeBaseSettings(activeProgram);
+
+        // 1. Read all duration and stage inputs into activeProgram.baseSettings & parcelStages
+        if (!activeProgram.parcelStages) activeProgram.parcelStages = {};
+
+        CANONICAL_SHIFTS.forEach(shiftGroup => {
+            shiftGroup.subParcels.forEach(subCode => {
+                const parcel = gardenParcels.find(p => p.name === subCode);
+                const parcelId = parcel ? parcel.id : `sub_${subCode.replace('.', '_')}`;
+                const elem = document.getElementById(`input_dur_${parcelId}`);
+                const stElem = document.getElementById(`select_stage_${parcelId}`);
+                const dur = elem ? (parseFloat(elem.value) || 0) : 0;
+                const stage = stElem ? parseInt(stElem.value) || 1 : 1;
+
+                activeProgram.parcelStages[parcelId] = stage;
+
+                if (dur > 0) {
+                    const existing = activeProgram.baseSettings[parcelId] || {};
+                    activeProgram.baseSettings[parcelId] = {
+                        duration: dur,
+                        startTime: existing.startTime || "06:00",
+                        endTime: existing.endTime || "10:00",
+                        hasFert: existing.hasFert || false,
+                        fertNotes: existing.fertNotes || "",
+                        customColor: existing.customColor || 'auto'
+                    };
+                } else {
+                    activeProgram.baseSettings[parcelId] = null;
+                }
+            });
+        });
+
+        // 2. Perform continuous non-overlapping auto-sequencing for both pumps across 7 days
+        autoSequenceShiftsAcrossWeek('kayisi');
+        autoSequenceShiftsAcrossWeek('ana');
+
+        // 3. Render and save
+        renderMatrix();
+        saveCurrentProgramToServer(false);
+
+        const modalElem = document.getElementById('bulkDurationModal');
+        if (modalElem) {
+            const bsModal = (typeof bootstrap !== 'undefined' && bootstrap.Modal) ? (bootstrap.Modal.getInstance(modalElem) || bulkDurationModalInstance) : bulkDurationModalInstance;
+            if (bsModal) bsModal.hide();
+        }
+
+        alert("Sulama programı ve çakışmasız saat dağılımı başarıyla hesaplandı ve haftalık tabloya aktarıldı!");
+    }
+
+    function getParcelSortKey(parcelName) {
+        if (!parcelName) return 0;
+        const parts = parcelName.split('.');
+        const main = parseInt(parts[0]) || 0;
+        const sub = parseInt(parts[1]) || 0;
+        return main * 100 + sub;
+    }
+
+    function getPrevActiveIrrigation(pumpId, dayIdx, currentParcelName, currentMainNum, isGroupMode) {
+        if (!activeProgram || !activeProgram.matrix) return null;
+
+        // Find all parcels for the given pump
+        const pumpParcels = gardenParcels.filter(p => {
+            const isKayisi = p.pumpId === 'kayisi' || (p.mainNum && p.mainNum <= 4) || (p.varietyName && (p.varietyName.toLowerCase().includes('kayıs') || p.varietyName.toLowerCase().includes('kayis')));
+            return pumpId === 'kayisi' ? isKayisi : !isKayisi;
+        });
+
+        // Determine current sort key threshold
+        let currentSortKey = 0;
+        if (isGroupMode) {
+            currentSortKey = currentMainNum * 100;
+        } else {
+            currentSortKey = getParcelSortKey(currentParcelName);
+        }
+
+        let bestPrevParcel = null;
+        let maxEndMins = -1;
+        let bestPrevData = null;
+
+        pumpParcels.forEach(p => {
+            // Skip the parcel itself if single mode
+            if (!isGroupMode && p.name === currentParcelName) return;
+            // Skip the group if group mode
+            if (isGroupMode && p.mainNum === currentMainNum) return;
+
+            const pSortKey = getParcelSortKey(p.name);
+
+            // We only look for active items before the current one
+            if (pSortKey < currentSortKey) {
+                const cellData = activeProgram.matrix[p.id] ? activeProgram.matrix[p.id][dayIdx] : null;
+                if (cellData && parseFloat(cellData.duration) > 0 && cellData.endTime) {
+                    const endMins = timeToMinutes(cellData.endTime);
+                    if (endMins > maxEndMins) {
+                        maxEndMins = endMins;
+                        bestPrevParcel = p;
+                        bestPrevData = cellData;
+                    }
+                }
+            }
+        });
+
+        if (bestPrevData) {
+            return {
+                parcelName: bestPrevParcel.name,
+                endTime: bestPrevData.endTime,
+                startTime: bestPrevData.startTime,
+                duration: bestPrevData.duration
+            };
+        }
+        return null;
+    }
+
+    function openGroupCellModal(groupTitle, dayIdx, evt) {
+        if (evt) evt.stopPropagation();
+
+        document.getElementById('cellTargetMode').value = 'group';
+        document.getElementById('cellGroupTitle').value = groupTitle;
+        document.getElementById('cellDayIndex').value = dayIdx;
+
+        const groups = groupParcelsByCanonicalShift();
+        const groupParcels = groups[groupTitle] ? groups[groupTitle].parcels : [];
+
+        const dateObjs = getWeekDateObjects();
+        const dateStr = formatDateToDDMMYYYY(dateObjs[dayIdx]);
+
+        document.getElementById('modalShiftNameDisplay').innerText = `${groupTitle} (Tüm ${groupParcels.length} Alt Parsel)`;
+        document.getElementById('modalDayNameDisplay').innerText = `${DAYS[dayIdx]} (${dateStr})`;
+
+        let firstParcel = groupParcels[0];
+        let existing = (firstParcel && activeProgram.matrix && activeProgram.matrix[firstParcel.id])
+            ? activeProgram.matrix[firstParcel.id][dayIdx]
+            : null;
+
+        const groupData = groups[groupTitle];
+        const pumpId = groupData ? groupData.pumpId : 'ana';
+        const currentMainNum = groupData ? groupData.mainNum : 0;
+        const currentParcelName = firstParcel ? firstParcel.name : '';
+
+        if (existing && existing.duration > 0) {
+            document.getElementById('cellStartTimeInput').value = existing.startTime || '06:00';
+            document.getElementById('cellEndTimeInput').value = existing.endTime || '10:00';
+            document.getElementById('cellFertigationCheck').checked = !!existing.hasFert;
+            document.getElementById('cellFertNotesInput').value = existing.fertNotes || '';
+            selectColorPreset(existing.customColor || 'auto');
+        } else {
+            const prev = getPrevActiveIrrigation(pumpId, dayIdx, currentParcelName, currentMainNum, true);
+            const startStr = prev ? prev.endTime : '06:00';
+            const defTime = getSubParcelDefaultTime(currentParcelName, currentMainNum);
+            const duration = defTime.duration;
+            let startM = timeToMinutes(startStr);
+            let endM = (startM + Math.round(duration * 60)) % 1440;
+            const endStr = minutesToTime(endM);
+
+            document.getElementById('cellStartTimeInput').value = startStr;
+            document.getElementById('cellEndTimeInput').value = endStr;
+            document.getElementById('cellFertigationCheck').checked = false;
+            document.getElementById('cellFertNotesInput').value = '';
+            selectColorPreset('auto');
+        }
+
+        onModalTimeChanged();
+        toggleFertInputs();
+
+        if (!cellEditModalInstance) {
+            cellEditModalInstance = new bootstrap.Modal(document.getElementById('cellEditModal'));
+        }
+        cellEditModalInstance.show();
+    }
+
+    function openCellModal(shiftId, dayIdx) {
+        const parcel = gardenParcels.find(p => p.id === shiftId);
+        if (!parcel || !activeProgram) return;
+
+        document.getElementById('cellTargetMode').value = 'single';
+        document.getElementById('cellShiftId').value = shiftId;
+        document.getElementById('cellDayIndex').value = dayIdx;
+
+        const dateObjs = getWeekDateObjects();
+        const dateStr = formatDateToDDMMYYYY(dateObjs[dayIdx]);
+
+        document.getElementById('modalShiftNameDisplay').innerText = `${parcel.groupTitle} (Tekil Parsel: ${parcel.name})`;
+        document.getElementById('modalDayNameDisplay').innerText = `${DAYS[dayIdx]} (${dateStr})`;
+
+        const existing = (activeProgram.matrix && activeProgram.matrix[shiftId]) 
+            ? activeProgram.matrix[shiftId][dayIdx] 
+            : null;
+
+        const pumpId = (parcel.pumpId === 'kayisi' || (parcel.mainNum && parcel.mainNum <= 4) || (parcel.varietyName && (parcel.varietyName.toLowerCase().includes('kayıs') || parcel.varietyName.toLowerCase().includes('kayis')))) ? 'kayisi' : 'ana';
+        const currentMainNum = parcel.mainNum;
+        const currentParcelName = parcel.name;
+
+        if (existing && existing.duration > 0) {
+            document.getElementById('cellStartTimeInput').value = existing.startTime || '06:00';
+            document.getElementById('cellEndTimeInput').value = existing.endTime || '10:00';
+            document.getElementById('cellFertigationCheck').checked = !!existing.hasFert;
+            document.getElementById('cellFertNotesInput').value = existing.fertNotes || '';
+            selectColorPreset(existing.customColor || 'auto');
+        } else {
+            const prev = getPrevActiveIrrigation(pumpId, dayIdx, currentParcelName, currentMainNum, false);
+            const startStr = prev ? prev.endTime : '06:00';
+            const defTime = getSubParcelDefaultTime(currentParcelName, currentMainNum);
+            const duration = defTime.duration;
+            let startM = timeToMinutes(startStr);
+            let endM = (startM + Math.round(duration * 60)) % 1440;
+            const endStr = minutesToTime(endM);
+
+            document.getElementById('cellStartTimeInput').value = startStr;
+            document.getElementById('cellEndTimeInput').value = endStr;
+            document.getElementById('cellFertigationCheck').checked = false;
+            document.getElementById('cellFertNotesInput').value = '';
+            selectColorPreset('auto');
+        }
+
+        onModalTimeChanged();
+        toggleFertInputs();
+
+        if (!cellEditModalInstance) {
+            cellEditModalInstance = new bootstrap.Modal(document.getElementById('cellEditModal'));
+        }
+        cellEditModalInstance.show();
+    }
+
+    function toggleFertInputs() {
+        const check = document.getElementById('cellFertigationCheck').checked;
+        const box = document.getElementById('fertInputsBox');
+        if (check) box.classList.remove('d-none');
+        else box.classList.add('d-none');
+    }
+
+    function saveCellSchedule() {
+        const targetMode = document.getElementById('cellTargetMode').value;
+        const duration = parseFloat(document.getElementById('cellDurationInput').value) || 0;
+        const startTime = document.getElementById('cellStartTimeInput').value;
+        const endTime = document.getElementById('cellEndTimeInput').value;
+        const hasFert = document.getElementById('cellFertigationCheck').checked;
+        const fertNotes = document.getElementById('cellFertNotesInput').value;
+        const customColor = document.getElementById('cellSelectedColorKey').value || 'auto';
+        const dayIdx = parseInt(document.getElementById('cellDayIndex').value) || 0;
+
+        if (!activeProgram || !activeProgram.matrix) return;
+        initializeBaseSettings(activeProgram);
+
+        const dataObj = duration > 0 ? {
+            duration,
+            startTime,
+            endTime,
+            hasFert,
+            fertNotes,
+            customColor
+        } : null;
+
+        if (targetMode === 'group') {
+            const groupTitle = document.getElementById('cellGroupTitle').value;
+            const groups = groupParcelsByCanonicalShift();
+            const groupParcels = groups[groupTitle] ? groups[groupTitle].parcels : [];
+
+            groupParcels.forEach(p => {
+                if (!activeProgram.baseSettings[p.id]) {
+                    activeProgram.baseSettings[p.id] = { duration: 0, hasFert: false, fertNotes: '', customColor: 'auto' };
+                }
+                activeProgram.baseSettings[p.id].duration = duration;
+                activeProgram.baseSettings[p.id].hasFert = hasFert;
+                activeProgram.baseSettings[p.id].fertNotes = fertNotes;
+                activeProgram.baseSettings[p.id].customColor = customColor;
+
+                if (!activeProgram.matrix[p.id]) {
+                    activeProgram.matrix[p.id] = Array(7).fill(null);
+                }
+                activeProgram.matrix[p.id][dayIdx] = dataObj ? JSON.parse(JSON.stringify(dataObj)) : null;
+            });
+        } else {
+            const shiftId = document.getElementById('cellShiftId').value;
+            if (!activeProgram.baseSettings[shiftId]) {
+                activeProgram.baseSettings[shiftId] = { duration: 0, hasFert: false, fertNotes: '', customColor: 'auto' };
+            }
+            activeProgram.baseSettings[shiftId].duration = duration;
+            activeProgram.baseSettings[shiftId].hasFert = hasFert;
+            activeProgram.baseSettings[shiftId].fertNotes = fertNotes;
+            activeProgram.baseSettings[shiftId].customColor = customColor;
+
+            if (!activeProgram.matrix[shiftId]) {
+                activeProgram.matrix[shiftId] = Array(7).fill(null);
+            }
+            activeProgram.matrix[shiftId][dayIdx] = dataObj;
+        }
+
+        autoSequenceShiftsAcrossWeek('ana');
+        autoSequenceShiftsAcrossWeek('kayisi');
+        renderMatrix();
+        cellEditModalInstance.hide();
+        saveCurrentProgramToServer(false);
+    }
+
+    function clearCellSchedule() {
+        const targetMode = document.getElementById('cellTargetMode').value;
+        const dayIdx = parseInt(document.getElementById('cellDayIndex').value) || 0;
+
+        if (!activeProgram || !activeProgram.matrix) return;
+        initializeBaseSettings(activeProgram);
+
+        if (targetMode === 'group') {
+            const groupTitle = document.getElementById('cellGroupTitle').value;
+            const groups = groupParcelsByCanonicalShift();
+            const groupParcels = groups[groupTitle] ? groups[groupTitle].parcels : [];
+
+            groupParcels.forEach(p => {
+                if (activeProgram.baseSettings[p.id]) {
+                    activeProgram.baseSettings[p.id].duration = 0;
+                }
+                if (activeProgram.matrix[p.id]) {
+                    activeProgram.matrix[p.id][dayIdx] = null;
+                }
+            });
+        } else {
+            const shiftId = document.getElementById('cellShiftId').value;
+            if (activeProgram.baseSettings[shiftId]) {
+                activeProgram.baseSettings[shiftId].duration = 0;
+            }
+            if (activeProgram.matrix[shiftId]) {
+                activeProgram.matrix[shiftId][dayIdx] = null;
+            }
+        }
+
+        autoSequenceShiftsAcrossWeek('ana');
+        autoSequenceShiftsAcrossWeek('kayisi');
+        renderMatrix();
+        cellEditModalInstance.hide();
+        saveCurrentProgramToServer(false);
+    }
+
+    // Program CRUD & Save As Operations
+    let programModalInstance = null;
+
+    function saveAsNewProgramModal() {
+        if (!activeProgram) return;
+
+        const dateObjs = getWeekDateObjects();
+        const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+        const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+
+        const defaultName = `${activeProgram.title || startStr + ' - ' + endStr + ' Haftası'} (Kopya)`;
+        const newTitle = prompt("Mevcut haftalık sulama programını yeni bir isimle kaydetmek için program başlığı giriniz:", defaultName);
+        
+        if (!newTitle || !newTitle.trim()) return;
+
+        const cloned = JSON.parse(JSON.stringify(activeProgram));
+        cloned.id = `prog_${Date.now()}`;
+        cloned.title = newTitle.trim();
+        cloned.description = `(${startStr} - ${endStr}) haftası için yeni kaydedildi.`;
+        cloned.isActive = true;
+        cloned.createdAt = new Date().toISOString();
+
+        allPrograms.forEach(p => p.isActive = false);
+        allPrograms.push(cloned);
+        activeProgram = cloned;
+
+        updateProgramDropdown();
+        renderMatrix();
+        saveCurrentProgramToServer(true);
+    }
+
+    function createNewProgramModal() {
+        const dateObjs = getWeekDateObjects();
+        const startStr = formatDateToDDMMYYYY(dateObjs[0]);
+        const endStr = formatDateToDDMMYYYY(dateObjs[6]);
+
+        document.getElementById('progTitleInput').value = `${startStr} - ${endStr} Haftası Sulama Programı`;
+        document.getElementById('progDescInput').value = 'Takvim tarihlerine göre oluşturulan haftalık sulama planı.';
+        document.getElementById('progActiveInput').checked = true;
+
+        if (!programModalInstance) {
+            programModalInstance = new bootstrap.Modal(document.getElementById('programModal'));
+        }
+        programModalInstance.show();
+    }
+
+    function saveProgramModal() {
+        const title = document.getElementById('progTitleInput').value.trim();
+        const desc = document.getElementById('progDescInput').value.trim();
+        const isActive = document.getElementById('progActiveInput').checked;
+
+        if (!title) {
+            alert("Lütfen program başlığı giriniz.");
+            return;
+        }
+
+        if (isActive) {
+            allPrograms.forEach(p => p.isActive = false);
+        }
+
+        const newProg = createDefaultProgramObj(title);
+        newProg.description = desc;
+        newProg.isActive = isActive;
+
+        allPrograms.push(newProg);
+        activeProgram = newProg;
+
+        updateProgramDropdown();
+        renderMatrix();
+        programModalInstance.hide();
+        saveCurrentProgramToServer(true);
+    }
+
+    function setActiveProgram() {
+        if (!activeProgram) return;
+        allPrograms.forEach(p => p.isActive = (p.id === activeProgram.id));
+        updateProgramDropdown();
+        saveCurrentProgramToServer(true);
+    }
+
+    function duplicateProgram() {
+        if (!activeProgram) return;
+        const cloned = JSON.parse(JSON.stringify(activeProgram));
+        cloned.id = `prog_${Date.now()}`;
+        cloned.title = `${activeProgram.title} (Kopyası)`;
+        cloned.isActive = false;
+
+        allPrograms.push(cloned);
+        activeProgram = cloned;
+        updateProgramDropdown();
+        renderMatrix();
+        saveCurrentProgramToServer(true);
+    }
+
+    function deleteProgram() {
+        if (!activeProgram) return;
+        if (allPrograms.length <= 1) {
+            alert("En az bir adet sulama programı kalmalıdır mevcuttur.");
+            return;
+        }
+
+        if (confirm(`"${activeProgram.title}" programını silmek istediğinize emin misiniz?`)) {
+            allPrograms = allPrograms.filter(p => p.id !== activeProgram.id);
+            activeProgram = allPrograms[0];
+            updateProgramDropdown();
+            renderMatrix();
+            saveCurrentProgramToServer(true);
+        }
+    }
+
+    async function saveCurrentProgramToServer(showNotification = true) {
+        let savedToServer = false;
+        try {
+            const res = await fetch(`api/save_irrigation_schedules.php?garden_id=${encodeURIComponent(selectedGardenId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allPrograms)
+            });
+            const result = await res.json();
+            if (!res.ok || result.status !== 'success') {
+                throw new Error(result.message || 'Sunucu kayıt işlemi başarısız oldu.');
+            }
+            savedToServer = true;
+            console.log("Server save status:", result);
+        } catch (e) {
+            console.warn("Server save error, storing in localStorage:", e);
+        }
+
+        localStorage.setItem(`irrigation_sched_${selectedGardenId}`, JSON.stringify(allPrograms));
+
+        const nowStr = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const statusElem = document.getElementById('saveStatusDisplay');
+        if (statusElem) {
+            statusElem.innerText = savedToServer
+                ? `Son Kayıt: Bugün ${nowStr}`
+                : `Yerel Kayıt: Bugün ${nowStr}`;
+        }
+
+        if (showNotification) {
+            const programTitle = activeProgram ? activeProgram.title : 'Sulama Programı';
+            alert(savedToServer
+                ? `"${programTitle}" başarıyla sunucuya kaydedildi! (Saat: ${nowStr})`
+                : `"${programTitle}" cihazda saklandı ancak sunucuya kaydedilemedi. Lütfen bağlantıyı kontrol edip tekrar deneyin.`);
+        }
+    }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

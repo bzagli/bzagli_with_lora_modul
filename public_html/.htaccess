@@ -1,0 +1,56 @@
+# bzagli.com — güvenlik ve performans ayarları
+
+Options -Indexes
+
+# Evre görselleri optimize edilip .jpg'ye çevrildi. Kayıtlı programlarda (data/programs.json)
+# geçen eski .png yolları veriye dokunmadan otomatik olarak .jpg dosyasına yönlendirilir.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{DOCUMENT_ROOT}/assets/images/$1.jpg -f
+    RewriteRule ^assets/images/([a-z]+_[0-9]+)\.png$ assets/images/$1.jpg [L]
+
+    # Sunucuda üzerine yazılamayan eski sürümler yerine güncel (_v2) dosyalar çalıştırılır.
+    RewriteRule ^api/(login|get_users|get_gardens|get_page_visibility|get_recommendations)\.php$ api/$1_v2.php [L]
+</IfModule>
+
+# Sistem dosyalarına, loglara, yedeklere ve iç modüllere dışarıdan erişimi engelle
+<FilesMatch "(^\.|^error_log$|^_auth\.php$|\.(bak|backup|log|lock|ini|sh|py|sql)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Güvenlik başlıkları
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), payment=(), geolocation=(self)"
+    # Özel yönetim paneli: arama motorlarında listelenmesin
+    Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+
+# Sıkıştırma (büyük HTML/JS/JSON yanıtlarını %70-85 küçültür)
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+# Tarayıcı önbelleği: yalnızca statik dosyalar (HTML ve API yanıtları önbelleğe alınmaz)
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+    ExpiresByType text/css "access plus 1 hour"
+    ExpiresByType application/javascript "access plus 1 hour"
+    ExpiresByType text/javascript "access plus 1 hour"
+</IfModule>
+

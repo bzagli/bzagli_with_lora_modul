@@ -1,0 +1,1827 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <!-- Authentication Check -->
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (localStorage.getItem('userRole') !== 'admin') {
+            const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            if (allHidden.includes('spray.html')) {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zirai İlaçlama Tank Karışım ve Kalibrasyon Asistanı</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/bku_style.css?v=18">
+    <style>
+        :root {
+            --forest-glow: #2ecc71;
+            --amber-glow: #f1c40f;
+            --crimson-glow: #e74c3c;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.05);
+            --card-glow: 0 8px 32px 0 rgba(15, 81, 50, 0.08);
+        }
+
+        body.dark-mode {
+            --glass-bg: rgba(33, 37, 41, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --card-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        body.dark-mode .tank-form-box {
+            background: rgba(255, 255, 255, 0.03) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+        }
+
+        .assistant-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1024px) {
+            .assistant-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glassmorphic Cards */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-md);
+            padding: 30px;
+            box-shadow: var(--card-glow);
+            transition: var(--transition);
+            margin-bottom: 25px;
+        }
+
+        .glass-card:hover {
+            box-shadow: var(--box-shadow-lg);
+            transform: translateY(-2px);
+        }
+
+        /* Custom Tabs inside Card */
+        .card-tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--glass-border);
+            padding-bottom: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .card-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-light);
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.95rem;
+            padding: 10px 18px;
+            border-radius: var(--border-radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-tab-btn:hover {
+            color: var(--primary-light);
+            background: rgba(25, 135, 84, 0.08);
+        }
+
+        .card-tab-btn.active {
+            color: white;
+            background: var(--primary);
+        }
+
+        body.dark-mode .card-tab-btn.active {
+            background: var(--primary-light);
+        }
+
+        /* Interactive Canvas container */
+        .tank-visualizer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, rgba(15, 81, 50, 0.04) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: var(--border-radius-md);
+            padding: 20px;
+            border: 1px dashed var(--glass-border);
+            position: relative;
+        }
+
+        body.dark-mode .tank-visualizer-container {
+            background: radial-gradient(circle, rgba(25, 135, 84, 0.08) 0%, rgba(0, 0, 0, 0) 70%);
+        }
+
+        #tankCanvas {
+            background: rgba(0, 0, 0, 0.02);
+            border-radius: var(--border-radius-md);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+            max-width: 100%;
+        }
+
+        body.dark-mode #tankCanvas {
+            background: rgba(255, 255, 255, 0.01);
+            box-shadow: inset 0 0 20px rgba(255,255,255,0.02);
+        }
+
+        /* Form Controls customization */
+        .form-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid-3 {
+                grid-template-columns: 1fr !important;
+            }
+            .card-tabs {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                padding-bottom: 5px;
+            }
+            .card-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            .card-tab-btn {
+                white-space: nowrap;
+                padding: 8px 14px;
+                font-size: 0.88rem;
+            }
+        }
+
+        /* Added items badge list */
+        .mix-list {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .mix-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-sm);
+            padding: 12px 18px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        body.dark-mode .mix-item {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .mix-item-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mix-item-order {
+            background: var(--primary);
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.8rem;
+            margin-right: 8px;
+        }
+
+        /* Dynamic Indicators */
+        .indicator-ring-container {
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+
+        .indicator-box {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--border-radius-sm);
+            min-width: 110px;
+            flex: 1;
+        }
+
+        body.dark-mode .indicator-box {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .indicator-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            font-family: var(--font-display);
+            margin-bottom: 5px;
+        }
+
+        .indicator-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Ranges styling */
+        .range-slider-group {
+            margin-bottom: 22px;
+        }
+
+        .range-slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .range-slider-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .range-slider-value {
+            font-weight: 700;
+            font-family: var(--font-display);
+            color: var(--primary-light);
+        }
+
+        .custom-range {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #e0e0e0;
+            outline: none;
+            transition: background 450ms ease-in;
+        }
+
+        body.dark-mode .custom-range {
+            background: #2b3035;
+        }
+
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(15, 81, 50, 0.3);
+            transition: var(--transition);
+        }
+
+        .custom-range::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: var(--primary-light);
+        }
+
+        /* ISO Nozzle Colors Widget */
+        .nozzle-colors-bar {
+            display: flex;
+            gap: 6px;
+            margin: 15px 0;
+            height: 14px;
+            border-radius: 50px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+        }
+
+        .nozzle-color-segment {
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+            transition: var(--transition);
+            opacity: 0.6;
+        }
+
+        .nozzle-color-segment.active {
+            opacity: 1;
+            transform: scaleY(1.2);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .nozzle-color-orange { background-color: #ff9800; }
+        .nozzle-color-green { background-color: #4caf50; }
+        .nozzle-color-yellow { background-color: #ffeb3b; }
+        .nozzle-color-blue { background-color: #2196f3; }
+        .nozzle-color-red { background-color: #f44336; }
+        .nozzle-color-brown { background-color: #795548; }
+        .nozzle-color-gray { background-color: #9e9e9e; }
+        .nozzle-color-white { background-color: #ffffff; border-left: 1.5px solid #ccc; }
+
+        .compatibility-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        .compatibility-table th, .compatibility-table td {
+            border: 1px solid var(--glass-border);
+            padding: 8px 12px;
+            text-align: center;
+        }
+
+        .compatibility-table th {
+            background: var(--primary);
+            color: white;
+            font-family: var(--font-display);
+        }
+
+        .compat-yes { background-color: rgba(46, 204, 113, 0.15); color: #27ae60; font-weight: bold; }
+        .compat-no { background-color: rgba(231, 76, 60, 0.15); color: #c0392b; font-weight: bold; }
+        .compat-caution { background-color: rgba(241, 196, 15, 0.15); color: #d35400; font-weight: bold; }
+
+        body.dark-mode .compat-yes { background-color: rgba(46, 204, 113, 0.1); }
+        body.dark-mode .compat-no { background-color: rgba(231, 76, 60, 0.1); }
+        body.dark-mode .compat-caution { background-color: rgba(241, 196, 15, 0.1); }
+
+        .back-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 25px;
+        }
+
+        .back-link {
+            text-decoration: none;
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: var(--primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .back-link:hover {
+            color: var(--primary-light);
+            transform: translateX(-4px);
+        }
+
+        body.dark-mode .back-link {
+            color: var(--secondary);
+        }
+    </style>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- THEME TOGGLE BUTTON -->
+    <button class="theme-toggle-btn" id="themeToggleBtn" title="Tema Değiştir">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+    </button>
+
+    <nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success active" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+    <!-- HEADER HERO SECTION -->
+    <header class="hero-section" style="margin-top: 10px;">
+        <div class="hero-content">
+            <span class="hero-badge">Zirai Karar Destek Arayüzü</span>
+            <h1 class="hero-title">İlaçlama Tank Karışım ve <span>Kalibrasyon Asistanı</span></h1>
+            <p class="hero-subtitle">Bitki koruma ilaçlarının doğru tank karışım sırasını doğrulayın, pülverizatör kalibrasyonunuzu yapın ve hava şartlarına göre sürüklenme riskini izleyin.</p>
+        </div>
+        <div class="hero-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="calcNozzleFlow">0.0</div>
+                <div class="stat-label">Önerilen L/dk</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="calcEfficiencyScore">%100</div>
+                <div class="stat-label">Hava Uygunluğu</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="assistant-grid">
+        
+        <!-- LEFT COLUMN: CONTROLS & WIZARDS -->
+        <main>
+            <div class="glass-card">
+                <!-- TABS CONTAINER -->
+                <div class="card-tabs">
+                    <button class="card-tab-btn active" onclick="switchAssistantTab('tankMixTab')">
+                        🧪 Tank Karışım Simülatörü
+                    </button>
+                    <button class="card-tab-btn" onclick="switchAssistantTab('calibrationTab')">
+                        🧮 Pülverizatör Kalibrasyonu
+                    </button>
+                    <button class="card-tab-btn" onclick="switchAssistantTab('weatherTab')">
+                        🌤️ Drift & Hava Analizi
+                    </button>
+                    <button class="card-tab-btn" onclick="switchAssistantTab('compatibilityTab')">
+                        📊 Karışım Uyumluluk Tablosu
+                    </button>
+                </div>
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- TAB PANEL: TANK MIX SIMULATOR -->
+                <!-- ------------------------------------------------------------- -->
+                <div id="tankMixTab" class="tab-panel active">
+                    <h3 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 8px;">🧪 Tank Karışım Sırası Sihirbazı (WALES)</h3>
+                    <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 20px;">
+                        Tanka katacağınız ilaçların formülasyon tiplerini sırayla seçip ekleyin. Sistem WALES standartlarına göre karışım sırasını ve çökelme riskini denetler.
+                    </p>
+
+                    <!-- Add product to tank form -->
+                    <div class="tank-form-box p-3 mb-4 rounded-3 shadow-sm border" style="background: rgba(0, 0, 0, 0.03);">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="simPlantFilter" class="form-label fw-bold small text-uppercase mb-1">Bitki Türü</label>
+                                    <select id="simPlantFilter" class="form-select" onchange="populateSimBkuDropdown()">
+                                        <option value="">Tümü</option>
+                                        <option value="ELMA">ELMA</option>
+                                        <option value="ARMUT">ARMUT</option>
+                                        <option value="AYVA">AYVA</option>
+                                        <option value="ŞEFTALİ">ŞEFTALİ</option>
+                                        <option value="NEKTARİN">NEKTARİN</option>
+                                        <option value="KAYISI">KAYISI</option>
+                                        <option value="KİRAZ">KİRAZ</option>
+                                        <option value="CEVİZ">CEVİZ</option>
+                                        <option value="ERİK">ERİK</option>
+                                        <option value="VİŞNE">VİŞNE</option>
+                                        <option value="BADEM">BADEM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="simBkuSelect" class="form-label fw-bold small text-uppercase mb-1">Veritabanından BKÜ Seçin</label>
+                                    <select id="simBkuSelect" class="form-select" onchange="onSimBkuSelected()">
+                                        <!-- Loaded via JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="simFormulation" class="form-label fw-bold small text-uppercase mb-1">Formülasyon Tipi</label>
+                                    <select id="simFormulation" class="form-select">
+                                        <option value="WP">WP/WG/DF/SP (Islanabilir Tozlar)</option>
+                                        <option value="SC">SC/CS/EW (Akışkan Süspansiyonlar)</option>
+                                        <option value="EC">EC/EW (Emülsiyon Konsantreler)</option>
+                                        <option value="SL">SL/SP (Suda Çözünen Sıvılar)</option>
+                                        <option value="YAYICI">Yayıcı / Yapıştırıcı (Adjuvant)</option>
+                                        <option value="GUBRE">Yaprak Gübresi / Aminoasit</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-8 col-12">
+                                <input type="text" id="simCustomName" class="form-control" placeholder="Veya manuel ilaç adı girin...">
+                            </div>
+                            <div class="col-md-4 col-12">
+                                <button class="btn btn-primary w-100 fw-bold py-2" onclick="addChemicalToTank()">
+                                    ➕ Tanka İlaç Ekle
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visual status message card -->
+                    <div id="walesValidationResult">
+                        <div class="calculation-preview" style="background-color: var(--success-bg); border-left: 5px solid var(--success); color: #0f5132;">
+                            💡 <strong>Tank Durumu:</strong> Tank şu an temiz su ile dolu. Formülasyona göre yukarıdan ilaçları sırayla eklemeye başlayabilirsiniz.
+                        </div>
+                    </div>
+
+                    <!-- Added products list -->
+                    <div style="margin-top: 25px;">
+                        <h4 style="font-family: var(--font-display); font-size: 1.1rem; color: var(--primary); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>🧪 Tanka Eklenen Kimyasallar</span>
+                            <button class="btn btn-danger btn-sm" onclick="clearTank()" style="background-color: #d32f2f; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; color: white;">
+                                🔄 Tankı Boşalt
+                            </button>
+                        </h4>
+                        <div id="mixListContainer" class="mix-list">
+                            <!-- Items added dynamically -->
+                            <div style="text-align: center; color: var(--text-light); padding: 20px; border: 1.5px dashed var(--glass-border); border-radius: 8px;">
+                                Tankta henüz kimyasal bulunmamaktadır.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- TAB PANEL: SPRAYER CALIBRATION -->
+                <!-- ------------------------------------------------------------- -->
+                <div id="calibrationTab" class="tab-panel">
+                    <h3 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 8px;">🧮 Pülverizatör Kalibrasyon Sihirbazı</h3>
+                    <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 25px;">
+                        İlaçlama aracınızın hızını ve meme aralığını belirterek, dekara hedef su hacmini atabilmeniz için gereken ideal meme debisini hesaplayın.
+                    </p>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Traktör / İlerleme Hızı (km/h)</span>
+                            <span class="range-slider-value" id="valSpeed">6.0 km/h</span>
+                        </div>
+                        <input type="range" id="inputSpeed" min="2" max="15" step="0.5" value="6" class="custom-range" oninput="calculateCalibration()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>2 km/h (Çok Yavaş)</span>
+                            <span>6-8 km/h (Tavsiye Edilen)</span>
+                            <span>15 km/h (Çok Hızlı)</span>
+                        </div>
+                    </div>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Meme / Nozul Aralığı (cm)</span>
+                            <span class="range-slider-value" id="valSpacing">50 cm</span>
+                        </div>
+                        <input type="range" id="inputSpacing" min="30" max="100" step="5" value="50" class="custom-range" oninput="calculateCalibration()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>30 cm (Sık Yerleşim)</span>
+                            <span>50 cm (Standart)</span>
+                            <span>100 cm (Geniş Yerleşim)</span>
+                        </div>
+                    </div>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Hedef Dekara Harcanan Su (Litre/da)</span>
+                            <span class="range-slider-value" id="valWaterVolume">50 L/da</span>
+                        </div>
+                        <input type="range" id="inputWaterVolume" min="10" max="150" step="5" value="50" class="custom-range" oninput="calculateCalibration()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>10 L/da (Düşük Hacim)</span>
+                            <span>40-60 L/da (Tipik Meyve Bahçesi)</span>
+                            <span>150 L/da (Yoğun Yıkama)</span>
+                        </div>
+                    </div>
+
+                    <div class="form-grid-2" style="margin-bottom: 20px;">
+                        <div class="form-group">
+                            <label for="inputTankVolume">Tank Kapasitesi (Litre)</label>
+                            <input type="number" id="inputTankVolume" class="form-control" value="400" min="50" oninput="calculateCalibration()">
+                        </div>
+                        <div class="form-group">
+                            <label for="inputPressure">Çalışma Basıncı (Bar)</label>
+                            <input type="number" id="inputPressure" class="form-control" value="3.0" min="1" max="20" step="0.5" oninput="calculateCalibration()">
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Nozzle Recommendation Box -->
+                    <div class="calculation-preview" id="calibrationResultCard" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 10px; font-family: var(--font-display);">🎯 İdeal Kalibrasyon Raporu</h4>
+                        <ul style="margin: 0; padding-left: 0; line-height: 1.6;">
+                            <li>Gereken Tek Nozul Debisi: <strong>0.50 L/dk</strong></li>
+                            <li>Tek Tank ile Uygulanabilecek Alan: <strong>8.0 Dekar</strong></li>
+                            <li><strong>Önerilen ISO Nozul Tipi:</strong> Yeşil (ISO 015)</li>
+                        </ul>
+                    </div>
+
+                    <!-- ISO Nozzles Color Bar Visual -->
+                    <div style="margin-top: 25px;">
+                        <span class="range-slider-label" style="display: block; margin-bottom: 8px;">Uluslararası ISO Nozul Renk Kodu Karşılaştırması</span>
+                        <div class="nozzle-colors-bar" id="isoNozzleBar">
+                            <div class="nozzle-color-segment nozzle-color-orange" title="ISO 01 (Turuncu) - 0.40 L/dk" data-flow="0.4"></div>
+                            <div class="nozzle-color-segment nozzle-color-green" title="ISO 015 (Yeşil) - 0.60 L/dk" data-flow="0.6"></div>
+                            <div class="nozzle-color-segment nozzle-color-yellow" title="ISO 02 (Sarı) - 0.80 L/dk" data-flow="0.8"></div>
+                            <div class="nozzle-color-segment nozzle-color-blue" title="ISO 03 (Mavi) - 1.20 L/dk" data-flow="1.2"></div>
+                            <div class="nozzle-color-segment nozzle-color-red" title="ISO 04 (Kırmızı) - 1.60 L/dk" data-flow="1.6"></div>
+                            <div class="nozzle-color-segment nozzle-color-brown" title="ISO 05 (Kahverengi) - 2.00 L/dk" data-flow="2.0"></div>
+                            <div class="nozzle-color-segment nozzle-color-gray" title="ISO 06 (Gri) - 2.40 L/dk" data-flow="2.4"></div>
+                            <div class="nozzle-color-segment nozzle-color-white" title="ISO 08 (Beyaz) - 3.20 L/dk" data-flow="3.2"></div>
+                        </div>
+                        <p style="font-size: 0.78rem; color: var(--text-light); text-align: center; margin-top: 5px;">
+                            *Renk segmentleri standart 3 Bar basınçtaki anlık debiyi temsil eder. Renk parlaması ideal nozulu gösterir.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- TAB PANEL: WEATHER & DRIFT ANALYSIS -->
+                <!-- ------------------------------------------------------------- -->
+                <div id="weatherTab" class="tab-panel">
+                    <h3 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 8px;">🌤️ Sürüklenme (Drift) ve Hava Karar Destek Arayüzü</h3>
+                    <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 25px;">
+                        Meteorolojik koşulların ilaç buharlaşması, yaprak yanıklığı ve rüzgar sürüklenmesi risklerini nasıl etkilediğini canlı takip edin.
+                    </p>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Hava Sıcaklığı (°C)</span>
+                            <span class="range-slider-value" id="valTemp">22 °C</span>
+                        </div>
+                        <input type="range" id="inputTemp" min="0" max="45" value="22" class="custom-range" oninput="calculateWeatherScore()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>0°C (Çok Soğuk)</span>
+                            <span>15-25°C (İdeal Aralık)</span>
+                            <span>45°C (Aşırı Sıcak)</span>
+                        </div>
+                    </div>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Rüzgar Hızı (km/s)</span>
+                            <span class="range-slider-value" id="valWind">8 km/s</span>
+                        </div>
+                        <input type="range" id="inputWind" min="0" max="35" value="8" class="custom-range" oninput="calculateWeatherScore()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>0 km/s (Rüzgarsız)</span>
+                            <span>3-10 km/s (Güvenli Esinti)</span>
+                            <span>35 km/s (Fırtınalı)</span>
+                        </div>
+                    </div>
+
+                    <div class="range-slider-group">
+                        <div class="range-slider-header">
+                            <span class="range-slider-label">Bağıl Nem (%)</span>
+                            <span class="range-slider-value" id="valHumidity">%60</span>
+                        </div>
+                        <input type="range" id="inputHumidity" min="10" max="95" value="60" class="custom-range" oninput="calculateWeatherScore()">
+                        <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-light); margin-top:4px;">
+                            <span>%10 (Aşırı Kuru)</span>
+                            <span>%50-70 (İdeal Nem)</span>
+                            <span>%95 (Doygun Nem)</span>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Risks Panel -->
+                    <div class="indicator-ring-container">
+                        <div class="indicator-box" style="border-left: 4px solid var(--primary-light);">
+                            <div class="indicator-value" id="indicatorDrift" style="color: var(--primary-light);">Düşük</div>
+                            <div class="indicator-label">Sürüklenme Riski</div>
+                        </div>
+                        <div class="indicator-box" style="border-left: 4px solid var(--amber-glow);">
+                            <div class="indicator-value" id="indicatorEvap" style="color: var(--amber-glow);">Normal</div>
+                            <div class="indicator-label">Buharlaşma Riski</div>
+                        </div>
+                        <div class="indicator-box" style="border-left: 4px solid var(--crimson-glow);">
+                            <div class="indicator-value" id="indicatorPhyto" style="color: var(--crimson-glow);">Yok</div>
+                            <div class="indicator-label">Fitotoksite Riski</div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Agronomist Advisory Weather Message -->
+                    <div id="weatherAdvisoryCard" class="advisory-panel" style="margin-top: 25px; padding: 20px; border-radius: 8px;">
+                        <!-- Injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- ------------------------------------------------------------- -->
+                <!-- TAB PANEL: COMPATIBILITY REFERENCE CHART -->
+                <!-- ------------------------------------------------------------- -->
+                <div id="compatibilityTab" class="tab-panel">
+                    <h3 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 8px;">📊 Formülasyon ve Kimyasal Karışım Kılavuzu</h3>
+                    <p style="color: var(--text-light); font-size: 0.92rem; margin-bottom: 20px;">
+                        Hangi ilaç tiplerinin birbiriyle güvenle karışabileceğini gösteren profesyonel zirai uyumluluk tablosu.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="compatibility-table">
+                            <thead>
+                                <tr>
+                                    <th>Formülasyon Sınıfı</th>
+                                    <th>Tozlar (WP/WG)</th>
+                                    <th>Süspansiyon (SC)</th>
+                                    <th>Emülsiyon (EC)</th>
+                                    <th>Sıvı (SL)</th>
+                                    <th>Bakır Fungisitleri</th>
+                                    <th>Yazlık Yağlar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Tozlar (WP/WG)</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-caution">Yavaş Ekle</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-caution">Kontrol Et</td>
+                                    <td class="compat-no">Karışmaz</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Süspansiyon (SC)</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-caution">Kontrol Et</td>
+                                    <td class="compat-caution">Direnç İzle</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Emülsiyon (EC)</td>
+                                    <td class="compat-caution">Yavaş Ekle</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-no">Karışmaz</td>
+                                    <td class="compat-caution">Fitotoksite</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Sıvı (SL)</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Bakır Fungisitleri</td>
+                                    <td class="compat-caution">Kontrol Et</td>
+                                    <td class="compat-caution">Kontrol Et</td>
+                                    <td class="compat-no">Karışmaz</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-no">Karışmaz*</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: 700; background: rgba(0,0,0,0.02);">Yazlık Yağlar</td>
+                                    <td class="compat-no">Karışmaz</td>
+                                    <td class="compat-caution">Direnç İzle</td>
+                                    <td class="compat-caution">Fitotoksite</td>
+                                    <td class="compat-yes">Karışır</td>
+                                    <td class="compat-no">Karışmaz*</td>
+                                    <td class="compat-yes">Karışır</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 12px; line-height: 1.5;">
+                        <strong>* Kış İlaçlama İstisnası:</strong> Bordo bulamacı ve mineral kış yağları tomurcuk patlamasından hemen önce (kış uykusunda) karıştırılarak uygulanabilir. Çiçek ve meyve tutumu döneminde bu karışım yakıcıdır (fitotoksik).
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT COLUMN: INTERACTIVE TANK SIMULATOR -->
+        <aside>
+            <div class="glass-card tank-visualizer-container">
+                <h3 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 15px; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;">
+                    <span>🌊 Zirai Karışım Tank Simülatörü</span>
+                </h3>
+                
+                <canvas id="tankCanvas" width="340" height="400"></canvas>
+
+                <!-- Simulator Control Dashboard buttons -->
+                <div style="display:flex; justify-content:center; gap:10px; width:100%; margin-top:20px;">
+                    <button class="btn btn-secondary btn-sm" id="btnAgitator" onclick="toggleAgitator()" style="flex:1; font-size:0.85rem; padding:8px 12px;">
+                        🔄 Karıştırıcıyı Çalıştır
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="btnSpray" onclick="triggerSprayMist()" style="flex:1; font-size:0.85rem; padding:8px 12px; background:var(--primary-light);">
+                        💨 Püskürtmeyi Dene
+                    </button>
+                </div>
+
+                <!-- Simulation Status overlay -->
+                <div style="margin-top: 15px; font-size: 0.8rem; color: var(--text-light); text-align: center; line-height: 1.4;">
+                    <span id="simStateText">Tank Hazır. Karıştırıcı Kapalı.</span><br>
+                    <span style="font-size: 0.72rem; color: #777;">*Tozlar dibe çökebilir. Agitatörü açarak karışımı homojenleştirebilirsiniz!</span>
+                </div>
+            </div>
+
+            <!-- Agronomical ProTip card -->
+            <div class="glass-card" style="border-left: 5px solid var(--secondary); background: rgba(212, 163, 115, 0.05);">
+                <h4 style="font-family: var(--font-display); color: var(--primary); margin-bottom: 8px; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <span>💡</span> WALES Sırası Nedir?
+                </h4>
+                <p style="font-size: 0.85rem; color: var(--text-dark); line-height: 1.5; margin: 0;">
+                    Modern zirai karışım sıralaması <strong>W-A-L-E-S</strong> kuralına dayanır:
+                    <br><strong style="color: var(--primary-light);">W (Wettable Powders/WG):</strong> Önce suda ıslanabilir toz ilaçlar katılır ve eritilir.
+                    <br><strong style="color: var(--primary-light);">A (Agitation):</strong> Karıştırıcı çalıştırılır.
+                    <br><strong style="color: var(--primary-light);">L (Liquid SC/FL):</strong> Akışkan süspansiyon konsantreler eklenir.
+                    <br><strong style="color: var(--primary-light);">E (Emulsifiable EC):</strong> Yağ bazlı emülsiyon konsantreler eklenir.
+                    <br><strong style="color: var(--primary-light);">S (Surfactants/SL):</strong> En son yayıcı yapıştırıcılar ve çözünen sıvılar eklenir.
+                </p>
+            </div>
+        </aside>
+    </div>
+
+</div>
+
+<!-- DATABASE LINK -->
+<script src="assets/js/banned_ingredients.js"></script>
+<script src="assets/js/bku_database.js"></script>
+<script>
+    // -------------------------------------------------------------
+    // DATABASE & LOCALSTORAGE INTEGRATION
+    // -------------------------------------------------------------
+    let bkuDatabase = [];
+    try {
+        if (localStorage.getItem("bku_rehberi_db_v1")) {
+            bkuDatabase = JSON.parse(localStorage.getItem("bku_rehberi_db_v1"));
+        } else if (typeof DEFAULT_BKU_DATABASE !== 'undefined') {
+            bkuDatabase = [...DEFAULT_BKU_DATABASE];
+        }
+    } catch (e) {
+        console.error("Localstorage database read error, fallback to static DEFAULT_BKU_DATABASE:", e);
+        if (typeof DEFAULT_BKU_DATABASE !== 'undefined') {
+            bkuDatabase = [...DEFAULT_BKU_DATABASE];
+        }
+    }
+
+    // State Variables for Tank mix
+    let addedChemicals = [];
+    let isAgitatorOn = false;
+    let isSprayingMist = false;
+    let baseWaterVolumePercent = 0.5; // Starts with 50% water
+
+    // -------------------------------------------------------------
+    // INITIALIZATION & TAB SWITCHER
+    // -------------------------------------------------------------
+    document.addEventListener("DOMContentLoaded", () => {
+        // 0. Page permission and menu hiding logic
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+        if (permissions.hidden) {
+            permissions.hidden.forEach(page => {
+                // Hide back nav links
+                const link = document.querySelector(`.back-nav a[href="${page}"]`);
+                if (link) link.style.display = 'none';
+            });
+        }
+
+        // Theme initialization
+        const savedTheme = localStorage.getItem("theme_dark");
+        if (savedTheme === "true") {
+            document.body.classList.add("dark-mode");
+        } else if (document.body.classList.contains("dark-mode")) {
+            localStorage.setItem("theme_dark", "true");
+        }
+
+        const themeBtn = document.getElementById("themeToggleBtn");
+        themeBtn.addEventListener("click", () => {
+            document.body.classList.toggle("dark-mode");
+            localStorage.setItem("theme_dark", document.body.classList.contains("dark-mode"));
+        });
+
+        // Initialize simulator BKU lists
+        populateSimBkuDropdown();
+        
+        // Initial calculations
+        calculateCalibration();
+        calculateWeatherScore();
+
+        // Initialize Canvas
+        initCanvas();
+    });
+
+    function switchAssistantTab(tabId) {
+        // Hide all assistant tab panels
+        document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+        document.querySelectorAll(".card-tab-btn").forEach(btn => btn.classList.remove("active"));
+
+        document.getElementById(tabId).classList.add("active");
+        
+        // Highlight tab button
+        const eventBtn = Array.from(document.querySelectorAll(".card-tab-btn")).find(btn => btn.innerText.includes(
+            tabId === "tankMixTab" ? "Tank Karışım" :
+            tabId === "calibrationTab" ? "Pülverizatör Kalibrasyonu" :
+            tabId === "weatherTab" ? "Drift & Hava" : "Karışım Uyumluluk"
+        ));
+        if (eventBtn) eventBtn.classList.add("active");
+    }
+
+    // -------------------------------------------------------------
+    // SIMULATOR BKU LOGIC
+    // -------------------------------------------------------------
+    function populateSimBkuDropdown() {
+        const plantFilter = document.getElementById("simPlantFilter").value;
+        const bkuSelect = document.getElementById("simBkuSelect");
+        
+        // Filter unique product names to populate dropdown
+        let products = bkuDatabase;
+        if (plantFilter) {
+            products = bkuDatabase.filter(item => item.bitki === plantFilter);
+        }
+
+        // Keep unique names
+        const uniqueProducts = [];
+        const seen = new Set();
+        products.forEach(p => {
+            if (p.ad && !seen.has(p.ad)) {
+                seen.add(p.ad);
+                uniqueProducts.push(p);
+            }
+        });
+
+        // Sort unique list alphabetically
+        uniqueProducts.sort((a,b) => a.ad.localeCompare(b.ad));
+
+        let html = `<option value="">-- Veritabanından Seçin (Opsiyonel) --</option>`;
+        uniqueProducts.forEach(p => {
+            html += `<option value="${p.ad}" data-aktif="${p.aktif}" data-grup="${p.grup}">${p.ad} (${p.grup || ''})</option>`;
+        });
+
+        bkuSelect.innerHTML = html;
+        onSimBkuSelected(); // refresh formulations
+    }
+
+    function onSimBkuSelected() {
+        const bkuSelect = document.getElementById("simBkuSelect");
+        const simFormulation = document.getElementById("simFormulation");
+        const simCustomName = document.getElementById("simCustomName");
+        
+        const selectedOption = bkuSelect.options[bkuSelect.selectedIndex];
+        if (!selectedOption || !selectedOption.value) {
+            // custom input
+            return;
+        }
+
+        const ad = selectedOption.value;
+        simCustomName.value = ad;
+
+        // Auto detect formulation based on string content
+        const adLower = ad.toLowerCase();
+        if (adLower.includes("wp") || adLower.includes("wg") || adLower.includes("df") || adLower.includes("sp") || adLower.includes("sg")) {
+            simFormulation.value = "WP";
+        } else if (adLower.includes("sc") || adLower.includes("cs") || adLower.includes("fl")) {
+            simFormulation.value = "SC";
+        } else if (adLower.includes("ec") || adLower.includes("ew")) {
+            simFormulation.value = "EC";
+        } else if (adLower.includes("sl") || adLower.includes("as")) {
+            simFormulation.value = "SL";
+        } else if (adLower.includes("yayıcı") || adLower.includes("yapıştırıcı") || adLower.includes("adjuvant")) {
+            simFormulation.value = "YAYICI";
+        } else if (adLower.includes("gübre") || adLower.includes("aminoasit") || adLower.includes("kalsiyum")) {
+            simFormulation.value = "GUBRE";
+        } else {
+            // fallback depending on chemical group
+            const group = selectedOption.getAttribute("data-grup");
+            if (group === "Feromon") {
+                simFormulation.value = "YAYICI"; // treats like solid / add-on
+            } else {
+                simFormulation.value = "SC"; // standard liquid SC
+            }
+        }
+    }
+
+    // -------------------------------------------------------------
+    // WALES SEQUENCE ENGINE & SIMULATION CONTROLLER
+    // -------------------------------------------------------------
+    function addChemicalToTank() {
+        const customName = document.getElementById("simCustomName").value.trim();
+        const formulation = document.getElementById("simFormulation").value;
+
+        if (!customName) {
+            alert("Lütfen tanka eklenecek bir ilaç adı giriniz veya listeden seçiniz!");
+            return;
+        }
+
+        // Check if chemical is banned
+        const bannedIng = typeof checkBannedProductInTank !== 'undefined' ? checkBannedProductInTank(customName) : null;
+        if (bannedIng) {
+            alert(`⚠️ UYARI: Tanka eklediğiniz "${customName}" ilacı, yasaklı aktif madde (${bannedIng}) içermektedir!`);
+        }
+
+        // Create added item object
+        const item = {
+            id: Date.now(),
+            name: customName,
+            formulation: formulation,
+            timeAdded: Date.now()
+        };
+
+        addedChemicals.push(item);
+        
+        // Reset inputs
+        document.getElementById("simCustomName").value = "";
+        document.getElementById("simBkuSelect").value = "";
+
+        // Trigger Canvas drop particle effect for this formulation!
+        triggerDropParticle(formulation);
+
+        // Re-evaluate WALES rules and render lists
+        evaluateWalesSequence();
+        renderMixList();
+    }
+
+    function removeChemical(id) {
+        addedChemicals = addedChemicals.filter(item => item.id !== id);
+        evaluateWalesSequence();
+        renderMixList();
+    }
+
+    function clearTank() {
+        addedChemicals = [];
+        isSprayingMist = false;
+        evaluateWalesSequence();
+        renderMixList();
+    }
+
+    function renderMixList() {
+        const container = document.getElementById("mixListContainer");
+        if (addedChemicals.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; color: var(--text-light); padding: 20px; border: 1.5px dashed var(--glass-border); border-radius: 8px;">
+                    Tankta henüz kimyasal bulunmamaktadır.
+                </div>`;
+            return;
+        }
+
+        let html = "";
+        addedChemicals.forEach((item, index) => {
+            const formLabels = {
+                WP: "WP/WG/DF (Kuru Toz)",
+                SC: "SC/CS (Akışkan Süspansiyon)",
+                EC: "EC (Emülsiyon Konsantre)",
+                SL: "SL (Suda Çözünen Sıvı)",
+                YAYICI: "Yayıcı-Yapıştırıcı (Adjuvant)",
+                GUBRE: "Yaprak Gübresi / Mineraller"
+            };
+
+            const formBadgeColors = {
+                WP: "#795548", // brown/clay
+                SC: "#2196f3", // blue
+                EC: "#9c27b0", // purple
+                SL: "#4caf50", // green
+                YAYICI: "#00bcd4", // cyan
+                GUBRE: "#ff9800" // orange
+            };
+
+            const bannedIng = typeof checkBannedProductInTank !== 'undefined' ? checkBannedProductInTank(item.name) : null;
+            let bannedWarningHtml = "";
+            let mixItemStyle = `border-left: 5px solid ${formBadgeColors[item.formulation] || '#ccc'};`;
+            if (bannedIng) {
+                bannedWarningHtml = `<div style="margin-top: 6px; padding: 4px 8px; font-size: 0.76rem; color: #e74c3c; background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.2); border-radius: 4px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;">⚠️ YASAKLI AKTİF MADDE: ${bannedIng}</div>`;
+                mixItemStyle += ` background-color: rgba(231,76,60,0.03); border: 1.5px solid rgba(231,76,60,0.3); border-left: 5px solid #e74c3c;`;
+            }
+
+            html += `
+                <div class="mix-item" style="${mixItemStyle}">
+                    <div class="mix-item-details">
+                        <span style="font-weight: 600; font-family: var(--font-display);"><span class="mix-item-order">${index + 1}</span>${item.name}</span>
+                        <span style="font-size: 0.78rem; color: var(--text-light); font-weight: 500;">
+                            Formülasyon: <strong style="color: ${formBadgeColors[item.formulation]};">${formLabels[item.formulation]}</strong>
+                        </span>
+                        ${bannedWarningHtml}
+                    </div>
+                    <button class="btn-action btn-delete" onclick="removeChemical(${item.id})" title="Kaldır">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    function evaluateWalesSequence() {
+        const valResultContainer = document.getElementById("walesValidationResult");
+        
+        if (addedChemicals.length === 0) {
+            valResultContainer.innerHTML = `
+                <div class="calculation-preview" style="background-color: var(--success-bg); border-left: 5px solid var(--success); color: #0f5132;">
+                    💡 <strong>Tank Durumu:</strong> Tank şu an temiz su ile dolu. Formülasyona göre yukarıdan ilaçları sırayla eklemeye başlayabilirsiniz.
+                </div>`;
+            return;
+        }
+
+        // Define WALES priority ranks (lower number = should be added earlier)
+        const rank = {
+            WP: 1,      // Tozlar en önce suda çözülmeli
+            SC: 2,      // Sıvı süspansiyonlar sonra
+            EC: 3,      // Yağ bazlı emülsiyonlar (EC) toz parçacıklarını kaplamaması için sonradan eklenir
+            SL: 4,      // Tamamen suda çözünen sıvılar
+            YAYICI: 5,  // Yayıcı yapıştırıcılar en sonlara doğru
+            GUBRE: 6    // Yaprak gübreleri/mineralleri en son katılır (pH etkileri nedeniyle)
+        };
+
+        let lastRank = 0;
+        let isOrderCorrect = true;
+        let violationMessage = "";
+        let violatorIndex = -1;
+
+        for (let i = 0; i < addedChemicals.length; i++) {
+            const currentRank = rank[addedChemicals[i].formulation];
+            
+            if (currentRank < lastRank) {
+                isOrderCorrect = false;
+                violatorIndex = i;
+                
+                // Formulate detailed agronomical explanation
+                const currentName = addedChemicals[i].name;
+                const prevName = addedChemicals[i-1].name;
+                const currentLabel = addedChemicals[i].formulation;
+                const prevLabel = addedChemicals[i-1].formulation;
+
+                if (prevLabel === "EC" && currentLabel === "WP") {
+                    violationMessage = `<strong>Hata:</strong> Emülsiyon Konsantre (${prevName}) ilacından sonra Islanabilir Toz (${currentName}) ilacı eklediniz! 
+                    <br><strong>Neden Riskli?</strong> Yağ bazlı EC formülasyonu, su tankına katıldığında toz ilacın (WP/WG) dış gözeneklerini yağla kaplar. Bu durum, toz ilacın suda ıslanmasını ve tamamen çözünmesini kalıcı olarak engeller. İlaçlar topaklanır, çökelerek dibe oturur ve püskürtücü memeleri (nozul) tıkar.`;
+                } else if (prevLabel === "EC" && currentLabel === "SC") {
+                    violationMessage = `<strong>Hata:</strong> EC formülasyonlu bir ilaçtan (${prevName}) sonra Süspansiyon SC formülasyonlu bir ilaç (${currentName}) eklediniz!
+                    <br><strong>Neden Riskli?</strong> Yağ damlacıkları (EC), askıdaki katı partiküllerin (SC) pıhtılaşmasına ve jel haline gelerek çökelmesine yol açabilir. Her zaman SC ilaçlar tanka dökülüp iyice karıştırıldıktan sonra EC formülasyonu eklenmelidir.`;
+                } else if (prevLabel === "YAYICI" && (currentLabel === "WP" || currentLabel === "SC")) {
+                    violationMessage = `<strong>Hata:</strong> Yayıcı-Yapıştırıcıyı (${prevName}) toz veya süspansiyon ilaçlardan önce eklediniz!
+                    <br><strong>Neden Riskli?</strong> Yayıcı-yapıştırıcılar suyun yüzey gerilimini erkenden değiştirerek diğer toz ilaçların suda topaklanmadan dağılmasını olumsuz etkiler. Yayıcı yapıştırıcılar her zaman en son aşamada ilave edilmelidir.`;
+                } else {
+                    violationMessage = `<strong>Karışım Sıra Uyarısı:</strong> Tanka eklenen <strong>${currentName}</strong> ilacının sırası agronomik W-A-L-E-S standartlarına uymuyor!
+                    <br><strong>Doğru Sıralama:</strong> Önce kuru tozlar (WP/WG), ardından sıvı süspansiyonlar (SC), daha sonra emülsiyonlar (EC) ve en son suda çözünen sıvılar ile yayıcı yapıştırıcılar eklenmelidir.`;
+                }
+                break;
+            }
+            lastRank = currentRank;
+        }
+
+        if (isOrderCorrect) {
+            valResultContainer.innerHTML = `
+                <div class="calculation-preview" style="background-color: var(--success-bg); border-left: 5px solid var(--success); color: #0f5132; border-radius: var(--border-radius-sm);">
+                    <div style="font-weight: 700; font-size:1rem; margin-bottom:5px; display:flex; align-items:center; gap:6px;">
+                        <span>🟢</span> Karışım Sırası İdeal (WALES Uyumlu)
+                    </div>
+                    Tanka eklediğiniz tüm ilaçların sırası uluslararası agronomik standartlara tam uygundur. İlaçlar pıhtılaşma riski olmaksızın homojen şekilde karışacaktır. Karıştırıcıyı çalıştırarak tankı hazır hale getirebilirsiniz.
+                </div>
+            `;
+        } else {
+            valResultContainer.innerHTML = `
+                <div class="danger-alert" style="border-radius: var(--border-radius-sm); border-left: 5px solid var(--danger); line-height: 1.5; flex-direction:column; align-items:flex-start;">
+                    <div style="font-weight: 700; font-size:1.05rem; display:flex; align-items:center; gap:8px; color:#d32f2f;">
+                        <span>⚠️</span> KARIŞIM HATA UYARISI! (Çökelme Riski)
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.9rem; color:#842029;">
+                        ${violationMessage}
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // SPRAYER CALIBRATION MATHEMATICS
+    // -------------------------------------------------------------
+    function calculateCalibration() {
+        const speed = parseFloat(document.getElementById("inputSpeed").value);
+        const spacing = parseFloat(document.getElementById("inputSpacing").value);
+        const targetVolume = parseFloat(document.getElementById("inputWaterVolume").value);
+        const tankVolume = parseFloat(document.getElementById("inputTankVolume").value) || 400;
+        const pressure = parseFloat(document.getElementById("inputPressure").value) || 3.0;
+
+        // Update labels
+        document.getElementById("valSpeed").innerText = speed.toFixed(1) + " km/h";
+        document.getElementById("valSpacing").innerText = spacing + " cm";
+        document.getElementById("valWaterVolume").innerText = targetVolume + " L/da";
+
+        // Formula: Flow (L/min) = (Speed * Spacing * TargetVolume) / 60000
+        const flowRate = (speed * spacing * targetVolume) / 60000;
+        
+        // Calculate total area covered per full tank
+        const areaCovered = tankVolume / targetVolume;
+
+        // Dynamically highlight the recommended ISO standard nozzle color
+        // Orange: 0.4 L/min, Green: 0.6, Yellow: 0.8, Blue: 1.2, Red: 1.6, Brown: 2.0
+        let recommendedNozzle = "Sarı (ISO 02)";
+        let colorHex = "#ffeb3b";
+        let activeIdx = 2; // yellow
+
+        if (flowRate < 0.5) {
+            recommendedNozzle = "Turuncu (ISO 01)";
+            colorHex = "#ff9800";
+            activeIdx = 0;
+        } else if (flowRate < 0.7) {
+            recommendedNozzle = "Yeşil (ISO 015)";
+            colorHex = "#4caf50";
+            activeIdx = 1;
+        } else if (flowRate < 1.0) {
+            recommendedNozzle = "Sarı (ISO 02)";
+            colorHex = "#ffeb3b";
+            activeIdx = 2;
+        } else if (flowRate < 1.4) {
+            recommendedNozzle = "Mavi (ISO 03)";
+            colorHex = "#2196f3";
+            activeIdx = 3;
+        } else if (flowRate < 1.8) {
+            recommendedNozzle = "Kırmızı (ISO 04)";
+            colorHex = "#f44336";
+            activeIdx = 4;
+        } else if (flowRate < 2.2) {
+            recommendedNozzle = "Kahverengi (ISO 05)";
+            colorHex = "#795548";
+            activeIdx = 5;
+        } else if (flowRate < 2.8) {
+            recommendedNozzle = "Gri (ISO 06)";
+            colorHex = "#9e9e9e";
+            activeIdx = 6;
+        } else {
+            recommendedNozzle = "Beyaz (ISO 08)";
+            colorHex = "#ffffff";
+            activeIdx = 7;
+        }
+
+        // Update indicators on page
+        document.getElementById("calcNozzleFlow").innerText = flowRate.toFixed(2);
+        
+        // Highlight active ISO segment
+        const segments = document.querySelectorAll(".nozzle-color-segment");
+        segments.forEach((seg, idx) => {
+            if (idx === activeIdx) {
+                seg.classList.add("active");
+            } else {
+                seg.classList.remove("active");
+            }
+        });
+
+        // Print Report results
+        const reportCard = document.getElementById("calibrationResultCard");
+        reportCard.innerHTML = `
+            <h4 style="margin: 0 0 10px; font-family: var(--font-display); color:var(--primary);">🎯 İdeal Kalibrasyon Raporu</h4>
+            <ul style="margin: 0; padding-left: 0; line-height: 1.6; list-style:none;">
+                <li>Gereken Tek Nozul Debisi: <strong style="color:var(--primary-light); font-size:1.1rem;">${flowRate.toFixed(2)} Litre / dakika</strong></li>
+                <li>Tek Dolu Tank (${tankVolume} L) ile İlaçlanacak Alan: <strong style="color:var(--primary-light);">${areaCovered.toFixed(1)} Dekar (Dönüm)</strong></li>
+                <li>Mevcut Çalışma Basıncı: <strong>${pressure.toFixed(1)} Bar</strong></li>
+                <li style="margin-top:8px; border-top:1px solid rgba(0,0,0,0.05); padding-top:8px;">
+                    💡 <strong>Tavsiye Edilen ISO Nozul Tipi:</strong> <span style="background:${colorHex}; color:${activeIdx === 7 ? '#333' : (activeIdx === 2 ? '#333' : 'white')}; padding:2px 8px; border-radius:4px; font-weight:700; border:1px solid #ccc;">${recommendedNozzle}</span>
+                </li>
+            </ul>
+        `;
+    }
+
+    // -------------------------------------------------------------
+    // WEATHER & DRIFT DYNAMICS ENGINE
+    // -------------------------------------------------------------
+    function calculateWeatherScore() {
+        const temp = parseFloat(document.getElementById("inputTemp").value);
+        const wind = parseFloat(document.getElementById("inputWind").value);
+        const humidity = parseFloat(document.getElementById("inputHumidity").value);
+
+        // Update slider values on UI
+        document.getElementById("valTemp").innerText = temp + " °C";
+        document.getElementById("valWind").innerText = wind + " km/s";
+        document.getElementById("valHumidity").innerText = "%" + humidity;
+
+        // Calculate individual risks
+        // 1. Wind Drift (Sürüklenme) Risk
+        let driftLabel = "Düşük";
+        let driftColor = "var(--primary-light)";
+        let driftScore = 100; // 100 = perfect
+
+        if (wind < 3) {
+            driftLabel = "Çok Düşük (Esintisiz)";
+            driftScore = 90; // esintisiz havada bazen hava katmanlaşması/inversiyon tehlikesi olur!
+        } else if (wind <= 10) {
+            driftLabel = "Düşük (İdeal)";
+            driftScore = 100;
+        } else if (wind <= 15) {
+            driftLabel = "Orta (Drift Riski)";
+            driftColor = "var(--amber-glow)";
+            driftScore = 60;
+        } else {
+            driftLabel = "YÜKSEK (DURDURUN!)";
+            driftColor = "var(--crimson-glow)";
+            driftScore = 10;
+        }
+
+        // 2. Evaporation (Buharlaşma) Risk
+        let evapLabel = "Düşük";
+        let evapColor = "var(--primary-light)";
+        let evapScore = 100;
+
+        if (temp > 30 && humidity < 40) {
+            evapLabel = "AŞIRI YÜKSEK";
+            evapColor = "var(--crimson-glow)";
+            evapScore = 10;
+        } else if (temp > 27 || humidity < 50) {
+            evapLabel = "Orta";
+            evapColor = "var(--amber-glow)";
+            evapScore = 60;
+        } else {
+            evapLabel = "Düşük (İdeal)";
+            evapScore = 100;
+        }
+
+        // 3. Phytotoxicity (Bitki Yakma) Risk
+        let phytoLabel = "Yok";
+        let phytoColor = "var(--primary-light)";
+        let phytoScore = 100;
+
+        if (temp >= 32) {
+            phytoLabel = "YÜKSEK RISK";
+            phytoColor = "var(--crimson-glow)";
+            phytoScore = 20;
+        } else if (temp >= 28) {
+            phytoLabel = "Orta (Hassas)";
+            phytoColor = "var(--amber-glow)";
+            phytoScore = 70;
+        } else {
+            phytoLabel = "Yok (Güvenli)";
+            phytoScore = 100;
+        }
+
+        // Calculate aggregate Weather Efficacy Score (%)
+        const totalScore = Math.round((driftScore + evapScore + phytoScore) / 3);
+
+        // Update indicators
+        document.getElementById("calcEfficiencyScore").innerText = "%" + totalScore;
+        
+        const driftInd = document.getElementById("indicatorDrift");
+        driftInd.innerText = driftLabel.replace(" (İdeal)", "").replace(" (Drift Riski)", "").replace(" (Esintisiz)", "");
+        driftInd.style.color = driftColor;
+        driftInd.parentElement.style.borderLeftColor = driftColor;
+
+        const evapInd = document.getElementById("indicatorEvap");
+        evapInd.innerText = evapLabel;
+        evapInd.style.color = evapColor;
+        evapInd.parentElement.style.borderLeftColor = evapColor;
+
+        const phytoInd = document.getElementById("indicatorPhyto");
+        phytoInd.innerText = phytoLabel.replace(" (Güvenli)", "").replace(" (Hassas)", "");
+        phytoInd.style.color = phytoColor;
+        phytoInd.parentElement.style.borderLeftColor = phytoColor;
+
+        // Generate expert advice advisory text
+        const advCard = document.getElementById("weatherAdvisoryCard");
+        let advText = "";
+        let bgStyle = "";
+
+        if (totalScore >= 85) {
+            bgStyle = "background-color: var(--success-bg); border-left: 5px solid var(--success); color: #0f5132;";
+            advText = `<strong>🟢 İdeal Uygulama Koşulları:</strong> Sıcaklık, rüzgar hızı ve bağıl nem oranları ilaçlama için son derece uygundur. 
+            Damlacıklar rüzgarla sürüklenmeyecek ve buharlaşmadan yaprak yüzeyinde kalarak maksimum koruma sağlayacaktır. Sistemik ve kontakt ilaçlarınızı güvenle uygulayabilirsiniz.`;
+        } else if (totalScore >= 50) {
+            bgStyle = "background-color: var(--warning-bg); border-left: 5px solid var(--warning); color: #664d03;";
+            
+            let cautions = [];
+            if (wind > 10) cautions.push("Rüzgar sürüklenmesi nedeniyle iri damlacıklı nozullar tercih edin veya traktör hızını azaltın.");
+            if (temp > 26) cautions.push("Buharlaşma hızlandığından akşam serinliğini tercih edin.");
+            if (humidity < 50) cautions.push("Düşük nem damlacığı kurutur, yayıcı adjuvant miktarını artırın.");
+            
+            advText = `<strong>🟡 Dikkat (Sınırda Koşullar):</strong> İlaçlama yapılabilir fakat bazı agronomik önlemler alınmalıdır:
+            <br><ul style="margin-top:5px; padding-left:20px;">
+                ${cautions.map(c => `<li>${c}</li>`).join('')}
+            </ul>`;
+        } else {
+            bgStyle = "background-color: var(--danger-bg); border-left: 5px solid var(--danger); color: #842029;";
+            
+            let dangerReason = "";
+            if (wind > 15) dangerReason = "Rüzgar hızı 15 km/s üzerinde! Sürüklenen kimyasal komşu bahçelere zarar verir, kalıntı yapar ve arıları öldürür.";
+            else if (temp > 30) dangerReason = "Sıcaklık 30°C üstünde! Yaprak stomaları kapanmıştır, ilaç emilmez ve fitotoksik yaprak yanıkları oluşur.";
+            else dangerReason = "Hava koşulları zirai ilaç uygulaması için kesinlikle elverişsizdir.";
+
+            advText = `<strong>🔴 UYGULAMAYI DURDURUN (Yüksek Tehlike):</strong> İlaçlama yapılması kesinlikle tavsiye edilmez! İlaç tamamen etkisini yitirecek veya ciddi çevresel zarara yol açacaktır. 
+            <br><strong>Sebep:</strong> ${dangerReason} Koşulların düzelmesini (akşamüstü veya sabah erken saatleri) bekleyiniz.`;
+        }
+
+        advCard.style = bgStyle + " padding: 18px; border-radius: 8px; font-size: 0.9rem; line-height: 1.5;";
+        advCard.innerHTML = advText;
+    }
+
+    // -------------------------------------------------------------
+    // HTML5 CANVAS TANK SIMULATION PHYSICS ENGINE
+    // -------------------------------------------------------------
+    let canvas, ctx;
+    let particles = [];
+    let waves = [];
+    let animationId;
+
+    function initCanvas() {
+        canvas = document.getElementById("tankCanvas");
+        if (!canvas) return;
+        ctx = canvas.getContext("2d");
+
+        // Set initial waves
+        waves = [
+            { y: 220, length: 0.015, amplitude: 6, speed: 0.04, angle: 0 },
+            { y: 222, length: 0.01, amplitude: 4, speed: -0.06, angle: 0 }
+        ];
+
+        // Start render loop
+        if (animationId) cancelAnimationFrame(animationId);
+        renderTankLoop();
+    }
+
+    function toggleAgitator() {
+        isAgitatorOn = !isAgitatorOn;
+        const btn = document.getElementById("btnAgitator");
+        const stateText = document.getElementById("simStateText");
+        
+        if (isAgitatorOn) {
+            btn.innerText = "⏹️ Karıştırıcıyı Durdur";
+            btn.style.background = "var(--danger)";
+            btn.style.color = "white";
+            btn.style.borderColor = "var(--danger)";
+            stateText.innerHTML = "🌀 <strong>Karıştırıcı Aktif!</strong> Sıvı çalkalanıyor ve karışım homojenleşiyor.";
+        } else {
+            btn.innerText = "🔄 Karıştırıcıyı Çalıştır";
+            btn.style.background = "transparent";
+            btn.style.color = "var(--primary)";
+            btn.style.borderColor = "var(--primary)";
+            stateText.innerHTML = "Tank Hazır. Karıştırıcı Kapalı.";
+        }
+    }
+
+    function triggerSprayMist() {
+        if (addedChemicals.length === 0) {
+            alert("Tanka hiç ilaç eklemediniz! Lütfen önce birkaç kimyasal ekleyin.");
+            return;
+        }
+        isSprayingMist = true;
+        document.getElementById("simStateText").innerHTML = "💨 <strong>Püskürtme Simüle Ediliyor...</strong> Damlacıklar nozullardan yayılıyor.";
+        setTimeout(() => {
+            isSprayingMist = false;
+            document.getElementById("simStateText").innerHTML = isAgitatorOn ? "🌀 Karıştırıcı Aktif." : "Tank Hazır. Karıştırıcı Kapalı.";
+        }, 3500);
+    }
+
+    // Trigger beautiful drop particles based on formulation type added
+    function triggerDropParticle(formulation) {
+        let count = 40;
+        let color = "#ffffff"; // default WP white
+
+        if (formulation === "WP") {
+            color = "rgba(220, 220, 220, 0.85)"; // chalky white
+        } else if (formulation === "SC") {
+            color = "rgba(33, 150, 243, 0.75)"; // bright blue
+        } else if (formulation === "EC") {
+            color = "rgba(156, 39, 176, 0.7)"; // purple emulsion
+        } else if (formulation === "SL") {
+            color = "rgba(76, 175, 80, 0.75)"; // glowing green
+        } else if (formulation === "YAYICI") {
+            color = "rgba(0, 188, 212, 0.7)"; // glowing cyan
+            count = 20;
+        } else if (formulation === "GUBRE") {
+            color = "rgba(255, 152, 0, 0.75)"; // glowing orange
+        }
+
+        // Spawn particles at top center of tank
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: 170 + (Math.random() - 0.5) * 60,
+                y: 80,
+                vx: (Math.random() - 0.5) * 2,
+                vy: 2 + Math.random() * 3,
+                radius: 2 + Math.random() * 4,
+                color: color,
+                alpha: 1.0,
+                decay: 0.003 + Math.random() * 0.005,
+                type: formulation
+            });
+        }
+    }
+
+    function renderTankLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const width = canvas.width;
+        const height = canvas.height;
+
+        // Colors depending on body dark-mode class
+        const isDark = document.body.classList.contains("dark-mode");
+        const tankGlassColor = isDark ? "rgba(255,255,255,0.15)" : "rgba(15, 81, 50, 0.2)";
+        const tankBgColor = isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)";
+
+        // 1. DRAW TANK GLASS SHAPE (CONTAINER)
+        ctx.fillStyle = tankBgColor;
+        ctx.strokeStyle = tankGlassColor;
+        ctx.lineWidth = 6;
+
+        ctx.beginPath();
+        // Top lid opening
+        ctx.moveTo(110, 50);
+        ctx.lineTo(230, 50);
+        ctx.moveTo(110, 50);
+        // Left side curve
+        ctx.lineTo(110, 80);
+        ctx.quadraticCurveTo(50, 90, 50, 150);
+        ctx.lineTo(50, 310);
+        ctx.quadraticCurveTo(50, 350, 100, 350);
+        // Bottom boom outlet
+        ctx.lineTo(240, 350);
+        ctx.quadraticCurveTo(290, 350, 290, 310);
+        ctx.lineTo(290, 150);
+        ctx.quadraticCurveTo(290, 90, 230, 80);
+        ctx.lineTo(230, 50);
+        ctx.stroke();
+        ctx.fill();
+
+        // 2. TANK BASE GRID / MEASUREMENT MARKS
+        ctx.strokeStyle = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)";
+        ctx.lineWidth = 1.5;
+        for (let y = 110; y < 350; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(50, y);
+            ctx.lineTo(75, y);
+            ctx.moveTo(265, y);
+            ctx.lineTo(290, y);
+            ctx.stroke();
+
+            ctx.fillStyle = isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)";
+            ctx.font = "9px monospace";
+            ctx.fillText((350 - y) * 2 + " L", 82, y + 3);
+        }
+
+        // 3. FLUID SIMULATION COLOR CALCULATIONS
+        // Blend colors based on added chemicals
+        let fluidColor = "rgba(46, 204, 113, 0.25)"; // default cyan/blue-green clean water
+        
+        if (addedChemicals.length > 0) {
+            let r = 46, g = 204, b = 113, count = 1;
+            
+            addedChemicals.forEach(c => {
+                if (c.formulation === "WP") { r += 200; g += 200; b += 200; } // whitening
+                else if (c.formulation === "SC") { r += 33; g += 150; b += 243; } // bluing
+                else if (c.formulation === "EC") { r += 156; g += 39; b += 176; } // purpling
+                else if (c.formulation === "SL") { r += 76; g += 175; b += 80; } // greening
+                else if (c.formulation === "GUBRE") { r += 255; g += 152; b += 0; } // oranging
+                count++;
+            });
+            
+            fluidColor = `rgba(${Math.round(r/count)}, ${Math.round(g/count)}, ${Math.round(b/count)}, 0.45)`;
+        }
+
+        // Draw Liquid Base polygon matching Tank glass boundaries
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(50, 310);
+        ctx.lineTo(50, 220); // wave level start
+
+        // Create animated waves top line
+        let currentWaveY = waves[0].y;
+        
+        // Increase wave turbulence if agitator is ON
+        if (isAgitatorOn) {
+            waves[0].amplitude = 10;
+            waves[0].speed = 0.08;
+            waves[1].amplitude = 7;
+            waves[1].speed = -0.1;
+        } else {
+            waves[0].amplitude = 3;
+            waves[0].speed = 0.02;
+            waves[1].amplitude = 2;
+            waves[1].speed = -0.02;
+        }
+
+        waves.forEach((w, wIdx) => {
+            w.angle += w.speed;
+        });
+
+        // Generate wave curve points
+        for (let x = 50; x <= 290; x++) {
+            let y = waves[0].y + Math.sin(x * waves[0].length + waves[0].angle) * waves[0].amplitude;
+            y += Math.cos(x * waves[1].length + waves[1].angle) * waves[1].amplitude;
+            ctx.lineTo(x, y);
+            if (x === 290) currentWaveY = y;
+        }
+
+        ctx.lineTo(290, 310);
+        ctx.quadraticCurveTo(290, 350, 240, 350);
+        ctx.lineTo(100, 350);
+        ctx.quadraticCurveTo(50, 350, 50, 310);
+        ctx.closePath();
+
+        ctx.fillStyle = fluidColor;
+        ctx.fill();
+        ctx.restore();
+
+        // 4. DRAW PHYSIC PARTICLES INSIDE FLUID
+        particles.forEach((p, idx) => {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.alpha;
+            ctx.fill();
+            ctx.restore();
+
+            // Particle movement physics
+            // Sink particle until it reaches bottom boundary or floats based on agitator
+            if (isAgitatorOn) {
+                // Swirl particles in circle
+                const dx = p.x - 170;
+                const dy = p.y - 250;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                // Rotational forces
+                p.vx = -dy * 0.04;
+                p.vy = dx * 0.04;
+
+                // Add random agitation jitter
+                p.vx += (Math.random() - 0.5) * 1.5;
+                p.vy += (Math.random() - 0.5) * 1.5;
+            } else {
+                // Natural gravitational drift
+                if (p.type === "WP") {
+                    // Powder sinks slowly to bottom
+                    p.vy = 0.5 + Math.random() * 0.3;
+                    p.vx = (Math.random() - 0.5) * 0.4;
+                } else if (p.type === "EC" || p.type === "YAYICI") {
+                    // Emulsion / surfactants float up
+                    p.vy = -0.4 - Math.random() * 0.2;
+                    p.vx = (Math.random() - 0.5) * 0.5;
+                } else {
+                    // SC / SL slowly disperses outwards
+                    p.vx = (Math.random() - 0.5) * 0.6;
+                    p.vy = (Math.random() - 0.5) * 0.6;
+                }
+            }
+
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Keep within liquid boundaries
+            if (p.y < 210) { p.y = 210; p.vy = -p.vy; }
+            if (p.y > 342) { p.y = 342; p.vy = -p.vy; }
+            if (p.x < 56) { p.x = 56; p.vx = -p.vx; }
+            if (p.x > 284) { p.x = 284; p.vx = -p.vx; }
+
+            // Slowly decay / blend transparency
+            p.alpha -= p.decay;
+        });
+
+        // Filter out completely decayed particles
+        particles = particles.filter(p => p.alpha > 0.05);
+
+        // 5. SPRAY BOOM MIST MICRO-ANIMATION
+        if (isSprayingMist) {
+            ctx.save();
+            // Draw boom at bottom
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(80, 375);
+            ctx.lineTo(260, 375);
+            ctx.stroke();
+
+            // Draw nozzles
+            ctx.fillStyle = "#888";
+            for (let nx = 90; nx <= 250; nx += 40) {
+                ctx.fillRect(nx - 3, 375, 6, 6);
+                
+                // Draw fine spray mist triangles
+                let gradient = ctx.createLinearGradient(nx, 381, nx, 400);
+                gradient.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+                if (addedChemicals.length > 0) {
+                    gradient.addColorStop(0.3, fluidColor);
+                }
+                gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(nx, 381);
+                ctx.lineTo(nx - 20, 400);
+                ctx.lineTo(nx + 20, 400);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        // Continue loop
+        animationId = requestAnimationFrame(renderTankLoop);
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    if (typeof logout !== 'function') {
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = 'login.html';
+        }
+    }
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

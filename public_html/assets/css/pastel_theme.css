@@ -1,0 +1,515 @@
+/* ==========================================================================
+   Foliar / Bahçe Yönetim Sistemi - Profesyonel Pastel Tasarım Sistemi
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Genel Zemin & Tipografi */
+    --p-font-base: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --p-font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    
+    --p-canvas: #f4f6f4;
+    --p-canvas-soft: #edf1ed;
+    --p-surface: #ffffff;
+    --p-surface-elevated: #ffffff;
+    
+    --p-text-main: #232b27;
+    --p-text-muted: #64746a;
+    --p-text-subtle: #8a9990;
+    --p-border: rgba(45, 75, 60, 0.08);
+    --p-border-hover: rgba(58, 117, 89, 0.22);
+    
+    /* Gölgeler (Katmanlı ve Yumuşak) */
+    --p-shadow-sm: 0 2px 8px -2px rgba(28, 48, 38, 0.05);
+    --p-shadow-card: 0 10px 24px -6px rgba(28, 48, 38, 0.05), 0 3px 8px -2px rgba(28, 48, 38, 0.03);
+    --p-shadow-hover: 0 22px 38px -10px rgba(32, 60, 48, 0.12), 0 8px 16px -4px rgba(32, 60, 48, 0.05);
+    
+    /* 1. Pastel Sage (Adaçayı / Zirai Ana Vurgu) */
+    --p-sage-bg: #eaf3ed;
+    --p-sage-border: rgba(58, 117, 89, 0.2);
+    --p-sage-text: #2b5d44;
+    --p-sage-btn: #3b7457;
+    --p-sage-btn-hover: #2e6047;
+    --p-sage-glow: rgba(59, 116, 87, 0.22);
+    
+    /* 2. Pastel Terracotta (Sıcak Toprak / Şeftali / Ajanda / Finans) */
+    --p-terracotta-bg: #faeee6;
+    --p-terracotta-border: rgba(199, 110, 75, 0.2);
+    --p-terracotta-text: #a85430;
+    --p-terracotta-btn: #c46d49;
+    --p-terracotta-btn-hover: #ad5c39;
+    --p-terracotta-glow: rgba(196, 109, 73, 0.22);
+    
+    /* 3. Pastel Slate Blue (Huzurlu Mavi / Sulama & Meteoroloji) */
+    --p-slate-bg: #e9f2f5;
+    --p-slate-border: rgba(71, 124, 144, 0.2);
+    --p-slate-text: #325e6e;
+    --p-slate-btn: #477c90;
+    --p-slate-btn-hover: #386778;
+    --p-slate-glow: rgba(71, 124, 144, 0.22);
+    
+    /* 4. Pastel Dusty Rose (Yumuşak Gül Kurusu / Koruma & Zararlı) */
+    --p-rose-bg: #faeaeb;
+    --p-rose-border: rgba(184, 91, 99, 0.2);
+    --p-rose-text: #944249;
+    --p-rose-btn: #b65860;
+    --p-rose-btn-hover: #9c454d;
+    --p-rose-glow: rgba(182, 88, 96, 0.22);
+    
+    /* 5. Pastel Dusty Lavender (Sakin Lavanta / İnsan & Puantaj & İletişim) */
+    --p-lavender-bg: #f0eff7;
+    --p-lavender-border: rgba(109, 100, 153, 0.2);
+    --p-lavender-text: #534a78;
+    --p-lavender-btn: #6c6399;
+    --p-lavender-btn-hover: #574e82;
+    --p-lavender-glow: rgba(108, 99, 153, 0.22);
+    
+    /* 6. Pastel Warm Amber / Sand (Ilık Kum & Analiz) */
+    --p-amber-bg: #fbf5e7;
+    --p-amber-border: rgba(168, 137, 58, 0.2);
+    --p-amber-text: #7d6423;
+    --p-amber-btn: #a18335;
+    --p-amber-btn-hover: #886d28;
+    --p-amber-glow: rgba(161, 131, 53, 0.22);
+
+    /* Geçişler */
+    --p-transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ==========================================================================
+   Temel Stil Sıfırlama ve Gövde
+   ========================================================================== */
+body.pastel-theme {
+    background-color: var(--p-canvas);
+    color: var(--p-text-main);
+    font-family: var(--p-font-base);
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   Hero Başlık Alanı (Zarif Pastel Botanik)
+   ========================================================================== */
+.pastel-hero {
+    position: relative;
+    background: linear-gradient(135deg, #244638 0%, #2f5645 45%, #3c6b56 100%);
+    color: #ffffff;
+    padding: 65px 0 75px;
+    border-bottom-left-radius: 40px;
+    border-bottom-right-radius: 40px;
+    margin-bottom: -35px;
+    overflow: hidden;
+    box-shadow: 0 16px 36px -12px rgba(28, 48, 38, 0.25);
+}
+
+.pastel-hero::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(165, 214, 185, 0.18) 0%, rgba(36, 70, 56, 0) 70%);
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+.pastel-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -5%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(138, 186, 161, 0.12) 0%, rgba(36, 70, 56, 0) 70%);
+    pointer-events: none;
+    border-radius: 50%;
+}
+
+.pastel-hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.pastel-hero h1 {
+    font-family: var(--p-font-heading);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: #ffffff;
+}
+
+.pastel-hero .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #f1f8f4;
+    padding: 7px 18px;
+    border-radius: 50px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ==========================================================================
+   Hızlı Filtre / Kategori Seçici Barı
+   ========================================================================== */
+.pastel-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    position: relative;
+    z-index: 5;
+}
+
+.pastel-filter-pill {
+    background: #ffffff;
+    border: 1px solid var(--p-border);
+    color: var(--p-text-muted);
+    padding: 8px 18px;
+    border-radius: 50px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--p-transition);
+    box-shadow: var(--p-shadow-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+}
+
+.pastel-filter-pill:hover {
+    background: #fbfdfb;
+    border-color: var(--p-border-hover);
+    color: var(--p-text-main);
+    transform: translateY(-2px);
+}
+
+.pastel-filter-pill.active {
+    background: var(--p-sage-btn);
+    color: #ffffff;
+    border-color: var(--p-sage-btn);
+    box-shadow: 0 4px 14px var(--p-sage-glow);
+}
+
+/* ==========================================================================
+   Pastel Kart Sistemi
+   ========================================================================== */
+.pastel-card {
+    position: relative;
+    background: var(--p-surface);
+    border: 1px solid var(--p-border);
+    border-radius: 24px;
+    padding: 28px 24px 24px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    transition: var(--p-transition);
+    box-shadow: var(--p-shadow-card);
+    overflow: hidden;
+}
+
+.pastel-card:hover {
+    transform: translateY(-7px);
+    box-shadow: var(--p-shadow-hover);
+    border-color: var(--p-border-hover);
+}
+
+/* Üst Renk Şeridi */
+.pastel-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: transparent;
+    transition: var(--p-transition);
+}
+
+.pastel-card-sage::before { background: var(--p-sage-btn); }
+.pastel-card-terracotta::before { background: var(--p-terracotta-btn); }
+.pastel-card-slate::before { background: var(--p-slate-btn); }
+.pastel-card-rose::before { background: var(--p-rose-btn); }
+.pastel-card-lavender::before { background: var(--p-lavender-btn); }
+.pastel-card-amber::before { background: var(--p-amber-btn); }
+
+/* Kategori Rozeti (Badge) */
+.pastel-card-category {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+    display: inline-block;
+}
+
+.pastel-card-sage .pastel-card-category { color: var(--p-sage-text); }
+.pastel-card-terracotta .pastel-card-category { color: var(--p-terracotta-text); }
+.pastel-card-slate .pastel-card-category { color: var(--p-slate-text); }
+.pastel-card-rose .pastel-card-category { color: var(--p-rose-text); }
+.pastel-card-lavender .pastel-card-category { color: var(--p-lavender-text); }
+.pastel-card-amber .pastel-card-category { color: var(--p-amber-text); }
+
+/* İkon Kapsayıcısı */
+.pastel-icon-wrapper {
+    width: 68px;
+    height: 68px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    margin: 0 auto 16px;
+    font-size: 1.85rem;
+    transition: var(--p-transition);
+}
+
+.pastel-card:hover .pastel-icon-wrapper {
+    transform: scale(1.08) rotate(2deg);
+}
+
+.pastel-card-sage .pastel-icon-wrapper {
+    background: var(--p-sage-bg);
+    color: var(--p-sage-text);
+}
+.pastel-card-terracotta .pastel-icon-wrapper {
+    background: var(--p-terracotta-bg);
+    color: var(--p-terracotta-text);
+}
+.pastel-card-slate .pastel-icon-wrapper {
+    background: var(--p-slate-bg);
+    color: var(--p-slate-text);
+}
+.pastel-card-rose .pastel-icon-wrapper {
+    background: var(--p-rose-bg);
+    color: var(--p-rose-text);
+}
+.pastel-card-lavender .pastel-icon-wrapper {
+    background: var(--p-lavender-bg);
+    color: var(--p-lavender-text);
+}
+.pastel-card-amber .pastel-icon-wrapper {
+    background: var(--p-amber-bg);
+    color: var(--p-amber-text);
+}
+
+/* Başlık ve Metin */
+.pastel-card-title {
+    font-family: var(--p-font-heading);
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+    color: var(--p-text-main);
+    margin-bottom: 8px;
+}
+
+.pastel-card-text {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--p-text-muted);
+    flex-grow: 1;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   Pastel Butonlar
+   ========================================================================== */
+.btn-pastel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--p-font-base);
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 12px 24px;
+    border-radius: 50px;
+    border: none;
+    text-decoration: none;
+    transition: var(--p-transition);
+    width: 100%;
+}
+
+.btn-pastel-sage {
+    background: var(--p-sage-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-sage-glow);
+}
+.btn-pastel-sage:hover {
+    background: var(--p-sage-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-sage-glow);
+    transform: translateY(-2px);
+}
+
+.btn-pastel-terracotta {
+    background: var(--p-terracotta-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-terracotta-glow);
+}
+.btn-pastel-terracotta:hover {
+    background: var(--p-terracotta-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-terracotta-glow);
+    transform: translateY(-2px);
+}
+
+.btn-pastel-slate {
+    background: var(--p-slate-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-slate-glow);
+}
+.btn-pastel-slate:hover {
+    background: var(--p-slate-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-slate-glow);
+    transform: translateY(-2px);
+}
+
+.btn-pastel-rose {
+    background: var(--p-rose-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-rose-glow);
+}
+.btn-pastel-rose:hover {
+    background: var(--p-rose-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-rose-glow);
+    transform: translateY(-2px);
+}
+
+.btn-pastel-lavender {
+    background: var(--p-lavender-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-lavender-glow);
+}
+.btn-pastel-lavender:hover {
+    background: var(--p-lavender-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-lavender-glow);
+    transform: translateY(-2px);
+}
+
+.btn-pastel-amber {
+    background: var(--p-amber-btn);
+    color: #ffffff;
+    box-shadow: 0 4px 14px var(--p-amber-glow);
+}
+.btn-pastel-amber:hover {
+    background: var(--p-amber-btn-hover);
+    color: #ffffff;
+    box-shadow: 0 8px 20px var(--p-amber-glow);
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Zirai Takvimler Özel Kartı & Meyve Butonları
+   ========================================================================== */
+.fruit-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 16px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: var(--p-transition);
+    border: 1px solid transparent;
+}
+
+.fruit-pill-apple {
+    background: #eaf5eb;
+    color: #2b6139;
+    border-color: rgba(43, 97, 57, 0.15);
+}
+.fruit-pill-apple:hover {
+    background: #3b7e4f;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(59, 126, 79, 0.22);
+}
+
+.fruit-pill-cherry {
+    background: #faeaed;
+    color: #8c2e42;
+    border-color: rgba(140, 46, 66, 0.15);
+}
+.fruit-pill-cherry:hover {
+    background: #a33850;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(163, 56, 80, 0.22);
+}
+
+.fruit-pill-apricot {
+    background: #fbf0e6;
+    color: #a85827;
+    border-color: rgba(168, 88, 39, 0.15);
+}
+.fruit-pill-apricot:hover {
+    background: #c26932;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(194, 105, 50, 0.22);
+}
+
+.fruit-pill-peach {
+    background: #fdf1ed;
+    color: #ab5738;
+    border-color: rgba(171, 87, 56, 0.15);
+}
+.fruit-pill-peach:hover {
+    background: #bd6242;
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(189, 98, 66, 0.22);
+}
+
+/* ==========================================================================
+   Arama Çubuğu (Hero Altı Hızlı Erişim)
+   ========================================================================== */
+.pastel-search-box {
+    max-width: 520px;
+    margin: 0 auto 30px;
+    position: relative;
+}
+
+.pastel-search-input {
+    width: 100%;
+    padding: 14px 22px 14px 50px;
+    border-radius: 50px;
+    border: 1px solid var(--p-border);
+    background: #ffffff;
+    font-family: var(--p-font-base);
+    font-size: 0.95rem;
+    color: var(--p-text-main);
+    box-shadow: var(--p-shadow-card);
+    transition: var(--p-transition);
+    outline: none;
+}
+
+.pastel-search-input:focus {
+    border-color: var(--p-sage-btn);
+    box-shadow: 0 0 0 4px rgba(59, 116, 87, 0.14);
+}
+
+.pastel-search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--p-text-subtle);
+    font-size: 1.1rem;
+    pointer-events: none;
+}

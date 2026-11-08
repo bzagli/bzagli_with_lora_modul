@@ -1,0 +1,2316 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meyve Besleme Programı ve Gübreleme Yönetimi - Bahçe Yönetimi</title>
+
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- SheetJS (xlsx) for Excel Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Navbar Custom CSS -->
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+
+    <style>
+        :root {
+            --fert-emerald: #0b6e4f;
+            --fert-leaf: #2e7d32;
+            --fert-light: #e8f5e9;
+            --fert-amber: #f59e0b;
+            --fert-sky: #0288d1;
+            --fert-surface: #ffffff;
+            --fert-bg: #f4f7f6;
+            --fert-border: #e2e8f0;
+            --shadow-sm: 0 4px 14px rgba(11, 110, 79, 0.06);
+            --shadow-md: 0 8px 24px rgba(11, 110, 79, 0.10);
+            
+            /* Program Crop Colors */
+            --crop-elma: #b8322a;
+            --crop-seftali: #d9772b;
+            --crop-kayisi: #c99a1d;
+            --crop-kiraz: #8c1d3f;
+            --prog-head: #f0efe8;
+            --prog-sum: #f4f8f4;
+            --prog-warn: #8a5a00;
+            --prog-warn-soft: #fbf1dc;
+            --prog-accent-soft: #e5f1e6;
+        }
+
+        body {
+            background-color: var(--fert-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, h5, h6, .brand-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Hero Banner */
+        .fert-hero {
+            background: linear-gradient(135deg, #0b3d2e 0%, #135d44 55%, #1f8a65 100%);
+            color: #ffffff;
+            padding: 32px 0 48px;
+            border-bottom-left-radius: 28px;
+            border-bottom-right-radius: 28px;
+            margin-bottom: -28px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(11, 61, 46, 0.25);
+        }
+        .fert-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 16px;
+            padding: 18px 22px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.25s ease;
+            height: 100%;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: #86efac;
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        /* Navigation Pills / Tabs */
+        .nav-pills-fert .nav-link {
+            color: #475569;
+            font-weight: 600;
+            border-radius: 12px;
+            padding: 10px 18px;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        .nav-pills-fert .nav-link.active {
+            background: #0b6e4f;
+            color: #ffffff;
+            border-color: #0b6e4f;
+            box-shadow: 0 4px 12px rgba(11, 110, 79, 0.25);
+        }
+        .nav-pills-fert .nav-link:hover:not(.active) {
+            background: #f1f5f9;
+            color: #0f172a;
+        }
+
+        /* Crop Navigation Pills */
+        .crop-nav-pill {
+            border-radius: 50rem;
+            padding: 6px 16px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .crop-nav-pill:hover, .crop-nav-pill.active {
+            background: #1e293b;
+            color: #ffffff;
+            border-color: #1e293b;
+        }
+        .crop-nav-pill.active.crop-elma-pill { background: var(--crop-elma); border-color: var(--crop-elma); }
+        .crop-nav-pill.active.crop-seftali-pill { background: var(--crop-seftali); border-color: var(--crop-seftali); }
+        .crop-nav-pill.active.crop-kayisi-pill { background: var(--crop-kayisi); border-color: var(--crop-kayisi); }
+        .crop-nav-pill.active.crop-kiraz-pill { background: var(--crop-kiraz); border-color: var(--crop-kiraz); }
+
+        /* Card Container */
+        .main-card {
+            background: #ffffff;
+            border: none;
+            border-radius: 18px;
+            box-shadow: var(--shadow-sm);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        /* Filter Box */
+        .filter-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        /* Program Section Styles */
+        section.crop-section {
+            border-top: 5px solid var(--crop-color, #0b6e4f);
+            border-radius: 16px;
+            background: #ffffff;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+            margin: 16px 0 20px;
+        }
+        .kpi {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+        .kpi b {
+            display: block;
+            font-size: 22px;
+            line-height: 1.2;
+            color: var(--crop-color, #0b6e4f);
+        }
+        .kpi span {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* Table Styling */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 12px 0 18px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+        }
+        .prog-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.88rem;
+            margin-bottom: 0;
+        }
+        .prog-table th, .prog-table td {
+            padding: 9px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        .prog-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+        }
+        .prog-table td.n, .prog-table th.n {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .prog-table td.dash {
+            color: #94a3b8;
+            text-align: right;
+        }
+        .prog-table tr.sum td {
+            background: #f0fdf4;
+            font-style: italic;
+            font-weight: 600;
+        }
+        .prog-table td.tot, .prog-table th.tot {
+            font-weight: 700;
+            background: #f1f5f9;
+        }
+        .prog-table tr.sep td {
+            border-top: 2px solid #cbd5e1;
+        }
+        .prog-table td small {
+            display: block;
+            font-weight: 400;
+            color: #64748b;
+            font-size: 11px;
+        }
+        .prog-table td.over {
+            color: #b45309;
+            font-weight: 700;
+            background-color: #fef3c7;
+        }
+
+        /* Notes & Warnings */
+        .note-box {
+            background: var(--prog-warn-soft);
+            border-left: 4px solid var(--prog-warn);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 14px 0;
+            font-size: 0.9rem;
+            color: #78350f;
+        }
+        .note-box.info {
+            background: #ecfdf5;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+
+        /* Fertigasyon Seçici Panel */
+        .picker-panel {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 24px;
+        }
+
+        /* Checkbox Box for Parcels */
+        .parcel-selector-box {
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            background: #ffffff;
+        }
+
+        /* Badges */
+        .badge-fert-method {
+            padding: 5px 10px;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .badge-fert-damlama { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-fert-taban { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .badge-fert-yaprak { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+        .fertilizer-pill {
+            background-color: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 3px 8px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            display: inline-block;
+            margin: 2px 3px 2px 0;
+            color: #334155;
+        }
+
+        .fertilizer-input-row {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        /* Print styles */
+        @media print {
+            .navbar, .fert-hero, .nav-pills-fert, .filter-box, .btn, .no-print, .picker-panel {
+                display: none !important;
+            }
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                font-size: 11px;
+            }
+            .main-card, section.crop-section {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 10px 0 !important;
+            }
+            .prog-table th {
+                background: #f1f5f9 !important;
+                color: #000000 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Unified System Navbar -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><a class="dropdown-item active text-success fw-bold" href="fertilization.html"><i class="bi bi-flower1 me-1 text-success"></i>Gübreleme Yönetimi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                        <span class="badge rounded-pill bg-danger ms-1 d-none" id="navUnreadBadge"></span>
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<header class="fert-hero">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <span class="badge bg-white bg-opacity-20 text-white rounded-pill px-3 py-1 mb-2 font-monospace fs-7">
+                    <i class="bi bi-flower1 me-1"></i> Bitki Besleme ve Fertigasyon Merkezi
+                </span>
+                <h1 class="display-6 fw-bold mb-1">Meyve Besleme Programı</h1>
+                <p class="text-white text-opacity-80 mb-0">
+                    <span id="activeGardenTitle" class="fw-semibold text-white">Bahçe Yükleniyor...</span> &bull; 
+                    Elma, şeftali, kayısı ve kiraz için dinamik fertigasyon motoru, yaprak besleme ve fiili uygulama takibi
+                </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-light fw-bold text-success shadow-sm rounded-pill px-3 py-2" onclick="openNewFertilizerModal()">
+                    <i class="bi bi-plus-circle-fill me-1"></i> Yeni Gübreleme Kaydı
+                </button>
+                <button type="button" class="btn btn-outline-light rounded-pill px-3 py-2" onclick="switchToProgramTab()">
+                    <i class="bi bi-book-half me-1"></i> Besleme Rehberi
+                </button>
+                <button type="button" class="btn btn-outline-light rounded-pill px-3 py-2" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i> Yazdır / PDF
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container my-5">
+    <!-- Stat Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Toplam Gübreleme Kaydı</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0" id="statFertCount">0</h3>
+                    </div>
+                    <div class="stat-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Toplam Gübre Sarfiyatı</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0" id="statTotalFertKg">0 kg</h3>
+                    </div>
+                    <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Beslenen Parsel / Çeşit</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0" id="statParcelCount">0</h3>
+                    </div>
+                    <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold">Depodaki Gübre Çeşidi</div>
+                        <h3 class="fw-bold text-dark mt-1 mb-0" id="statStockFertCount">0</h3>
+                    </div>
+                    <div class="stat-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-basket2-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Pills / Tabs -->
+    <ul class="nav nav-pills nav-pills-fert mb-4" id="fertTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-program-btn" data-bs-toggle="pill" data-bs-target="#tab-program" type="button" role="tab">
+                <i class="bi bi-journal-check me-1"></i> Besleme Rehberi & Programı (01)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-records-btn" data-bs-toggle="pill" data-bs-target="#tab-records" type="button" role="tab">
+                <i class="bi bi-journal-text me-1"></i> Gübreleme Kayıtları (<span id="tabCountRecords">0</span>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-analysis-btn" data-bs-toggle="pill" data-bs-target="#tab-analysis" type="button" role="tab" onclick="renderFertilizerChart()">
+                <i class="bi bi-pie-chart-fill me-1"></i> Parsel Sarfiyat Analizi
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-stock-btn" data-bs-toggle="pill" data-bs-target="#tab-stock" type="button" role="tab">
+                <i class="bi bi-box-seam me-1"></i> Gübre Stok Durumu (<span id="tabCountStock">0</span>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-calculator-btn" data-bs-toggle="pill" data-bs-target="#tab-calculator" type="button" role="tab">
+                <i class="bi bi-calculator-fill me-1"></i> Dozaj & Toprak Analiz Asistanı
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="fertTabContent">
+
+        <!-- ========================================== -->
+        <!-- TAB 1: BESLEME PROGRAMI & REHBERİ (DRIVE 01) -->
+        <!-- ========================================== -->
+        <div class="tab-pane fade show active" id="tab-program" role="tabpanel">
+            
+            <!-- Quick Sub-navigation for Crops & Sections -->
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-4 p-2 bg-white rounded-4 border shadow-sm">
+                <span class="text-muted small fw-bold px-2">Hızlı Filtre / Tür:</span>
+                <button type="button" class="crop-nav-pill active" onclick="filterCropDisplay('all')">
+                    <i class="bi bi-grid-fill"></i> Tümü
+                </button>
+                <button type="button" class="crop-nav-pill crop-elma-pill" onclick="filterCropDisplay('elma')">
+                    🍏 Elma (5 ton/da)
+                </button>
+                <button type="button" class="crop-nav-pill crop-seftali-pill" onclick="filterCropDisplay('seftali')">
+                    🍑 Şeftali / Nektarin
+                </button>
+                <button type="button" class="crop-nav-pill crop-kayisi-pill" onclick="filterCropDisplay('kayisi')">
+                    🍊 Kayısı (2.5 ton/da)
+                </button>
+                <button type="button" class="crop-nav-pill crop-kiraz-pill" onclick="filterCropDisplay('kiraz')">
+                    🍒 Kiraz (1.2 ton/da)
+                </button>
+                <div class="ms-auto d-flex gap-2">
+                    <a href="#secim" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                        <i class="bi bi-sliders me-1"></i> Gübre Seçimi
+                    </a>
+                    <a href="#kurallar" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                        <i class="bi bi-shield-check me-1"></i> A/B Tank Kuralları
+                    </a>
+                </div>
+            </div>
+
+            <div class="note-box">
+                <i class="bi bi-info-circle-fill me-1"></i>
+                <strong>Önemli Başlangıç Notu:</strong> Bu program ortalama koşullar için hazırlanmış bilimsel bir referans programıdır. Kesin dozları toprak, yaprak ve sulama suyu analizleri ile hedef veriminize göre uyarlayınız.
+            </div>
+
+            <!-- İNTERAKTİF GÜBRE SEÇİM PANELİ (DİNAMİK HESAPLAMA MOTORU) -->
+            <div id="secim" class="picker-panel shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold text-success mb-0">
+                        <i class="bi bi-sliders2 me-2"></i>Dinamik Gübre Seçimi ve Fertigasyon Hesaplayıcı
+                    </h5>
+                    <button type="button" id="resetSel" class="btn btn-sm btn-outline-success rounded-pill px-3 bg-white">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Önerilen Standart Seçime Dön
+                    </button>
+                </div>
+                <p class="text-muted small mb-3">
+                    Seçtiğiniz gübre kaynaklarına göre dört meyve türünün fertigasyon tabloları, hedef saf besin (N, P₂O₅, K₂O, CaO, MgO) miktarlarına göre anlık yeniden hesaplanır.
+                </p>
+                <div class="row g-3">
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Fosfor Kaynağı</label>
+                        <select class="form-select form-select-sm" data-role="P">
+                            <option value="MAP">MAP (12-61-0)</option>
+                            <option value="MKP">MKP (0-52-34)</option>
+                            <option value="PA">Fosforik asit (%85)</option>
+                            <option value="UP">Üre fosfat (17-44-0)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Azot Kaynağı (Kalan N)</label>
+                        <select class="form-select form-select-sm" data-role="N">
+                            <option value="AS">Amonyum sülfat (%21 N)</option>
+                            <option value="URE">Üre (%46 N)</option>
+                            <option value="AN">Amonyum nitrat (%33 N)</option>
+                            <option value="UAN">UAN-32 sıvı (%32 N)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Potasyum Kaynağı</label>
+                        <select class="form-select form-select-sm" data-role="K">
+                            <option value="MIX">Potasyum nitrat + Potasyum sülfat</option>
+                            <option value="SOP">Sadece potasyum sülfat</option>
+                            <option value="PN">Sadece potasyum nitrat</option>
+                            <option value="KTS">Potasyum tiyosülfat (sıvı)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Kalsiyum Kaynağı</label>
+                        <select class="form-select form-select-sm" data-role="Ca">
+                            <option value="CN">Kalsiyum nitrat (granül)</option>
+                            <option value="CNL">Sıvı kalsiyum nitrat</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Magnezyum Kaynağı</label>
+                        <select class="form-select form-select-sm" data-role="Mg">
+                            <option value="MGS">Magnezyum sülfat</option>
+                            <option value="MGN">Magnezyum nitrat</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 col-lg-2">
+                        <label class="form-label small fw-semibold text-dark">Tablo Gösterimi</label>
+                        <select class="form-select form-select-sm" data-role="view">
+                            <option value="period">Dönem toplamı (kg/da)</option>
+                            <option value="week">Haftalık (kg/da/hafta)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="selNotes" class="mt-2"></div>
+            </div>
+
+            <!-- 1. ELMA -->
+            <section id="section-elma" class="crop-section" style="--crop-color: var(--crop-elma)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="fw-bold mb-1" style="color: var(--crop-elma)">
+                            🍏 1. Elma Besleme Programı
+                        </h3>
+                        <p class="text-muted small mb-0">Verim çağında, yarı bodur / bodur anaçlı (M9, MM106) bahçe &bull; <strong>Hedef Verim: 5 ton/da</strong></p>
+                    </div>
+                    <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2">Orta Anadolu & Geçit Bölgesi</span>
+                </div>
+
+                <div class="kpis">
+                    <div class="kpi"><b>12</b><span>N kg/da</span></div>
+                    <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+                    <div class="kpi"><b>18</b><span>K₂O kg/da</span></div>
+                    <div class="kpi"><b>8</b><span>CaO kg/da</span></div>
+                    <div class="kpi"><b>3</b><span>MgO kg/da</span></div>
+                </div>
+
+                <h6 class="fw-bold text-secondary text-uppercase mt-3 mb-2"><i class="bi bi-clock-history me-1"></i>Fenolojik Dönemler</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık Tarih</th><th>Süre</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>D1</strong></td><td>Uyanma – pembe tomurcuk</td><td>Mart sonu – Nisan başı</td><td>2 hafta</td></tr>
+                            <tr><td><strong>D2</strong></td><td>Çiçeklenme – meyve tutumu</td><td>Nisan</td><td>3 hafta</td></tr>
+                            <tr><td><strong>D3</strong></td><td>Hücre bölünmesi (meyve 10–40 mm)</td><td>Mayıs – Haziran ortası</td><td>6 hafta</td></tr>
+                            <tr><td><strong>D4</strong></td><td>Hızlı meyve büyümesi</td><td>Haziran ortası – Ağustos başı</td><td>7 hafta</td></tr>
+                            <tr><td><strong>D5</strong></td><td>Olgunlaşma – hasat</td><td>Ağustos – Eylül</td><td>4–5 hafta</td></tr>
+                            <tr><td><strong>D6</strong></td><td>Hasat sonrası (yaprak dökümüne kadar)</td><td>Eylül sonu – Ekim</td><td>4 hafta</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3 mb-1">
+                    <h6 class="fw-bold text-success text-uppercase mb-0"><i class="bi bi-droplet-half me-1"></i>Fertigasyon Programı (Dinamik Hesaplanır)</h6>
+                    <small class="text-muted">Seçilen gübre kaynaklarına göre anlık güncellenir</small>
+                </div>
+                <div class="fert" data-crop="elma"></div>
+
+                <div class="note-box">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                    <strong>Renk ve Depolama Uyarısı:</strong> Kırmızı çeşitlerde (Red Delicious, Gala, Fuji) D4'teki kalsiyum nitratı yarıya indirip eksik kalsiyumu yapraktan tamamlayın; geç dönemde fazla azot renklenmeyi ve sertliği bozar.
+                </div>
+
+                <h6 class="fw-bold text-primary text-uppercase mt-4 mb-2"><i class="bi bi-flower2 me-1"></i>Yaprak Gübrelemesi Programı</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Uygulama Zamanı</th><th>Uygulanacak Ürün / Gübre</th><th>Doz (100 L Suya)</th><th>Uygulama Amacı</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Göz kabarması (dormant)</td><td>Çinko sülfat (%22 Zn)</td><td>1–1,5 kg</td><td>Çinko eksikliği; sadece dormant dönemde</td></tr>
+                            <tr><td>Pembe tomurcuk</td><td>Bor (sodyum oktaborat, %20,5 B)</td><td>100–150 g</td><td>Polen çimlenmesi, meyve tutumu</td></tr>
+                            <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100–150 g + 150–200 ml</td><td>Meyve tutumu, yaprak gelişimi</td></tr>
+                            <tr><td>Taç yaprak dökümünden itibaren 10–14 gün arayla 6–8 kez</td><td>Kalsiyum klorür (%77–80)</td><td>İlk 2 uygulama 250 g, sonra 400–500 g</td><td>Acı benek, sertlik, depolama ömrü</td></tr>
+                            <tr><td>Haziran – Temmuz (gerekirse)</td><td>Magnezyum sülfat</td><td>1–1,5 kg</td><td>Mg eksikliği görülürse 2–3 kez</td></tr>
+                            <tr><td>Hasattan 4–6 hafta önce</td><td>Kalsiyum klorür</td><td>500 g</td><td>Depolama kalitesi (2 kez)</td></tr>
+                            <tr><td>Hasat sonrası, yapraklar yeşilken</td><td>Üre (düşük biüretli) + bor</td><td>3–4 kg + 150–200 g</td><td>Çiçek gözü beslenmesi; karaleke inokulumunu azaltır</td></tr>
+                            <tr><td>Yaprak dökümünün %50'si</td><td>Çinko sülfat</td><td>0,5–1 kg</td><td>Gelecek yıl için çinko depolanması</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold text-dark text-uppercase mt-3 mb-2"><i class="bi bi-lightbulb-fill text-warning me-1"></i>Elmada Kritik Noktalar</h6>
+                <ul class="small text-muted mb-0">
+                    <li>Acı benek riski yüksek çeşitlerde (Golden, Granny Smith, Braeburn, Jonagold) kalsiyum klorürü 8–10 kez uygulayın, seyreltmeyi aşırı yapmayın.</li>
+                    <li>Meyvede fazla potasyum kalsiyum alımını baskılar ve acı beneği artırır; yaprakta K &gt; %1,8 ise potasyum sülfatı azaltın.</li>
+                    <li>Kireçli topraklarda demir klorozu için uyanma ile Mayıs arasında 2 kez <strong>Fe-EDDHA (%6, orto-orto en az %4), 0,5–1 kg/da</strong> fertigasyonla verilir.</li>
+                </ul>
+            </section>
+
+            <!-- 2. ŞEFTALİ VE NEKTARİN -->
+            <section id="section-seftali" class="crop-section" style="--crop-color: var(--crop-seftali)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="fw-bold mb-1" style="color: var(--crop-seftali)">
+                            🍑 2. Şeftali ve Nektarin Besleme Programı
+                        </h3>
+                        <p class="text-muted small mb-0">Verim çağında, orta mevsim çeşitli bahçe &bull; <strong>Hedef Verim: 3,5 ton/da</strong></p>
+                    </div>
+                    <span class="badge rounded-pill bg-warning bg-opacity-25 text-dark border border-warning-subtle px-3 py-2">Temmuz - Ağustos Hasadı</span>
+                </div>
+
+                <div class="kpis">
+                    <div class="kpi"><b>13</b><span>N kg/da</span></div>
+                    <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+                    <div class="kpi"><b>18</b><span>K₂O kg/da</span></div>
+                    <div class="kpi"><b>6</b><span>CaO kg/da</span></div>
+                    <div class="kpi"><b>3</b><span>MgO kg/da</span></div>
+                </div>
+
+                <h6 class="fw-bold text-secondary text-uppercase mt-3 mb-2"><i class="bi bi-clock-history me-1"></i>Fenolojik Dönemler</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık Tarih</th><th>Süre</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>D1</strong></td><td>Uyanma – çiçeklenme</td><td>Mart</td><td>3 hafta</td></tr>
+                            <tr><td><strong>D2</strong></td><td>Meyve tutumu – hücre bölünmesi</td><td>Nisan – Mayıs başı</td><td>4 hafta</td></tr>
+                            <tr><td><strong>D3</strong></td><td>Çekirdek sertleşmesi</td><td>Mayıs – Haziran başı</td><td>4 hafta</td></tr>
+                            <tr><td><strong>D4</strong></td><td>Son hızlı meyve büyümesi – hasat</td><td>Haziran – Temmuz/Ağustos</td><td>5–6 hafta</td></tr>
+                            <tr><td><strong>D5</strong></td><td>Hasat sonrası</td><td>Ağustos – Ekim</td><td>6–8 hafta</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold text-success text-uppercase mt-3 mb-1"><i class="bi bi-droplet-half me-1"></i>Fertigasyon Programı</h6>
+                <div class="fert" data-crop="seftali"></div>
+
+                <div class="note-box info">
+                    <strong>Erkenci ve Geççi Çeşitler:</strong><br>
+                    &bull; <strong>Erkenci çeşitler:</strong> D2–D4 tek bir 6–7 haftalık döneme sıkışır. Hasat öncesi N'yi %10 azaltın; hasat sonrası N payını %30'a, K payını %20'ye çıkarın.<br>
+                    &bull; <strong>Geççi çeşitler:</strong> D4'ü 8–9 haftaya yayın, potasyum sülfatı 4 kg artırın.
+                </div>
+
+                <h6 class="fw-bold text-primary text-uppercase mt-4 mb-2"><i class="bi bi-flower2 me-1"></i>Yaprak Gübrelemesi Programı</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L Suya)</th><th>Amaç</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Pembe tomurcuk</td><td>Bor (%20,5 B)</td><td>100 g</td><td>Meyve tutumu</td></tr>
+                            <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100 g + 150–200 ml</td><td>Meyve tutumu, sürgün gelişimi</td></tr>
+                            <tr><td>Meyve tutumundan sonra 10–14 gün arayla 3–4 kez</td><td>Kalsiyum klorür veya kalsiyum şelatı</td><td>250–400 g / etikete göre</td><td>Sertlik; nektarinde çatlama ve yara önleme</td></tr>
+                            <tr><td>Hasattan 3–4 hafta önce</td><td>Potasyum nitrat veya potasyum sülfat</td><td>1 kg</td><td>Renk, şeker (2 kez)</td></tr>
+                            <tr><td>Hasat sonrası</td><td>Üre + bor + çinko şelatı</td><td>2–3 kg + 150 g + 100 g</td><td>Çiçek gözü beslenmesi</td></tr>
+                            <tr><td>Yaprak dökümünün %25–50'si</td><td>Çinko sülfat</td><td>0,5 kg</td><td>Çinko depolanması</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="small text-muted mb-0">
+                    <strong>Demir Klorozu:</strong> Şeftali kireçli topraklarda kloroza çok hassastır: uyanmadan itibaren 3–4 hafta arayla 2–3 kez <strong>Fe-EDDHA %6, 0,7–1,5 kg/da</strong> verin; şiddetli klorozda yapraktan Fe-DTPA ile destekleyin.
+                </p>
+            </section>
+
+            <!-- 3. KAYISI -->
+            <section id="section-kayisi" class="crop-section" style="--crop-color: var(--crop-kayisi)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="fw-bold mb-1" style="color: var(--crop-kayisi)">
+                            🍊 3. Kayısı Besleme Programı
+                        </h3>
+                        <p class="text-muted small mb-0">Verim çağında sofralık ve kurutmalık bahçe &bull; <strong>Hedef Verim: 2,5 ton/da</strong></p>
+                    </div>
+                    <span class="badge rounded-pill bg-warning text-dark border border-warning-subtle px-3 py-2">Haziran - Temmuz Hasadı</span>
+                </div>
+
+                <div class="kpis">
+                    <div class="kpi"><b>10</b><span>N kg/da</span></div>
+                    <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+                    <div class="kpi"><b>15</b><span>K₂O kg/da</span></div>
+                    <div class="kpi"><b>5</b><span>CaO kg/da</span></div>
+                    <div class="kpi"><b>2,5</b><span>MgO kg/da</span></div>
+                </div>
+
+                <h6 class="fw-bold text-secondary text-uppercase mt-3 mb-2"><i class="bi bi-clock-history me-1"></i>Fenolojik Dönemler</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık Tarih</th><th>Süre</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>D1</strong></td><td>Uyanma – çiçeklenme</td><td>Şubat sonu – Mart</td><td>3 hafta</td></tr>
+                            <tr><td><strong>D2</strong></td><td>Meyve tutumu – hücre bölünmesi</td><td>Nisan</td><td>4 hafta</td></tr>
+                            <tr><td><strong>D3</strong></td><td>Çekirdek sertleşmesi</td><td>Mayıs</td><td>3–4 hafta</td></tr>
+                            <tr><td><strong>D4</strong></td><td>Son meyve büyümesi – hasat</td><td>Mayıs sonu – Haziran/Temmuz</td><td>4–5 hafta</td></tr>
+                            <tr><td><strong>D5</strong></td><td>Hasat sonrası</td><td>Temmuz – Eylül</td><td>6–8 hafta</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold text-success text-uppercase mt-3 mb-1"><i class="bi bi-droplet-half me-1"></i>Fertigasyon Programı</h6>
+                <div class="fert" data-crop="kayisi"></div>
+
+                <div class="note-box">
+                    <i class="bi bi-snow me-1"></i>
+                    <strong>İlkbahar Don Riski:</strong> Kayısı çok erken çiçeklendiğinden D1 azotunu don riski geçene kadar yarı dozla başlatın. Don nedeniyle ürün kaybı olursa D2–D4'teki N ve K'yı %40 azaltın, D5'i aynen uygulayın.
+                </div>
+
+                <h6 class="fw-bold text-primary text-uppercase mt-4 mb-2"><i class="bi bi-flower2 me-1"></i>Yaprak Gübrelemesi Programı</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L Suya)</th><th>Amaç</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Beyaz / pembe tomurcuk</td><td>Bor (%20,5 B)</td><td>100 g</td><td>Meyve tutumu</td></tr>
+                            <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100 g + 150 ml</td><td>Meyve tutumu</td></tr>
+                            <tr><td>Meyve tutumundan sonra 2–3 kez</td><td>Kalsiyum şelatı veya kalsiyum klorür</td><td>Etikete göre / 250–300 g</td><td>Sertlik, kurutma kalitesi</td></tr>
+                            <tr><td>Hasattan 2–3 hafta önce</td><td>Potasyum sülfat</td><td>1 kg</td><td>Renk, kuru madde oranı</td></tr>
+                            <tr><td>Hasat sonrası</td><td>Üre + çinko şelatı</td><td>2 kg + 100 g</td><td>Çiçek gözü beslenmesi</td></tr>
+                            <tr><td>Sonbahar, yapraklar yeşilken</td><td>Bor (%20,5 B)</td><td>150–200 g</td><td>Gelecek yılın çiçek kalitesi (kayısıda en kritik bor dönemi)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 4. KİRAZ -->
+            <section id="section-kiraz" class="crop-section" style="--crop-color: var(--crop-kiraz)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="fw-bold mb-1" style="color: var(--crop-kiraz)">
+                            🍒 4. Kiraz Besleme Programı
+                        </h3>
+                        <p class="text-muted small mb-0">Verim çağında (0900 Ziraat vb.) bahçe &bull; <strong>Hedef Verim: 1,2 ton/da</strong></p>
+                    </div>
+                    <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger border border-danger-subtle px-3 py-2">Mayıs - Haziran Hasadı</span>
+                </div>
+
+                <div class="kpis">
+                    <div class="kpi"><b>8</b><span>N kg/da</span></div>
+                    <div class="kpi"><b>4</b><span>P₂O₅ kg/da</span></div>
+                    <div class="kpi"><b>12</b><span>K₂O kg/da</span></div>
+                    <div class="kpi"><b>5</b><span>CaO kg/da</span></div>
+                    <div class="kpi"><b>2</b><span>MgO kg/da</span></div>
+                </div>
+
+                <h6 class="fw-bold text-secondary text-uppercase mt-3 mb-2"><i class="bi bi-clock-history me-1"></i>Fenolojik Dönemler</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık Tarih</th><th>Süre</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>D1</strong></td><td>Uyanma – çiçeklenme</td><td>Mart – Nisan başı</td><td>3 hafta</td></tr>
+                            <tr><td><strong>D2</strong></td><td>Meyve tutumu – çekirdek sertleşmesi</td><td>Nisan – Mayıs başı</td><td>4 hafta</td></tr>
+                            <tr><td><strong>D3</strong></td><td>Son meyve büyümesi – hasat (saman sarısı → olgunluk)</td><td>Mayıs – Haziran</td><td>4 hafta</td></tr>
+                            <tr><td><strong>D4</strong></td><td>Hasat sonrası (çiçek gözü farklılaşması)</td><td>Haziran sonu – Eylül</td><td>8–10 hafta</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold text-success text-uppercase mt-3 mb-1"><i class="bi bi-droplet-half me-1"></i>Fertigasyon Programı</h6>
+                <div class="fert" data-crop="kiraz"></div>
+
+                <div class="note-box info">
+                    <i class="bi bi-check2-circle me-1"></i>
+                    <strong>Hasat Sonrası Kritik Azot Payı (%30):</strong> Kirazda gelecek yılın çiçek gözleri hasattan hemen sonra oluşur. Bu dönemde beslenmeyen ağaçta ertesi yıl verim ve meyve kalibresi sert şekilde düşer.
+                </div>
+
+                <h6 class="fw-bold text-primary text-uppercase mt-4 mb-2"><i class="bi bi-flower2 me-1"></i>Yaprak Gübrelemesi Programı</h6>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L Suya)</th><th>Amaç</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Beyaz tomurcuk</td><td>Bor (%20,5 B) + çinko şelatı</td><td>100–150 g + 100 g</td><td>Meyve tutumu</td></tr>
+                            <tr><td>Taç yaprak dökümü</td><td>Amino asit + çinko şelatı</td><td>150–200 ml + 100 g</td><td>Meyve tutumu, iri meyve</td></tr>
+                            <tr><td>Saman sarısından hasada 5–7 gün arayla 3–5 kez</td><td>Kalsiyum klorür</td><td>300–500 g</td><td>Meyve çatlamasını azaltma, et sertliği, raf ömrü</td></tr>
+                            <tr><td>Hasattan 2–3 hafta önce</td><td>Potasyum sülfat</td><td>1 kg</td><td>Renk, brix/şeker (1–2 kez)</td></tr>
+                            <tr><td>Hasat sonrası (Temmuz – Ağustos)</td><td>Üre + bor</td><td>2–3 kg + 150 g</td><td>Çiçek gözü kalitesi</td></tr>
+                            <tr><td>Sonbahar, yapraklar yeşilken (Eylül – Ekim)</td><td>Bor</td><td>200 g</td><td>Gelecek yıl meyve tutumu</td></tr>
+                            <tr><td>Yaprak dökümünün %25–50'si</td><td>Çinko sülfat</td><td>0,5 kg</td><td>Çinko depolanması</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- GÜBRE KATALOĞU (A VE B TANKI UYUMLULUĞU) -->
+            <section class="main-card mt-4">
+                <h4 class="fw-bold text-dark mb-2"><i class="bi bi-card-checklist text-success me-2"></i>Gübre Kataloğu ve Tank Yerleşimi</h4>
+                <p class="text-muted small mb-3">Fertigasyonda kimyasal çökelmeyi önlemek için gübreler uygun tanka (A veya B) konulmalıdır.</p>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Gübre Adı</th><th>Besin İçeriği</th><th>Tank Dağılımı</th><th>Ne Zaman Tercih Edilir?</th></tr>
+                        </thead>
+                        <tbody id="catalog"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- UYARLAMA, YAPRAK ANALİZİ VE KURALLAR GRID -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="main-card h-100">
+                        <h5 class="fw-bold text-dark mb-2"><i class="bi bi-file-earmark-medical text-primary me-2"></i>Yaprak Analizi Referans Değerleri</h5>
+                        <p class="text-muted small mb-3">Temmuz ortası – Ağustos ortasında, sürgün ortasından sapıyla alınan yaprak örnekleri için kuru madde esaslı referanslar.</p>
+                        <div class="table-wrap">
+                            <table class="prog-table">
+                                <thead>
+                                    <tr><th>Element</th><th class="n">Elma</th><th class="n">Şeftali</th><th class="n">Kayısı</th><th class="n">Kiraz</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>N (%)</td><td class="n">2,0 – 2,6</td><td class="n">2,8 – 3,5</td><td class="n">2,2 – 2,8</td><td class="n">2,2 – 2,8</td></tr>
+                                    <tr><td>P (%)</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td></tr>
+                                    <tr><td>K (%)</td><td class="n">1,3 – 1,8</td><td class="n">1,5 – 2,5</td><td class="n">2,0 – 3,5</td><td class="n">1,6 – 2,5</td></tr>
+                                    <tr><td>Ca (%)</td><td class="n">1,2 – 2,0</td><td class="n">1,5 – 2,5</td><td class="n">1,5 – 3,0</td><td class="n">1,4 – 2,4</td></tr>
+                                    <tr><td>Mg (%)</td><td class="n">0,25 – 0,40</td><td class="n">0,25 – 0,60</td><td class="n">0,25 – 0,60</td><td class="n">0,30 – 0,70</td></tr>
+                                    <tr><td>Fe (ppm)</td><td class="n">50 – 250</td><td class="n">60 – 250</td><td class="n">60 – 250</td><td class="n">60 – 250</td></tr>
+                                    <tr><td>Zn (ppm)</td><td class="n">20 – 50</td><td class="n">20 – 50</td><td class="n">20 – 50</td><td class="n">15 – 50</td></tr>
+                                    <tr><td>Mn (ppm)</td><td class="n">25 – 150</td><td class="n">20 – 150</td><td class="n">20 – 150</td><td class="n">20 – 150</td></tr>
+                                    <tr><td>B (ppm)</td><td class="n">25 – 50</td><td class="n">25 – 50</td><td class="n">25 – 60</td><td class="n">25 – 50</td></tr>
+                                    <tr><td>Cu (ppm)</td><td class="n">6 – 25</td><td class="n">6 – 20</td><td class="n">6 – 20</td><td class="n">6 – 20</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="main-card h-100" id="kurallar">
+                        <h5 class="fw-bold text-dark mb-2"><i class="bi bi-shield-check text-warning me-2"></i>Uygulama ve Tank Kuralları</h5>
+                        <ul class="small text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Sulama Sırası (1/4 Kuralı):</strong> Sürenin ilk 1/4'ü sadece su, ortadaki 1/2'si gübreli su, son 1/4'ü hatların temiz suyla yıkanması.</li>
+                            <li class="mb-2"><strong>İki Tank Zorunluluğu:</strong>
+                                <br><span class="text-dark fw-semibold">A Tankı:</span> Kalsiyum nitrat (+ potasyum nitrat, demir şelatı).
+                                <br><span class="text-dark fw-semibold">B Tankı:</span> Fosfatlar (MAP, MKP, fosforik asit), sülfatlar (AS, SOP, MgS), potasyum nitrat.
+                                <br><span class="text-danger fw-bold">Kalsiyum ile fosfat veya sülfat aynı tankta asla karıştırılmaz!</span>
+                            </li>
+                            <li class="mb-2"><strong>EC Değeri:</strong> Damlatıcı çıkışında 1,0 – 1,8 mS/cm (kiraz ve kayısıda alt sınır).</li>
+                            <li class="mb-2"><strong>pH Dengesi:</strong> Gübreli su 5,5 – 6,5 olmalıdır. Sert sularda asitlendirme yapılır.</li>
+                            <li><strong>Yaprak Gübrelemesi:</strong> 25 °C altında, rüzgarsız, yaprak kuruyken sabah erken veya akşamüstü yapılmalıdır.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 12 AYLIK TAKVİM -->
+            <section class="main-card">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calendar3 text-success me-2"></i>12 Aylık Entegre Besleme Takvimi</h5>
+                <div class="table-wrap">
+                    <table class="prog-table">
+                        <thead>
+                            <tr><th>Ay</th><th>Elma</th><th>Şeftali / Nektarin</th><th>Kayısı</th><th>Kiraz</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><strong>Ocak – Şubat</strong></td><td>Toprak analizi, organik gübre</td><td>Toprak analizi</td><td>Şubat sonu D1 (don riskine dikkat)</td><td>Toprak analizi</td></tr>
+                            <tr><td><strong>Mart</strong></td><td>Dormant çinko; Mart sonu D1</td><td>D1: AS + MAP + MgS, Fe-EDDHA</td><td>D1, çiçeklenme; bor</td><td>D1: AS + MAP + KN, Fe-EDDHA</td></tr>
+                            <tr><td><strong>Nisan</strong></td><td>Pembe tomurcukta bor; D2; kalsiyum başlar</td><td>D2: KN + PN; pembe tomurcukta bor</td><td>D2: KN + PN; çinko</td><td>Beyaz tomurcukta bor; D2</td></tr>
+                            <tr><td><strong>Mayıs</strong></td><td>D3: kalsiyum nitratın yoğun dönemi</td><td>D3: çekirdek sertleşmesi, sulama</td><td>D3 → D4</td><td>D3: saman sarısında CaCl₂</td></tr>
+                            <tr><td><strong>Haziran</strong></td><td>D3 → D4: PN + SOP</td><td>D4: SOP ağırlıklı; yapraktan potasyum</td><td>D4: hasat</td><td>Hasat → D4: AS</td></tr>
+                            <tr><td><strong>Temmuz</strong></td><td>D4; <strong>yaprak analizi</strong></td><td>Hasat; <strong>yaprak analizi</strong></td><td>D5; <strong>yaprak analizi</strong></td><td>D4; <strong>yaprak analizi</strong>; üre + bor</td></tr>
+                            <tr><td><strong>Ağustos</strong></td><td>D5: sadece SOP, N kesilir; hasat öncesi CaCl₂</td><td>D5: AS</td><td>D5</td><td>D4</td></tr>
+                            <tr><td><strong>Eylül</strong></td><td>Hasat; D6 başlar</td><td>D5; üre + bor + çinko</td><td>Sonbahar boru</td><td>Sonbahar boru</td></tr>
+                            <tr><td><strong>Ekim</strong></td><td>D6: AS + üre + bor; yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td></tr>
+                            <tr><td><strong>Kasım – Aralık</strong></td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: GÜBRELEME UYGULAMA KAYITLARI -->
+        <!-- ========================================== -->
+        <div class="tab-pane fade" id="tab-records" role="tabpanel">
+            <div class="main-card">
+                <!-- Filter Bar -->
+                <div class="filter-box">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control border-start-0" id="filterSearch" placeholder="Gübre adı, parsel veya not ara..." oninput="applyFilters()">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select" id="filterMethod" onchange="applyFilters()">
+                                <option value="">Tüm Uygulama Tipleri</option>
+                                <option value="Damlama">Damlama ile Fertigasyon</option>
+                                <option value="Taban">Taban / Toprak</option>
+                                <option value="Yaprak">Yapraktan Besleme</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="filterStartDate" title="Başlangıç Tarihi" onchange="applyFilters()">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="date" class="form-control" id="filterEndDate" title="Bitiş Tarihi" onchange="applyFilters()">
+                        </div>
+                        <div class="col-md-1 d-flex gap-1">
+                            <button type="button" class="btn btn-outline-secondary w-100" title="Filtreleri Temizle" onclick="resetFilters()">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Header Actions -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="text-muted small">
+                        Gösterilen Kayıt: <strong id="lblFilteredCount" class="text-dark">0</strong>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="exportToExcel()">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel'e Aktar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i> Yazdır
+                        </button>
+                        <a href="irrigation_fertilization_records.html" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                            <i class="bi bi-droplet-half me-1"></i> Sulama Günlüğüne Git
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Records Table -->
+                <div class="table-responsive">
+                    <table class="prog-table table-hover align-middle" id="fertTable">
+                        <thead>
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Uygulama Şekli</th>
+                                <th>Parsel / Çeşit</th>
+                                <th>Uygulanan Gübreler ve Dozlar</th>
+                                <th>Toplam Miktar</th>
+                                <th>Açıklama / Not</th>
+                                <th class="text-end no-print">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fertTableBody">
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div>
+                                    Gübreleme kayıtları yükleniyor...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: PARSEL SARFİYAT ANALİZİ -->
+        <!-- ========================================== -->
+        <div class="tab-pane fade" id="tab-analysis" role="tabpanel">
+            <div class="main-card">
+                <div class="row g-4">
+                    <div class="col-lg-7">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-bar-chart-fill text-success me-2"></i>Gübre Sarfiyat Dağılımı (kg / lt)</h5>
+                        <div style="position: relative; height: 360px; width: 100%;">
+                            <canvas id="fertDistributionChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-lg-5">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-list-check text-success me-2"></i>Parsel Bazlı Gübre Özeti</h5>
+                        <div class="table-responsive" style="max-height: 360px; overflow-y: auto;">
+                            <table class="table table-sm table-striped align-middle">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Parsel / Bölüm</th>
+                                        <th>Gübre Çeşitleri</th>
+                                        <th class="text-end">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="parcelSummaryBody">
+                                    <tr><td colspan="3" class="text-center text-muted">Veri hesaplanıyor...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: GÜBRE STOK DURUMU -->
+        <!-- ========================================== -->
+        <div class="tab-pane fade" id="tab-stock" role="tabpanel">
+            <div class="main-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-box-seam-fill text-success me-2"></i>Depodaki Gübre ve Besleme Ürünleri</h5>
+                    <a href="products.html" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                        <i class="bi bi-arrow-up-right me-1"></i> Stok Yönetim Sayfası
+                    </a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="stockTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Kategori</th>
+                                <th>Ürün Adı</th>
+                                <th>Etken / İçerik</th>
+                                <th>Ambalaj</th>
+                                <th>Mevcut Miktar</th>
+                                <th>Giriş Tarihi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">Stok bilgisi yükleniyor...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 5: DOZAJ VE TOPRAK ANALİZ ASİSTANI -->
+        <!-- ========================================== -->
+        <div class="tab-pane fade" id="tab-calculator" role="tabpanel">
+            <div class="main-card">
+                <div class="row g-4">
+                    <div class="col-lg-6">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-calculator-fill text-success me-2"></i>Hızlı Dozaj & İhtiyaç Hesaplama</h5>
+                        <div class="bg-light p-3 rounded-4 border mb-3">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Uygulama Alanı (Dekar)</label>
+                                <input type="number" step="0.1" class="form-control" id="calcArea" placeholder="Örn: 25" oninput="runCalculator()">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Dekara Tavsiye Dozu (kg/da veya lt/da)</label>
+                                <input type="number" step="0.01" class="form-control" id="calcDose" placeholder="Örn: 2.5" oninput="runCalculator()">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">İlaçlama / Gübre Tankı Hacmi (Litre) <small class="text-muted">(Opsiyonel)</small></label>
+                                <input type="number" step="10" class="form-control" id="calcTank" placeholder="Örn: 1000" oninput="runCalculator()">
+                            </div>
+                        </div>
+
+                        <div class="card border-0 bg-success bg-opacity-10 rounded-4 p-4">
+                            <div class="mb-3 pb-3 border-bottom border-success border-opacity-25">
+                                <div class="text-muted small">Toplam Gerekli Gübre Miktarı</div>
+                                <h2 class="fw-bold text-success mt-1 mb-0" id="calcResultTotal">0.00 kg / lt</h2>
+                            </div>
+                            <div class="mb-3 pb-3 border-bottom border-success border-opacity-25">
+                                <div class="text-muted small">Tank Başına Düşen Dozaj (100 Litreye)</div>
+                                <h4 class="fw-bold text-dark mt-1 mb-0" id="calcResultPer100L">-</h4>
+                            </div>
+                            <div>
+                                <div class="text-muted small">Konsantrasyon Oranı</div>
+                                <h4 class="fw-bold text-dark mt-1 mb-0" id="calcResultConcentration">-</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Toprak Analizi Değerlendirme Asistanı (01 Dokümanından) -->
+                    <div class="col-lg-6">
+                        <h5 class="fw-bold text-dark mb-3"><i class="bi bi-flask-fill text-success me-2"></i>Toprak Analizine Göre Saf İhtiyaç Hesaplama</h5>
+                        <div class="bg-light p-3 rounded-4 border">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Meyve Türü</label>
+                                    <select class="form-select form-select-sm" id="soilCrop">
+                                        <option value="elma">Elma</option>
+                                        <option value="seftali">Şeftali / Nektarin</option>
+                                        <option value="kayisi">Kayısı</option>
+                                        <option value="kiraz">Kiraz</option>
+                                    </select>
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small fw-semibold">Ağaç Yaşı</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilAge" value="8" min="1">
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label small fw-semibold">Hedef Verim (t/da)</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilYield" value="4" step="0.5">
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">Toprak pH</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" id="soilPh" value="7.5">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">Org. Madde (%)</label>
+                                    <input type="number" step="0.1" class="form-control form-control-sm" id="soilOm" value="1.5">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">P (ppm Olsen)</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilP" value="15">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">K (ppm)</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilK" value="220">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">Ca (ppm)</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilCa" value="2500">
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label small fw-semibold">Mg (ppm)</label>
+                                    <input type="number" class="form-control form-control-sm" id="soilMg" value="180">
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-success btn-sm w-100 fw-bold rounded-pill" onclick="calcSoilRequirement()">
+                                <i class="bi bi-play-circle me-1"></i> Analizi Yorumla ve Hesapla
+                            </button>
+                            <div id="soilAnalysisResult" class="mt-3"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: YENİ GÜBRELEME KAYDI EKLE / DÜZENLE -->
+<!-- ========================================== -->
+<div class="modal fade" id="fertRecordModal" tabindex="-1" aria-labelledby="fertRecordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-success text-white p-3 px-4">
+                <h5 class="modal-title fw-bold" id="fertRecordModalLabel">
+                    <i class="bi bi-flower1 me-2"></i>Yeni Gübreleme Kaydı
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="fertRecordForm" onsubmit="saveFertRecord(event)">
+                <input type="hidden" id="editRecordId">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Uygulama Tarihi *</label>
+                            <input type="date" class="form-control" id="modalDate" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Uygulama Yöntemi *</label>
+                            <select class="form-select" id="modalMethod" required>
+                                <option value="Sulama+Gübreleme">Damlama ile Fertigasyon</option>
+                                <option value="Gübreleme">Taban / Toprak Uygulaması</option>
+                                <option value="Yapraktan Besleme">Yapraktan Besleme</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Uygulama Alanı (Dekar)</label>
+                            <input type="number" step="0.1" class="form-control" id="modalTotalArea" placeholder="Örn: 25" oninput="calculateModalRowTotals()">
+                        </div>
+
+                        <!-- Parsel Seçimi -->
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold mb-0">Uygulanan Parseller / Çeşitler *</label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 me-2" onclick="toggleAllParcels(true)">Tümünü Seç</button>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0 text-muted" onclick="toggleAllParcels(false)">Temizle</button>
+                                </div>
+                            </div>
+                            <div class="parcel-selector-box" id="parcelCheckboxContainer">
+                                <div class="text-muted small">Parseller yükleniyor...</div>
+                            </div>
+                        </div>
+
+                        <!-- Dinamik Gübre Satırları -->
+                        <div class="col-12">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0">Gübreler ve Dozajlar *</label>
+                                <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="addModalFertilizerRow()">
+                                    <i class="bi bi-plus-circle me-1"></i> Gübre Ekle
+                                </button>
+                            </div>
+                            <div id="modalFertilizerRowsContainer"></div>
+                            <div class="form-text small text-muted">
+                                Dozaj girildiğinde (örn: 2.5 kg/da), alan bilgisiyle toplam miktar otomatik hesaplanır.
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Notlar ve Gözlemler</label>
+                            <textarea class="form-control" id="modalNotes" rows="2" placeholder="Uygulama ile ilgili özel detaylar, fenolojik dönem, hava durumu vb..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 px-4">
+                    <button type="button" class="btn btn-secondary rounded-pill px-3" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4" id="btnSaveRecord">
+                        <i class="bi bi-check-lg me-1"></i> Kaydı Tamamla
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Datalist for Available Fertilizers -->
+<datalist id="fertilizerListOptions"></datalist>
+
+<!-- Core Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+<script src="assets/js/unread_notifier.js?v=1"></script>
+
+<script>
+    // State
+    let allRecords = [];
+    let fertilizationRecords = [];
+    let productsList = [];
+    let gardenParcels = [];
+    let chartInstance = null;
+    let selectedGardenId = localStorage.getItem('selected_garden_id') || 'default';
+    let selectedGardenName = localStorage.getItem('selected_garden_name') || 'Bahçe';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Set garden name
+        const titleEl = document.getElementById('activeGardenTitle');
+        if (titleEl) titleEl.textContent = selectedGardenName;
+
+        // Set default date for modal
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('modalDate').value = today;
+
+        // Load data
+        await Promise.all([
+            loadParcels(),
+            loadFertilizerProducts(),
+            loadFertilizationRecords()
+        ]);
+    });
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+
+    function switchToProgramTab() {
+        const btn = document.getElementById('tab-program-btn');
+        if (btn) {
+            bootstrap.Tab.getOrCreateInstance(btn).show();
+            window.scrollTo({ top: 250, behavior: 'smooth' });
+        }
+    }
+
+    // 1. Fetch Parcels from gardens.json
+    async function loadParcels() {
+        try {
+            const res = await fetch('api/get_gardens_v2.php?t=' + Date.now());
+            if (!res.ok) return;
+            const data = await res.json();
+            const currentGarden = data.find(g => g.id === selectedGardenId);
+            
+            const container = document.getElementById('parcelCheckboxContainer');
+            container.innerHTML = '';
+
+            if (currentGarden && Array.isArray(currentGarden.parcels) && currentGarden.parcels.length > 0) {
+                gardenParcels = currentGarden.parcels;
+                gardenParcels.forEach((p, idx) => {
+                    const label = `${p.name || ('Parsel ' + (idx + 1))}${p.variety ? ' (' + p.variety + ')' : ''}`;
+                    const area = p.area || 0;
+                    const div = document.createElement('div');
+                    div.className = 'form-check form-check-inline me-3 mb-2';
+                    div.innerHTML = `
+                        <input class="form-check-input parcel-chk" type="checkbox" id="chk_parcel_${idx}" value="${label}" data-area="${area}" onchange="updateModalSelectedArea()">
+                        <label class="form-check-label small" for="chk_parcel_${idx}">
+                            ${label} ${area ? '<span class="text-muted">(' + area + ' da)</span>' : ''}
+                        </label>
+                    `;
+                    container.appendChild(div);
+                });
+            } else {
+                container.innerHTML = `
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input parcel-chk" type="checkbox" id="chk_default" value="Tüm Bahçe" checked onchange="updateModalSelectedArea()">
+                        <label class="form-check-label small" for="chk_default">Tüm Bahçe</label>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Parseller yüklenirken hata:', e);
+        }
+    }
+
+    // 2. Fetch Fertilizer Products from products.json
+    async function loadFertilizerProducts() {
+        try {
+            const res = await fetch(`api/get_products.php?garden_id=${encodeURIComponent(selectedGardenId)}&t=${Date.now()}`);
+            if (!res.ok) return;
+            const list = await res.json();
+            if (Array.isArray(list)) {
+                productsList = list;
+                
+                // Filter fertilizers (category Gübre or Yaprak Gübresi)
+                const ferts = list.filter(p => {
+                    const cat = (p.category || '').toLowerCase();
+                    return cat.includes('gübre') || cat.includes('gubre') || cat.includes('besleme');
+                });
+
+                document.getElementById('statStockFertCount').textContent = ferts.length;
+                document.getElementById('tabCountStock').textContent = ferts.length;
+
+                // Populate Datalist
+                const datalist = document.getElementById('fertilizerListOptions');
+                datalist.innerHTML = '';
+                ferts.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f.name;
+                    opt.label = `${f.category || 'Gübre'} - ${f.total_amount || (f.quantity + ' adet')}`;
+                    datalist.appendChild(opt);
+                });
+
+                // Populate Stock Table
+                renderStockTable(ferts);
+            }
+        } catch (e) {
+            console.error('Gübre stokları yüklenirken hata:', e);
+        }
+    }
+
+    function renderStockTable(ferts) {
+        const tbody = document.getElementById('stockTableBody');
+        tbody.innerHTML = '';
+        if (ferts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Stokta kayıtlı gübre bulunamadı.</td></tr>';
+            return;
+        }
+
+        ferts.forEach(f => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">${f.category || 'Gübre'}</span></td>
+                <td class="fw-bold">${f.name || '-'}</td>
+                <td class="text-muted small">${f.active_ingredient || '-'}</td>
+                <td>${f.pkg_info || '-'}</td>
+                <td><strong class="text-dark">${f.total_amount || (f.quantity + ' Adet')}</strong></td>
+                <td class="text-muted small">${f.entry_date || '-'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 3. Fetch Records from irrigation_fertilization.json
+    async function loadFertilizationRecords() {
+        try {
+            const res = await fetch(`api/get_irrigation_fertilization.php?garden_id=${encodeURIComponent(selectedGardenId)}&t=${Date.now()}`);
+            if (!res.ok) throw new Error('API yanıt vermedi');
+            allRecords = await res.json();
+            if (!Array.isArray(allRecords)) allRecords = [];
+
+            // Filter records that have fertilizer applications
+            fertilizationRecords = allRecords.filter(r => {
+                const type = (r.applicationType || '').toLowerCase();
+                const hasProducts = Array.isArray(r.products) && r.products.length > 0;
+                const hasProdName = Boolean(r.productName && r.productName.trim());
+                return type.includes('gübre') || type.includes('gubre') || hasProducts || hasProdName;
+            });
+
+            // Update Stats
+            updateStats();
+            applyFilters();
+            renderParcelSummary();
+        } catch (e) {
+            console.error('Kayıtlar yüklenemedi:', e);
+            document.getElementById('fertTableBody').innerHTML = `
+                <tr><td colspan="7" class="text-center py-4 text-danger">Kayıtlar yüklenirken bir sorun oluştu.</td></tr>
+            `;
+        }
+    }
+
+    function updateStats() {
+        document.getElementById('statFertCount').textContent = fertilizationRecords.length;
+        document.getElementById('tabCountRecords').textContent = fertilizationRecords.length;
+
+        let totalKg = 0;
+        const parcelSet = new Set();
+
+        fertilizationRecords.forEach(r => {
+            if (r.parcelVariety) {
+                r.parcelVariety.split(',').forEach(p => {
+                    const clean = p.trim();
+                    if (clean) parcelSet.add(clean);
+                });
+            }
+
+            if (Array.isArray(r.products)) {
+                r.products.forEach(p => {
+                    const match = String(p.totalAmount || '').match(/([0-9.]+)/);
+                    if (match) totalKg += parseFloat(match[1]) || 0;
+                });
+            } else if (r.dosage) {
+                const match = String(r.dosage).match(/([0-9.]+)/);
+                if (match) totalKg += parseFloat(match[1]) || 0;
+            }
+        });
+
+        document.getElementById('statTotalFertKg').textContent = totalKg > 0 ? (totalKg.toFixed(1) + ' kg') : '0 kg';
+        document.getElementById('statParcelCount').textContent = parcelSet.size;
+    }
+
+    function applyFilters() {
+        const search = (document.getElementById('filterSearch').value || '').toLowerCase();
+        const method = document.getElementById('filterMethod').value;
+        const start = document.getElementById('filterStartDate').value;
+        const end = document.getElementById('filterEndDate').value;
+
+        const filtered = fertilizationRecords.filter(r => {
+            const str = `${r.parcelVariety || ''} ${r.productName || ''} ${r.notes || ''} ${JSON.stringify(r.products || [])}`.toLowerCase();
+            if (search && !str.includes(search)) return false;
+
+            if (method) {
+                const appType = (r.applicationType || '').toLowerCase();
+                if (method === 'Damlama' && !appType.includes('sulama')) return false;
+                if (method === 'Taban' && (appType.includes('sulama') || appType.includes('yaprak'))) return false;
+                if (method === 'Yaprak' && !appType.includes('yaprak')) return false;
+            }
+
+            if (start && r.date && r.date < start) return false;
+            if (end && r.date && r.date > end) return false;
+
+            return true;
+        });
+
+        filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        document.getElementById('lblFilteredCount').textContent = filtered.length;
+        renderRecordsTable(filtered);
+    }
+
+    function resetFilters() {
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterMethod').value = '';
+        document.getElementById('filterStartDate').value = '';
+        document.getElementById('filterEndDate').value = '';
+        applyFilters();
+    }
+
+    function renderRecordsTable(records) {
+        const tbody = document.getElementById('fertTableBody');
+        tbody.innerHTML = '';
+
+        if (records.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                        Filtreye uygun gübreleme kaydı bulunamadı.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        records.forEach(r => {
+            const tr = document.createElement('tr');
+            
+            let methodBadge = '<span class="badge-fert-method badge-fert-taban"><i class="bi bi-layer-forward"></i> Taban</span>';
+            const app = (r.applicationType || '').toLowerCase();
+            if (app.includes('sulama')) {
+                methodBadge = '<span class="badge-fert-method badge-fert-damlama"><i class="bi bi-droplet-half"></i> Fertigasyon</span>';
+            } else if (app.includes('yaprak')) {
+                methodBadge = '<span class="badge-fert-method badge-fert-yaprak"><i class="bi bi-flower2"></i> Yapraktan</span>';
+            }
+
+            let prodsHtml = '';
+            let totalAmountStr = '';
+            if (Array.isArray(r.products) && r.products.length > 0) {
+                r.products.forEach(p => {
+                    prodsHtml += `<span class="fertilizer-pill"><strong>${p.name || 'Gübre'}:</strong> ${p.dose || ''} ${p.totalAmount ? '(' + p.totalAmount + ')' : ''}</span>`;
+                });
+                totalAmountStr = r.products.map(p => p.totalAmount).filter(Boolean).join(', ') || '-';
+            } else if (r.productName) {
+                prodsHtml = `<span class="fertilizer-pill"><strong>${r.productName}:</strong> ${r.dosage || ''}</span>`;
+                totalAmountStr = r.dosage || '-';
+            } else {
+                prodsHtml = '<span class="text-muted small">-</span>';
+                totalAmountStr = '-';
+            }
+
+            tr.innerHTML = `
+                <td class="fw-semibold text-nowrap"><i class="bi bi-calendar3 me-1 text-muted"></i>${r.date || '-'}</td>
+                <td>${methodBadge}</td>
+                <td style="max-width: 250px;">
+                    <div class="text-truncate" title="${r.parcelVariety || ''}">${r.parcelVariety || '-'}</div>
+                    ${r.totalArea ? '<small class="text-muted">' + r.totalArea + ' da</small>' : ''}
+                </td>
+                <td>${prodsHtml}</td>
+                <td class="fw-bold text-dark">${totalAmountStr}</td>
+                <td class="text-muted small" style="max-width: 200px;">${r.notes || '-'}</td>
+                <td class="text-end text-nowrap no-print">
+                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2 py-1" onclick="editRecord('${r.id}')" title="Düzenle">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-2 py-1" onclick="deleteRecord('${r.id}')" title="Sil">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Modal Operations
+    function openNewFertilizerModal() {
+        document.getElementById('editRecordId').value = '';
+        document.getElementById('fertRecordForm').reset();
+        document.getElementById('modalDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('modalFertilizerRowsContainer').innerHTML = '';
+        toggleAllParcels(false);
+        addModalFertilizerRow();
+        document.getElementById('fertRecordModalLabel').innerHTML = '<i class="bi bi-flower1 me-2"></i>Yeni Gübreleme Kaydı';
+        
+        const modal = new bootstrap.Modal(document.getElementById('fertRecordModal'));
+        modal.show();
+    }
+
+    // Programdan Kayda Aktarma Fonksiyonu (Dönem reçetesini doğrudan forma kopyalar)
+    window.copyPeriodToRecord = function(cropName, periodName, fertListJson) {
+        try {
+            const ferts = JSON.parse(decodeURIComponent(fertListJson));
+            openNewFertilizerModal();
+            document.getElementById('modalNotes').value = `${cropName} - ${periodName} Besleme Reçetesi (Programdan aktarıldı)`;
+            
+            const container = document.getElementById('modalFertilizerRowsContainer');
+            container.innerHTML = '';
+            
+            if (Array.isArray(ferts) && ferts.length > 0) {
+                ferts.forEach(f => {
+                    addModalFertilizerRow(f.name, f.dose + ' kg/da', '');
+                });
+            } else {
+                addModalFertilizerRow();
+            }
+        } catch (e) {
+            console.error('Dönem aktarılırken hata:', e);
+        }
+    };
+
+    function addModalFertilizerRow(name = '', dose = '', totalAmount = '') {
+        const container = document.getElementById('modalFertilizerRowsContainer');
+        const row = document.createElement('div');
+        row.className = 'fertilizer-input-row';
+        row.innerHTML = `
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold mb-1">Gübre Adı</label>
+                    <input type="text" class="form-control form-control-sm row-prod-name" list="fertilizerListOptions" placeholder="Gübre seçin veya yazın..." value="${name}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Dekara Doz</label>
+                    <input type="text" class="form-control form-control-sm row-prod-dose" placeholder="Örn: 2 kg/da" value="${dose}" oninput="calculateModalRowTotals()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Toplam Miktar</label>
+                    <input type="text" class="form-control form-control-sm row-prod-total" placeholder="Örn: 50 kg" value="${totalAmount}">
+                </div>
+                <div class="col-md-1 text-end pt-3">
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('.fertilizer-input-row').remove();" title="Satırı Sil">
+                        <i class="bi bi-x-circle-fill fs-6"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    function toggleAllParcels(selectAll) {
+        document.querySelectorAll('.parcel-chk').forEach(c => c.checked = selectAll);
+        updateModalSelectedArea();
+    }
+
+    function updateModalSelectedArea() {
+        let total = 0;
+        document.querySelectorAll('.parcel-chk:checked').forEach(c => {
+            const a = parseFloat(c.getAttribute('data-area')) || 0;
+            total += a;
+        });
+        if (total > 0) {
+            document.getElementById('modalTotalArea').value = total.toFixed(1);
+            calculateModalRowTotals();
+        }
+    }
+
+    function calculateModalRowTotals() {
+        const area = parseFloat(document.getElementById('modalTotalArea').value) || 0;
+        if (area <= 0) return;
+
+        document.querySelectorAll('.fertilizer-input-row').forEach(row => {
+            const doseInput = row.querySelector('.row-prod-dose');
+            const totalInput = row.querySelector('.row-prod-total');
+            if (doseInput && totalInput && !totalInput.value) {
+                const match = doseInput.value.match(/([0-9.]+)/);
+                if (match) {
+                    const unitVal = parseFloat(match[1]);
+                    const unitStr = doseInput.value.includes('lt') ? 'lt' : 'kg';
+                    totalInput.value = (unitVal * area).toFixed(1) + ' ' + unitStr;
+                }
+            }
+        });
+    }
+
+    async function saveFertRecord(event) {
+        event.preventDefault();
+        const editId = document.getElementById('editRecordId').value;
+        const date = document.getElementById('modalDate').value;
+        const method = document.getElementById('modalMethod').value;
+        const totalArea = document.getElementById('modalTotalArea').value;
+        const notes = document.getElementById('modalNotes').value;
+
+        const selectedParcels = [];
+        document.querySelectorAll('.parcel-chk:checked').forEach(c => {
+            selectedParcels.push(c.value);
+        });
+
+        if (selectedParcels.length === 0) {
+            alert('Lütfen en az bir parsel seçin.');
+            return;
+        }
+
+        const products = [];
+        document.querySelectorAll('.fertilizer-input-row').forEach(row => {
+            const name = (row.querySelector('.row-prod-name')?.value || '').trim();
+            const dose = (row.querySelector('.row-prod-dose')?.value || '').trim();
+            const total = (row.querySelector('.row-prod-total')?.value || '').trim();
+            if (name) {
+                products.push({ name, dose, totalAmount: total });
+            }
+        });
+
+        if (products.length === 0) {
+            alert('Lütfen en az bir gübre ekleyin.');
+            return;
+        }
+
+        const btn = document.getElementById('btnSaveRecord');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...';
+
+        try {
+            if (editId) {
+                const idx = allRecords.findIndex(r => r.id === editId);
+                if (idx !== -1) {
+                    allRecords[idx] = {
+                        ...allRecords[idx],
+                        date,
+                        applicationType: method,
+                        totalArea,
+                        parcelVariety: selectedParcels.join(', '),
+                        products,
+                        productName: products[0].name,
+                        dosage: products[0].dose,
+                        notes
+                    };
+                }
+            } else {
+                const newRec = {
+                    id: String(Date.now()),
+                    date,
+                    startTime: '',
+                    endTime: '',
+                    counterStart: '',
+                    counterEnd: '',
+                    parcelVariety: selectedParcels.join(', '),
+                    totalArea,
+                    applicationType: method,
+                    waterAmount: '',
+                    products,
+                    productName: products[0].name,
+                    dosage: products[0].dose,
+                    notes,
+                    duration: 0
+                };
+                allRecords.unshift(newRec);
+            }
+
+            const res = await fetch(`api/save_irrigation_fertilization.php?garden_id=${encodeURIComponent(selectedGardenId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allRecords)
+            });
+
+            const result = await res.json();
+            if (result.status === 'success') {
+                bootstrap.Modal.getInstance(document.getElementById('fertRecordModal')).hide();
+                await loadFertilizationRecords();
+            } else {
+                alert('Kaydetme hatası: ' + (result.message || 'Bilinmeyen hata'));
+            }
+        } catch (e) {
+            console.error('Kayıt kaydedilemedi:', e);
+            alert('Sunucu ile iletişim kurulurken bir hata oluştu.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Kaydı Tamamla';
+        }
+    }
+
+    function editRecord(id) {
+        const rec = allRecords.find(r => r.id === id);
+        if (!rec) return;
+
+        document.getElementById('editRecordId').value = rec.id;
+        document.getElementById('modalDate').value = rec.date || '';
+        document.getElementById('modalMethod').value = rec.applicationType || 'Sulama+Gübreleme';
+        document.getElementById('modalTotalArea').value = rec.totalArea || '';
+        document.getElementById('modalNotes').value = rec.notes || '';
+
+        const pNames = (rec.parcelVariety || '').split(',').map(s => s.trim());
+        document.querySelectorAll('.parcel-chk').forEach(c => {
+            c.checked = pNames.includes(c.value);
+        });
+
+        const container = document.getElementById('modalFertilizerRowsContainer');
+        container.innerHTML = '';
+        if (Array.isArray(rec.products) && rec.products.length > 0) {
+            rec.products.forEach(p => addModalFertilizerRow(p.name, p.dose, p.totalAmount));
+        } else if (rec.productName) {
+            addModalFertilizerRow(rec.productName, rec.dosage, '');
+        } else {
+            addModalFertilizerRow();
+        }
+
+        document.getElementById('fertRecordModalLabel').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Gübreleme Kaydını Düzenle';
+        const modal = new bootstrap.Modal(document.getElementById('fertRecordModal'));
+        modal.show();
+    }
+
+    async function deleteRecord(id) {
+        if (!confirm('Bu gübreleme kaydını silmek istediğinizden emin misiniz?')) return;
+
+        allRecords = allRecords.filter(r => r.id !== id);
+        try {
+            const res = await fetch(`api/save_irrigation_fertilization.php?garden_id=${encodeURIComponent(selectedGardenId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allRecords)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                await loadFertilizationRecords();
+            } else {
+                alert('Silme hatası: ' + (result.message || ''));
+            }
+        } catch (e) {
+            console.error('Silme işleminde hata:', e);
+            alert('İşlem tamamlanamadı.');
+        }
+    }
+
+    function renderFertilizerChart() {
+        const fertSums = {};
+        fertilizationRecords.forEach(r => {
+            if (Array.isArray(r.products)) {
+                r.products.forEach(p => {
+                    const name = p.name || 'Diğer';
+                    const match = String(p.totalAmount || '').match(/([0-9.]+)/);
+                    const val = match ? parseFloat(match[1]) : 0;
+                    fertSums[name] = (fertSums[name] || 0) + val;
+                });
+            }
+        });
+
+        const labels = Object.keys(fertSums);
+        const dataVals = Object.values(fertSums);
+
+        const ctx = document.getElementById('fertDistributionChart');
+        if (!ctx) return;
+
+        if (chartInstance) {
+            chartInstance.destroy();
+        }
+
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length ? labels : ['Kayıt Yok'],
+                datasets: [{
+                    label: 'Toplam Uygulama (kg / lt)',
+                    data: dataVals.length ? dataVals : [0],
+                    backgroundColor: '#0b6e4f',
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function renderParcelSummary() {
+        const parcelMap = {};
+        fertilizationRecords.forEach(r => {
+            const parcels = (r.parcelVariety || 'Belirtilmemiş').split(',').map(p => p.trim());
+            parcels.forEach(p => {
+                if (!p) return;
+                if (!parcelMap[p]) {
+                    parcelMap[p] = { count: 0, products: new Set() };
+                }
+                parcelMap[p].count++;
+                if (Array.isArray(r.products)) {
+                    r.products.forEach(prod => {
+                        if (prod.name) parcelMap[p].products.add(prod.name);
+                    });
+                }
+            });
+        });
+
+        const tbody = document.getElementById('parcelSummaryBody');
+        tbody.innerHTML = '';
+        const keys = Object.keys(parcelMap);
+        if (keys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Parsel sarfiyatı bulunamadı.</td></tr>';
+            return;
+        }
+
+        keys.forEach(k => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="fw-semibold">${k}</td>
+                <td class="small text-muted">${Array.from(parcelMap[k].products).join(', ') || '-'}</td>
+                <td class="text-end fw-bold">${parcelMap[k].count} Uygulama</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Dozaj Asistanı
+    function runCalculator() {
+        const area = parseFloat(document.getElementById('calcArea').value) || 0;
+        const dose = parseFloat(document.getElementById('calcDose').value) || 0;
+        const tank = parseFloat(document.getElementById('calcTank').value) || 0;
+
+        const totalRequired = area * dose;
+        document.getElementById('calcResultTotal').textContent = totalRequired > 0 ? (totalRequired.toFixed(2) + ' kg / lt') : '0.00 kg / lt';
+
+        if (tank > 0 && totalRequired > 0) {
+            const conc = (totalRequired / tank) * 100;
+            document.getElementById('calcResultConcentration').textContent = `% ${conc.toFixed(2)} (${(conc * 10).toFixed(1)} g / L)`;
+            document.getElementById('calcResultPer100L').textContent = `${(conc * 1000).toFixed(0)} g / 100 L su`;
+        } else {
+            document.getElementById('calcResultConcentration').textContent = '-';
+            document.getElementById('calcResultPer100L').textContent = '-';
+        }
+    }
+
+    // Toprak Analizi Asistanı (01 Dokümanından Hesaplama Algoritması)
+    function calcSoilRequirement() {
+        const tur = document.getElementById('soilCrop').value;
+        const yas = parseFloat(document.getElementById('soilAge').value) || 8;
+        const verim = parseFloat(document.getElementById('soilYield').value) || 4; // ton/da
+        const ph = parseFloat(document.getElementById('soilPh').value) || 7.5;
+        const om = parseFloat(document.getElementById('soilOm').value) || 1.5;
+        const p = parseFloat(document.getElementById('soilP').value) || 15;
+        const kVal = parseFloat(document.getElementById('soilK').value) || 220;
+        const caVal = parseFloat(document.getElementById('soilCa').value) || 2500;
+        const mgVal = parseFloat(document.getElementById('soilMg').value) || 180;
+
+        // Katsayılar (kg saf besin / ton verim)
+        const katsayi = {
+            elma:    { N: 2.4, P: 1.0, K: 3.6, Ca: 1.6, Mg: 0.6 },
+            seftali: { N: 3.7, P: 1.4, K: 5.1, Ca: 1.7, Mg: 0.8 },
+            kayisi:  { N: 4.0, P: 1.5, K: 6.0, Ca: 2.0, Mg: 1.0 },
+            kiraz:   { N: 6.6, P: 2.0, K: 9.0, Ca: 3.5, Mg: 1.5 }
+        };
+
+        const sinirlar = {
+            N:  om < 1.0 ? 1.2 : (om < 2.0 ? 1.0 : 0.85),
+            P:  p < 8 ? 1.5 : (p < 25 ? 1.0 : 0.5),
+            K:  kVal < 150 ? 1.4 : (kVal < 300 ? 1.0 : 0.6),
+            Ca: caVal < 1000 ? 1.3 : 1.0,
+            Mg: mgVal < 100 ? 1.4 : 1.0
+        };
+
+        const k = katsayi[tur];
+        const safIhtiyac = {
+            N: (verim * k.N * sinirlar.N).toFixed(1),
+            P: (verim * k.P * sinirlar.P).toFixed(1),
+            K: (verim * k.K * sinirlar.K).toFixed(1),
+            Ca: (verim * k.Ca * sinirlar.Ca).toFixed(1),
+            Mg: (verim * k.Mg * sinirlar.Mg).toFixed(1)
+        };
+
+        let phUyari = '';
+        if (ph > 7.8) {
+            phUyari = '<div class="alert alert-warning py-2 small mb-2"><i class="bi bi-exclamation-triangle me-1"></i>pH yüksek (> 7.8). Kireçli toprak; kloroz riski nedeniyle Fe-EDDHA şelatı ve amonyum sülfat (AS) tercih ediniz.</div>';
+        } else if (ph < 6.2) {
+            phUyari = '<div class="alert alert-info py-2 small mb-2"><i class="bi bi-info-circle me-1"></i>pH asidik. Kalsiyum nitrat ağırlıklı besleme önerilir.</div>';
+        }
+
+        const resBox = document.getElementById('soilAnalysisResult');
+        resBox.innerHTML = `
+            ${phUyari}
+            <div class="card bg-white p-3 border rounded-3">
+                <h6 class="fw-bold text-success mb-2"><i class="bi bi-check2-circle me-1"></i>Önerilen Yıllık Saf Besin İhtiyacı (${verim} ton/da Verim Hedefi)</h6>
+                <div class="row text-center g-2">
+                    <div class="col"><div class="border rounded p-1"><small class="text-muted d-block">Saf N</small><strong>${safIhtiyac.N} kg</strong></div></div>
+                    <div class="col"><div class="border rounded p-1"><small class="text-muted d-block">P₂O₅</small><strong>${safIhtiyac.P} kg</strong></div></div>
+                    <div class="col"><div class="border rounded p-1"><small class="text-muted d-block">K₂O</small><strong>${safIhtiyac.K} kg</strong></div></div>
+                    <div class="col"><div class="border rounded p-1"><small class="text-muted d-block">CaO</small><strong>${safIhtiyac.Ca} kg</strong></div></div>
+                    <div class="col"><div class="border rounded p-1"><small class="text-muted d-block">MgO</small><strong>${safIhtiyac.Mg} kg</strong></div></div>
+                </div>
+            </div>
+        `;
+    }
+
+    function exportToExcel() {
+        if (!fertilizationRecords.length) {
+            alert('Dışa aktarılacak gübreleme kaydı bulunmuyor.');
+            return;
+        }
+
+        const dataRows = fertilizationRecords.map(r => ({
+            "Tarih": r.date || '',
+            "Uygulama Tipi": r.applicationType || '',
+            "Parseller": r.parcelVariety || '',
+            "Uygulama Alanı (da)": r.totalArea || '',
+            "Gübreler": (r.products || []).map(p => `${p.name} (${p.dose || ''} - ${p.totalAmount || ''})`).join('; ') || (r.productName || ''),
+            "Açıklama": r.notes || ''
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Gubreleme_Kayitlari");
+        XLSX.writeFile(wb, `Gubreleme_Kayitlari_${selectedGardenName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // Filter Crop Display in Program Tab
+    window.filterCropDisplay = function(crop) {
+        document.querySelectorAll('.crop-nav-pill').forEach(p => p.classList.remove('active'));
+        if (event && event.currentTarget) event.currentTarget.classList.add('active');
+
+        const crops = ['elma', 'seftali', 'kayisi', 'kiraz'];
+        crops.forEach(c => {
+            const sec = document.getElementById('section-' + c);
+            if (!sec) return;
+            if (crop === 'all' || crop === c) {
+                sec.style.display = 'block';
+            } else {
+                sec.style.display = 'none';
+            }
+        });
+    };
+</script>
+
+<!-- ======================================================== -->
+<!-- GÜBRE SEÇİMİ VE DİNAMİK FERTİGASYON HESAPLAMA MOTORU    -->
+<!-- (Drive 01 besleme-programi.html Tam Entegrasyonu)       -->
+<!-- ======================================================== -->
+<script>
+(function () {
+    // N, P = P2O5, K = K2O, Ca = CaO, Mg = MgO (oran); d = sıvılar için yoğunluk (kg/L)
+    var F = {
+      AS:  { ad: 'Amonyum sülfat', icerik: '%21 N, %24 S', tank: 'B', N: .21,
+             not: 'Kireçli topraklarda pH düşürücü etki; kükürt de verir.' },
+      URE: { ad: 'Üre', icerik: '%46 N', tank: 'A veya B', N: .46,
+             not: 'En ekonomik azot. Amid formundadır; toprakta nitrata dönüşmesi birkaç gün sürer.' },
+      AN:  { ad: 'Amonyum nitrat', icerik: '%33 N', tank: 'A veya B', N: .33,
+             not: 'Yarısı nitrat, hızlı etki. Satış ve depolama kurallarına uyun.' },
+      UAN: { ad: 'UAN-32 (üre amonyum nitrat çözeltisi)', icerik: '%32 N · 1,32 kg/L', tank: 'A veya B', N: .32, d: 1.32,
+             not: 'Sıvı, çözme gerektirmez; dozaj pompasıyla doğrudan verilebilir.' },
+      MAP: { ad: 'MAP', icerik: '12-61-0', tank: 'B', N: .12, P: .61,
+             not: 'Standart fosfor kaynağı; hafif asidik.' },
+      MKP: { ad: 'MKP', icerik: '0-52-34', tank: 'B', P: .52, K: .34,
+             not: 'Azot istenmeyen dönemler için. Verdiği potasyum, potasyum ihtiyacından düşülür.' },
+      PA:  { ad: 'Fosforik asit (%85)', icerik: '%61,5 P₂O₅ · 1,69 kg/L', tank: 'B veya ayrı asit tankı', P: .615, d: 1.69,
+             not: 'Sert / bikarbonatlı sularda hem fosfor hem asitlendirme sağlar, damlatıcıyı temiz tutar.' },
+      UP:  { ad: 'Üre fosfat', icerik: '17-44-0', tank: 'B', N: .17, P: .44,
+             not: 'Çok asidiktir (pH ≈ 2). Kireçli toprak ve sert suda tıkanmayı önler.' },
+      CN:  { ad: 'Kalsiyum nitrat', icerik: '%15,5 N, %26,5 CaO', tank: 'A', N: .155, Ca: .265,
+             not: 'Standart kalsiyum kaynağı. B tankındaki sülfat ve fosfatlarla karıştırılmaz.' },
+      CNL: { ad: 'Sıvı kalsiyum nitrat', icerik: '≈ %9 N, %16,5 CaO · ≈ 1,5 kg/L', tank: 'A', N: .09, Ca: .165, d: 1.5,
+             not: 'Çözme gerektirmez. Etiket değeri farklıysa dozu orantılı düzeltin.' },
+      PN:  { ad: 'Potasyum nitrat', icerik: '13-0-46', tank: 'A veya B', N: .13, K: .46,
+             not: 'Meyve büyümesi döneminde potasyum + nitrat azotu.' },
+      SOP: { ad: 'Potasyum sülfat', icerik: '%50 K₂O, %18 S', tank: 'B', K: .50,
+             not: 'Azotsuz potasyum; olgunlaşma dönemi. Suda yavaş çözülür.' },
+      KTS: { ad: 'Potasyum tiyosülfat', icerik: '%25 K₂O, %17 S · 1,46 kg/L', tank: 'B (asitsiz)', K: .25, d: 1.46,
+             not: 'Sıvı, azotsuz. pH 6\'nın altında asitle verilmez.' },
+      MGS: { ad: 'Magnezyum sülfat', icerik: '%16 MgO, %13 S', tank: 'B', Mg: .16,
+             not: 'Standart magnezyum kaynağı.' },
+      MGN: { ad: 'Magnezyum nitrat', icerik: '%11 N, %15,7 MgO', tank: 'A veya B', N: .11, Mg: .157,
+             not: 'Sülfat istenmediğinde veya kalsiyumla aynı tanka girecekse.' }
+    };
+    var BESIN = [['N', 'N'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO']];
+
+    var PLAN = {
+      elma:    { name: 'Elma', hafta: [2, 3, 6, 7, 4, 4], AS: [8, 6, 0, 0, 0, 8], MAP: [3, 3, 2, 0, 0, 0], CN: [0, 8, 14, 8, 0, 0],
+                 PN: [0, 0, 6, 8, 0, 0], SOP: [0, 0, 4, 8, 10, 2], MGS: [0, 5, 6, 6, 0, 2] },
+      seftali: { name: 'Şeftali / Nektarin', hafta: [3, 4, 4, 5, 7], AS: [10, 8, 0, 0, 12], MAP: [4, 3, 1, 0, 0], CN: [0, 8, 8, 6, 0],
+                 PN: [0, 4, 6, 8, 0], SOP: [0, 0, 4, 12, 4], MGS: [4, 5, 5, 3, 2] },
+      kayisi:  { name: 'Kayısı', hafta: [3, 4, 3, 4, 7], AS: [8, 4, 0, 0, 8], MAP: [4, 3, 1, 0, 0], CN: [0, 7, 7, 5, 0],
+                 PN: [0, 3, 5, 6, 0], SOP: [0, 0, 3, 10, 4], MGS: [3, 4, 4, 3, 2] },
+      kiraz:   { name: 'Kiraz', hafta: [3, 4, 4, 9], AS: [5, 0, 0, 9], MAP: [3, 2, 0, 1.5], CN: [3, 8, 6, 2],
+                 PN: [0, 4, 6, 0], SOP: [0, 0, 9, 6], MGS: [3, 3.5, 3, 3] }
+    };
+    var VARSAYILAN = { P: 'MAP', N: 'AS', K: 'MIX', Ca: 'CN', Mg: 'MGS', view: 'period' };
+
+    function besinVer(urunler, i) {
+      var t = { N: 0, P: 0, K: 0, Ca: 0, Mg: 0 };
+      Object.keys(urunler).forEach(function (u) {
+        BESIN.forEach(function (b) { t[b[0]] += urunler[u][i] * (F[u][b[0]] || 0); });
+      });
+      return t;
+    }
+
+    function hesapla(plan, sec) {
+      var n = plan.hafta.length, urunler = {}, fazlaN = [];
+      var sira = [sec.N, sec.P, sec.Ca, 'PN', 'SOP', 'KTS', sec.Mg];
+      sira.forEach(function (u) { urunler[u] = new Array(n).fill(0); });
+      var onerilen = { AS: plan.AS, MAP: plan.MAP, CN: plan.CN, PN: plan.PN, SOP: plan.SOP, MGS: plan.MGS };
+      for (var i = 0; i < n; i++) {
+        var hedef = besinVer(onerilen, i);
+        urunler[sec.Ca][i] = hedef.Ca / F[sec.Ca].Ca;
+        urunler[sec.Mg][i] = hedef.Mg / F[sec.Mg].Mg;
+        urunler[sec.P][i] = hedef.P / F[sec.P].P;
+        var kalanK = Math.max(0, hedef.K - urunler[sec.P][i] * (F[sec.P].K || 0));
+        if (sec.K === 'MIX') {
+          var pay = hedef.K > 0 ? plan.PN[i] * F.PN.K / hedef.K : 0;
+          urunler.PN[i] = kalanK * pay / F.PN.K;
+          urunler.SOP[i] = kalanK * (1 - pay) / F.SOP.K;
+        } else {
+          urunler[sec.K][i] = kalanK / F[sec.K].K;
+        }
+        var verilenN = 0;
+        sira.forEach(function (u) { if (u !== sec.N) verilenN += urunler[u][i] * (F[u].N || 0); });
+        var kalanN = hedef.N - verilenN;
+        urunler[sec.N][i] = Math.max(0, kalanN) / F[sec.N].N;
+        fazlaN.push(kalanN < -0.05 ? -kalanN : 0);
+      }
+      return { sira: sira, urunler: urunler, fazlaN: fazlaN };
+    }
+
+    function sayi(x) { return x < 0.05 ? '–' : x.toFixed(1).replace('.', ','); }
+
+    function hucre(x, u) {
+      if (x < 0.05) return '<td class="dash">–</td>';
+      var litre = F[u].d ? '<small>≈ ' + sayi(x / F[u].d) + ' L</small>' : '';
+      return '<td class="n">' + sayi(x) + litre + '</td>';
+    }
+
+    function ciz(el, sec) {
+      var cropKey = el.getAttribute('data-crop');
+      var plan = PLAN[cropKey];
+      var r = hesapla(plan, sec), n = plan.hafta.length, haftalik = sec.view === 'week';
+      
+      var bas = '<tr><th>Gübre Türü</th>';
+      for (var i = 0; i < n; i++) {
+        bas += '<th class="n">D' + (i + 1) + (haftalik ? '<small>' + plan.hafta[i] + ' hafta</small>' : '') + '</th>';
+      }
+      bas += '<th class="n tot">' + (haftalik ? 'Sezon Toplamı' : 'Toplam (kg/da)') + '</th></tr>';
+      
+      var govde = '';
+      r.sira.forEach(function (u) {
+        var satir = r.urunler[u], top = satir.reduce(function (a, b) { return a + b; }, 0);
+        if (top < 0.05) return;
+        govde += '<tr><td><strong>' + F[u].ad + '</strong> <span class="badge bg-light text-muted border ms-1" style="font-size:10px">Tank ' + F[u].tank + '</span></td>';
+        satir.forEach(function (x, i) { govde += hucre(haftalik ? x / plan.hafta[i] : x, u); });
+        govde += hucre(top, u).replace('class="n"', 'class="n tot"') + '</tr>';
+      });
+
+      BESIN.forEach(function (b, j) {
+        var top = 0;
+        govde += '<tr class="sum' + (j === 0 ? ' sep' : '') + '"><td>Saf ' + b[1] + (haftalik ? ' (dönem)' : '') + '</td>';
+        for (var i = 0; i < n; i++) {
+          var v = besinVer(r.urunler, i)[b[0]];
+          top += v;
+          var fazla = b[0] === 'N' && r.fazlaN[i] > 0;
+          govde += v < 0.05 ? '<td class="dash">–</td>'
+            : '<td class="n' + (fazla ? ' over' : '') + '"' + (fazla ? ' title="Hedeften ' + sayi(r.fazlaN[i]) + ' kg fazla"' : '') + '>' + sayi(v) + '</td>';
+        }
+        govde += '<td class="n tot">' + sayi(top) + '</td></tr>';
+      });
+
+      // Hızlı Kayda Aktarma Butonları Satırı
+      var aktarRow = '<tr class="bg-light no-print"><td class="small fw-bold text-muted"><i class="bi bi-box-arrow-in-right me-1"></i>Reçeteyi Kayda Aktar:</td>';
+      for (var pIdx = 0; pIdx < n; pIdx++) {
+        var periodFerts = [];
+        r.sira.forEach(function(u) {
+          var val = r.urunler[u][pIdx];
+          if (val >= 0.05) {
+            periodFerts.push({ name: F[u].ad, dose: (val / (haftalik ? plan.hafta[pIdx] : 1)).toFixed(1) });
+          }
+        });
+        var fertsJson = encodeURIComponent(JSON.stringify(periodFerts));
+        aktarRow += '<td class="text-end"><button type="button" class="btn btn-xs btn-outline-success rounded-pill py-0 px-2" style="font-size:11px" onclick="copyPeriodToRecord(\'' + plan.name + '\', \'D' + (pIdx + 1) + '\', \'' + fertsJson + '\')"><i class="bi bi-plus"></i> Kaydet</button></td>';
+      }
+      aktarRow += '<td></td></tr>';
+
+      var uyari = r.fazlaN.some(function (x) { return x > 0; })
+        ? '<div class="note-box py-2 px-3 small mt-2"><strong>Dikkat:</strong> Turuncu değerler: seçilen gübreler bu dönemde hedeften fazla azot veriyor (' +
+          r.fazlaN.map(function (x, i) { return x > 0 ? 'D' + (i + 1) + ': +' + sayi(x) + ' kg' : null; }).filter(Boolean).join(', ') +
+          '). Bu dönemlerde azotsuz kaynak (potasyum sülfat, magnezyum sülfat, MKP) tercih edin.</div>'
+        : '';
+      el.innerHTML = '<div class="table-wrap"><table class="prog-table"><thead>' + bas + '</thead><tbody>' + govde + aktarRow + '</tbody></table></div>' + uyari;
+    }
+
+    function notlar(sec) {
+      var n = [];
+      if ((sec.P === 'PA' || sec.P === 'UP') && sec.K === 'KTS') {
+        n.push('<b>Uyumsuz seçim:</b> Potasyum tiyosülfat asitle bozunur; ' + F[sec.P].ad.toLowerCase() + ' ile aynı sulamada vermeyin. Ayrı günlerde uygulayın veya başka potasyum kaynağı seçin.');
+      }
+      if (sec.P === 'PA') n.push('Fosforik asit hem fosfor hem asit kaynağıdır. Suyu ayrıca asitlendiriyorsanız o asidin verdiği P₂O₅\'i tablodaki miktardan düşün; kalsiyumlu A tankıyla aynı anda enjekte etmeyin.');
+      if (sec.P === 'MKP') n.push('MKP potasyum da verdiği için potasyum gübresi miktarları otomatik azaltıldı.');
+      if (sec.K === 'PN') n.push('Sadece potasyum nitrat kullanıldığında olgunlaşma ve hasat sonrası dönemlerde fazladan azot gider; bu, renk ve depolama kalitesini düşürür.');
+      if (sec.Ca === 'CNL') n.push('Sıvı kalsiyum nitrat hesabı ≈ %9 N ve %16,5 CaO içeriğe göre yapıldı; kullandığınız ürünün etiket değerini kontrol edin.');
+      document.getElementById('selNotes').innerHTML = n.map(function (t) { return '<div class="alert alert-warning py-2 px-3 small mb-2">' + t + '</div>'; }).join('');
+    }
+
+    var secimler = document.querySelectorAll('#secim select');
+    function oku() {
+      var s = {};
+      secimler.forEach(function (el) { s[el.getAttribute('data-role')] = el.value; });
+      return s;
+    }
+    function uygula() {
+      var s = oku();
+      document.querySelectorAll('.fert').forEach(function (el) { ciz(el, s); });
+      notlar(s);
+      try { localStorage.setItem('gubreSecimi', JSON.stringify(s)); } catch (e) {}
+    }
+    function yukle(s) {
+      secimler.forEach(function (el) {
+        var v = s[el.getAttribute('data-role')];
+        if (v && el.querySelector('option[value="' + v + '"]')) el.value = v;
+      });
+    }
+
+    document.getElementById('catalog').innerHTML = Object.keys(F).map(function (k) {
+      var f = F[k];
+      return '<tr><td><b>' + f.ad + '</b></td><td>' + f.icerik + '</td><td><span class="badge bg-secondary">Tank ' + f.tank + '</span></td><td>' + f.not + '</td></tr>';
+    }).join('');
+
+    var kayitli = null;
+    try { kayitli = JSON.parse(localStorage.getItem('gubreSecimi')); } catch (e) {}
+    yukle(kayitli || VARSAYILAN);
+    secimler.forEach(function (el) { el.addEventListener('change', uygula); });
+    document.getElementById('resetSel').addEventListener('click', function () { yukle(VARSAYILAN); uygula(); });
+    uygula();
+})();
+</script>
+
+</body>
+</html>

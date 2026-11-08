@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herbisit Uygulama & Çeşit Haritası Planlama Yönetimi - Bahçe Yönetimi</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="assets/css/style.css?v=18">
+
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc !important;
+            color: #0f172a !important;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .map-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .map-container-wrapper {
+            position: relative;
+            height: 560px;
+            width: 100%;
+        }
+        @media (max-width: 768px) {
+            .map-container-wrapper { height: 62vh; min-height: 380px; }
+            #herbicideMap .live-location-badge-overlay { width: calc(100% - 24px); justify-content: space-between; font-size: 0.78rem; }
+        }
+
+        #herbicideMap {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .map-legend-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 12px 18px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Live GPS Location Styles */
+        .live-location-custom-icon {
+            background: transparent !important;
+            border: none !important;
+        }
+        .live-location-pin {
+            position: relative;
+            width: 24px;
+            height: 24px;
+        }
+        .live-location-dot {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 16px;
+            height: 16px;
+            background-color: #0d6efd;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.5);
+            z-index: 2;
+        }
+        .live-location-pulse {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            width: 32px;
+            height: 32px;
+            background-color: rgba(13, 110, 253, 0.4);
+            border-radius: 50%;
+            z-index: 1;
+            animation: liveLocationPulse 2s infinite ease-out;
+        }
+        @keyframes liveLocationPulse {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2.4);
+                opacity: 0;
+            }
+        }
+        .leaflet-control-livelocation a {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            width: 34px !important;
+            height: 34px !important;
+            line-height: 34px !important;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem !important;
+        }
+        .leaflet-control-livelocation a.active {
+            background-color: #0d6efd !important;
+            color: #ffffff !important;
+            animation: liveBtnGlow 1.5s infinite alternate;
+        }
+        @keyframes liveBtnGlow {
+            from { box-shadow: 0 0 4px #0d6efd; }
+            to { box-shadow: 0 0 12px #0d6efd; }
+        }
+        .live-location-badge-overlay {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.92);
+            color: #ffffff;
+            padding: 6px 16px;
+            border-radius: 50px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .legend-color-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+
+        .stat-card-custom {
+            background: #ffffff;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card-custom:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.1);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .badge-status-completed {
+            background-color: #d1fae5 !important;
+            color: #065f46 !important;
+            border: 1px solid #6ee7b7 !important;
+        }
+
+        .badge-status-planned {
+            background-color: #fef3c7 !important;
+            color: #92400e !important;
+            border: 1px solid #fcd34d !important;
+        }
+
+        .badge-status-overdue {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fca5a5 !important;
+        }
+
+        .table-custom-herbicide {
+            background: #ffffff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+            border: 1px solid #cbd5e1;
+        }
+
+        .table-custom-herbicide th {
+            background: #f1f5f9;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            padding: 14px 16px;
+        }
+
+        .table-custom-herbicide td {
+            font-size: 0.9rem;
+            color: #334155;
+            vertical-align: middle;
+            padding: 14px 16px;
+        }
+
+        .product-input-row {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<!-- Standard Navigation Bar -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold active" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-lg-4 mb-5">
+
+    <!-- Header & Action Buttons -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="h3 fw-bold text-dark mb-1"><i class="bi bi-geo-alt-fill text-warning me-2"></i>Herbisit & Tank Karışımı Planlama Yönetimi</h1>
+            <p class="text-muted mb-0">Başlangıç-bitiş tarihi, çoklu herbisit (Glifosat, Klopiralid vb.), su hacmi ve ilaç miktarlarını detaylıca yönetin.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="openAddHerbicideModal()">
+                <i class="bi bi-plus-lg me-1"></i>Yeni Herbisit Planı / Kaydı Ekle
+            </button>
+        </div>
+    </div>
+
+    <!-- Summary Stats Bar -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-custom d-flex align-items-center gap-3">
+                <div class="stat-icon bg-success-subtle text-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted fs-7 fw-semibold d-block">Uygulanan Toplam Alan</span>
+                    <h3 class="h4 fw-bold text-dark mb-0" id="statCompletedArea">0 da</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-custom d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning-subtle text-warning">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div>
+                    <span class="text-muted fs-7 fw-semibold d-block">Planlanan Bekleyen Alan</span>
+                    <h3 class="h4 fw-bold text-dark mb-0" id="statPlannedArea">0 da</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-custom d-flex align-items-center gap-3">
+                <div class="stat-icon bg-info-subtle text-info">
+                    <i class="bi bi-droplet-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted fs-7 fw-semibold d-block">Toplam Harcanan Su</span>
+                    <h3 class="h4 fw-bold text-dark mb-0" id="statTotalWater">0 Litre</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-custom d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger-subtle text-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div>
+                    <span class="text-muted fs-7 fw-semibold d-block">Geciken / Acil Plan</span>
+                    <h3 class="h4 fw-bold text-dark mb-0" id="statOverdueCount">0 Kayıt</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map & Form Section -->
+    <div class="row g-4">
+        <!-- Interactive Map Column -->
+        <div class="col-lg-8">
+            <div class="map-card">
+                <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span class="fw-bold text-dark"><i class="bi bi-map me-2 text-primary"></i>Bahçe Çeşit Haritası & Herbisit Katmanı</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button id="btnHerbicideLiveGPS" class="btn btn-sm btn-outline-primary fw-bold rounded-pill px-3" onclick="toggleHerbicideLiveLocation()">
+                            <i class="bi bi-crosshair me-1"></i><span id="btnHerbicideLiveGPSText">Canlı Konumumu Göster</span>
+                        </button>
+                        <span id="activeGardenBadge" class="badge bg-primary px-3 py-2 rounded-pill fs-7"><i class="bi bi-pin-map-fill me-1"></i>Bahçe Yükleniyor...</span>
+                    </div>
+                </div>
+                <div class="map-container-wrapper">
+                    <!-- Live location status overlay -->
+                    <div id="herbicideLiveLocationOverlay" class="live-location-badge-overlay" style="display: none;">
+                        <span class="spinner-grow spinner-grow-sm text-primary" role="status"></span>
+                        <span id="herbicideLiveLocationStatusMsg"><b>📍 Canlı Konum:</b> Aranıyor...</span>
+                        <button id="btnToggleHerbicideFollow" class="btn btn-sm btn-outline-light rounded-pill px-2 py-0" style="font-size:0.75rem;" onclick="toggleHerbicideLocationFollow()">
+                            <i class="bi bi-lock-fill me-1"></i>Takip: AÇIK
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger text-white rounded-circle p-0 d-flex align-items-center justify-content-center ms-1" style="width:22px; height:22px; font-size:0.75rem;" onclick="stopHerbicideLiveLocation()" title="Canlı Konumu Kapat">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                    <div id="herbicideMap"></div>
+                    <!-- Map Legend -->
+                    <div class="map-legend-overlay">
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background: #10b981;"></div>
+                            <span>Herbisit Uygulandı (Yeşil)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background: #f59e0b;"></div>
+                            <span>Herbisit Planlandı (Sarı)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background: #ef4444;"></div>
+                            <span>Gecikti / Müdahale Gerekiyor (Kırmızı)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color-box" style="background: #64748b;"></div>
+                            <span>Henüz Uygulama Yok (Çeşit Parseli)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Quick Panel / Select Variety Parcel -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background: #ffffff; border: 1px solid #cbd5e1 !important;">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-journal-check text-primary me-2"></i>Çeşit Parseli Hızlı Seçim</h5>
+                <p class="text-muted fs-7 mb-3">Haritada bulunan mevcut bahçe çeşit parsellerinden birini seçerek doğrudan herbisit uygulaması planlayabilirsiniz:</p>
+
+                <div id="herbicideNoParcelsBox" class="alert alert-warning small py-2" style="display:none;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Bu bahçe için çizilmiş parsel bulunamadı. Parselleri <a href="garden_map.html" class="alert-link">Bahçe & Çeşit Haritası</a> sayfasından çizebilir ya da haritada çizim aracıyla uygulama alanını doğrudan işaretleyebilirsiniz.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark fs-7">Bahçe Çeşit Parseli Seç</label>
+                    <select id="selectGardenVarietyPlot" class="form-select rounded-3" onchange="onVarietyPlotSelectChange(this.value)">
+                        <option value="">-- Çeşit Parseli Seçin --</option>
+                    </select>
+                </div>
+
+                <div id="selectedPlotInfoBox" class="p-3 bg-light rounded-3 border mb-3" style="display:none;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <strong id="infoPlotName" class="text-dark">---</strong>
+                        <span id="infoPlotArea" class="badge bg-secondary">0 da</span>
+                    </div>
+                    <small id="infoPlotVariety" class="text-muted d-block mb-2">Çeşit: ---</small>
+                    <button class="btn btn-sm btn-primary w-100 rounded-pill fw-bold" onclick="openModalForSelectedPlot()">
+                        <i class="bi bi-plus-circle me-1"></i>Bu Parselde Herbisit Planla
+                    </button>
+                </div>
+
+                <hr>
+
+                <!-- Kuzey-Güney Dikim Sıraları Kontrolü (Sadece Icachem için) -->
+                <div id="icachemRowLinesHerbicideCard" class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold text-dark fs-7 mb-0">
+                            <i class="bi bi-compass text-success me-1"></i>Kuzey-Güney Dikim Sıraları
+                        </label>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="chkShowRowLinesHerbicide" checked onchange="toggleNorthSouthRowsHerbicide(this.checked)">
+                        </div>
+                    </div>
+                    <div class="text-muted fs-7">
+                        <div>Sıra Arası: <strong class="text-success fw-bold">5.0 m</strong> | Sıra Üzeri: <strong class="text-success fw-bold">3.0 m</strong></div>
+                        <div class="mt-2 p-2 bg-light rounded border text-dark fw-semibold fs-7">
+                            <i class="bi bi-tree-fill text-success me-1"></i>Icachem Toplam: <strong id="totalRowsHerbicideCount" class="text-success">0</strong> Sıra, <strong id="totalTreesHerbicideCount" class="text-success">0</strong> Ağaç
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <h6 class="fw-bold text-dark mb-2 fs-7"><i class="bi bi-droplet-half text-info me-1"></i>Tank & Su Oranı Hesaplama</h6>
+                <p class="text-muted fs-7 mb-0">Başlangıç ve bitiş tarihleri arasında kaç litre su kullanıldığını ve karışımda Glifosat, Klopiralid gibi birden fazla herbisitin miktarlarını ekleyebilirsiniz.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Herbisit Kayıtları & Geçmiş Tablosu -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4" style="background: #ffffff; border: 1px solid #cbd5e1 !important;">
+        <div class="p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-table text-warning me-2"></i>Herbisit Uygulama & Plan Geçmişi</h5>
+            <div class="d-flex gap-2">
+                <select id="filterStatus" class="form-select form-select-sm rounded-pill" style="width: 180px;" onchange="renderHerbicideRecordsTable()">
+                    <option value="all">Tüm Durumlar</option>
+                    <option value="completed">Uygulandı (Tamamlandı)</option>
+                    <option value="planned">Planlandı (Bekliyor)</option>
+                    <option value="overdue">Gecikti</option>
+                </select>
+                <input type="text" id="searchTableInput" class="form-control form-control-sm rounded-pill" style="width: 200px;" placeholder="Parsel veya ilaç ara..." oninput="renderHerbicideRecordsTable()">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-custom-herbicide align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Tarih Aralığı</th>
+                        <th>Bölüm / Çeşit Parseli</th>
+                        <th>Kullanılan Herbisitler (Çoklu)</th>
+                        <th>Uygulama Türü</th>
+                        <th>Alan (da)</th>
+                        <th>Kullanılan Su (Litre)</th>
+                        <th>Durum</th>
+                        <th>Uygulayan</th>
+                        <th class="text-end">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="herbicideRecordsTbody">
+                    <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal: Yeni Herbisit Ekleme / Düzenleme (Çoklu İlaç & Tarih Aralığı Uyumlu) -->
+<div class="modal fade" id="addHerbicideModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="modalTitle"><i class="bi bi-journal-plus me-2 text-warning"></i>Herbisit Uygulama & Plan Kaydı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="herbicideForm" onsubmit="saveHerbicideRecord(event)">
+                    <input type="hidden" id="editRecordId">
+                    <input type="hidden" id="drawnPolygonGeoJSON">
+
+                    <!-- Parsel ve Tür -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Bölüm / Çeşit Parsel Adı *</label>
+                            <input type="text" id="recordParcelName" class="form-control rounded-3" placeholder="Örn: Gala Elma - 1. Parsel" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Uygulama Türü</label>
+                            <select id="recordType" class="form-select rounded-3">
+                                <option value="Sıra Arası">Sıra Arası Ot İlaçlaması</option>
+                                <option value="Ağaç Altı Şerit">Ağaç Altı Şerit İlaçlama</option>
+                                <option value="Tam Yüzey">Tam Yüzey Kaplama</option>
+                                <option value="Noktasal / Lekesel">Noktasal / Lekesel Mücadele</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tarih Aralığı (Başlangıç - Bitiş) -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Başlangıç Tarihi *</label>
+                            <input type="date" id="recordStartDate" class="form-control rounded-3" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Bitiş Tarihi *</label>
+                            <input type="date" id="recordEndDate" class="form-control rounded-3" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Uygulama Durumu</label>
+                            <select id="recordStatus" class="form-select rounded-3">
+                                <option value="completed">Uygulandı (Tamamlandı)</option>
+                                <option value="planned">Planlandı (Bekliyor)</option>
+                                <option value="overdue">Gecikti / Müdahale Gerekiyor</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Alan ve Kullanılan Su Hacmi -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Uygulanan Alan (da / Dekar) *</label>
+                            <input type="number" step="0.1" id="recordArea" class="form-control rounded-3" placeholder="Örn: 15.5" oninput="recalculateAllProductTotals()" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Toplam Kullanılan Su (Litre)</label>
+                            <input type="number" step="10" id="recordTotalWater" class="form-control rounded-3" placeholder="Örn: 2000" oninput="recalculateWaterRate()">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Dekara Su Oranı (L/da)</label>
+                            <input type="text" id="recordWaterRate" class="form-control rounded-3 bg-light" readonly placeholder="Otomatik L/da">
+                        </div>
+                    </div>
+
+                    <!-- Çoklu Herbisit İlaç Girişi -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-bold text-dark mb-0"><i class="bi bi-droplet text-warning me-1"></i>Uygulanan / Planlanan Herbisitler (Çoklu İlaç / Tank Karışımı)</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="addProductRow()">
+                                <i class="bi bi-plus-circle me-1"></i>+ İlaç / Katkı Ekle
+                            </button>
+                        </div>
+                        <div id="productsContainer">
+                            <!-- Dynamic Product Rows -->
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Uygulayan Kişi / Ekip</label>
+                            <input type="text" id="recordOperator" class="form-control rounded-3" placeholder="Örn: Ahmet Yılmaz">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Notlar & Açıklama</label>
+                            <input type="text" id="recordNotes" class="form-control rounded-3" placeholder="Örn: Rüzgarsız havada yelpaze nozul kullanıldı">
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">İptal</button>
+                        <button type="submit" class="btn btn-warning fw-bold rounded-pill px-4 ms-2"><i class="bi bi-check-lg me-1"></i>Kaydet</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detay Görünümü -->
+<div class="modal fade" id="detailHerbicideModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white rounded-top-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-info-circle text-warning me-2"></i>Herbisit Uygulama Detayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="detailModalBody">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+<script>
+    let map, drawnItems, parcelLayer, recordAreaLayer;
+    let gardenId = localStorage.getItem('selected_garden_id') || '1';
+    let gardenName = localStorage.getItem('selected_garden_name') || 'Ana Bahçe';
+    let gardenVarietyPlots = [];
+    let herbicideRecords = [];
+    let hasFittedParcels = false;
+    let pendingDrawnLayer = null; // kaydedilene kadar haritada duran yeni çizim
+    const LEGACY_RECORDS_KEY = 'herbicide_records';
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('activeGardenBadge').innerHTML = `<i class="bi bi-pin-map-fill me-1"></i>${escapeHtml(gardenName)}`;
+        initHerbicideMap();
+        resetRecordForm();
+
+        // Kaydedilmeden kapatılan modal, haritada yarım kalmış çizim bırakmasın
+        document.getElementById('addHerbicideModal').addEventListener('hidden.bs.modal', () => {
+            if (pendingDrawnLayer) {
+                drawnItems.removeLayer(pendingDrawnLayer);
+                pendingDrawnLayer = null;
+            }
+        });
+
+        await loadHerbicideRecords();
+        await loadGardenVarietyPlots();
+        renderHerbicideRecordsTable();
+        updateStats();
+    });
+
+    // ---- Kayıtlar: bahçe bazında sunucuda tutulur ----
+    async function loadHerbicideRecords() {
+        try {
+            const res = await fetch(`api/get_herbicide_records.php?garden_id=${encodeURIComponent(gardenId)}&t=${Date.now()}`);
+            const data = res.ok ? await res.json() : [];
+            herbicideRecords = Array.isArray(data) ? data : [];
+        } catch (e) {
+            console.warn('Herbisit kayıtları yüklenemedi', e);
+            herbicideRecords = [];
+        }
+        await offerLegacyRecordMigration();
+    }
+
+    // Eski sürüm kayıtları yalnızca bu tarayıcıda (tüm bahçeler için ortak) tutuyordu
+    async function offerLegacyRecordMigration() {
+        let legacy = [];
+        try { legacy = JSON.parse(localStorage.getItem(LEGACY_RECORDS_KEY) || '[]'); } catch (e) {}
+        legacy = Array.isArray(legacy) ? legacy.filter(r => r && r.id && !String(r.id).startsWith('sample_')) : [];
+        if (legacy.length === 0) {
+            localStorage.removeItem(LEGACY_RECORDS_KEY);
+            return;
+        }
+        const existingIds = new Set(herbicideRecords.map(r => r.id));
+        const toImport = legacy.filter(r => !existingIds.has(r.id));
+        if (toImport.length === 0) {
+            localStorage.removeItem(LEGACY_RECORDS_KEY);
+            return;
+        }
+        const ok = confirm(`Bu tarayıcıda sunucuya kaydedilmemiş ${toImport.length} herbisit kaydı bulundu.\n"${gardenName}" bahçesine aktarılsın mı?\n\n(İptal ederseniz kayıtlar bu tarayıcıda kalır; doğru bahçeyi seçip sayfayı yeniden açabilirsiniz.)`);
+        if (!ok) return;
+        herbicideRecords = toImport.concat(herbicideRecords);
+        if (await saveHerbicideRecords()) {
+            localStorage.removeItem(LEGACY_RECORDS_KEY);
+        }
+    }
+
+    async function saveHerbicideRecords() {
+        try {
+            const res = await fetch(`api/save_herbicide_records.php?garden_id=${encodeURIComponent(gardenId)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(herbicideRecords)
+            });
+            const data = res.ok ? await res.json() : null;
+            if (data && data.status === 'success') return true;
+            alert('Herbisit kaydı sunucuya kaydedilemedi: ' + ((data && data.message) || `Sunucu hatası (${res.status})`));
+        } catch (e) {
+            console.error(e);
+            alert('Ağ hatası: herbisit kaydı sunucuya gönderilemedi. Bağlantınızı kontrol edip tekrar deneyin.');
+        }
+        return false;
+    }
+
+    function todayIso() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    // Bitiş tarihi geçmiş ama hâlâ "Planlandı" olan kayıtlar otomatik olarak gecikmiş sayılır
+    function effectiveStatus(record) {
+        if (record.status === 'planned' && record.endDate && record.endDate < todayIso()) return 'overdue';
+        return record.status;
+    }
+
+    function initHerbicideMap() {
+        const defaultCenter = [38.3552, 38.3095];
+        map = L.map('herbicideMap').setView(defaultCenter, 15);
+
+        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            attribution: '&copy; Google Maps'
+        }).addTo(map);
+
+        // Bahçe parselleri ve kayıtlı uygulama alanları çizim aracının düzenleme grubundan ayrıdır:
+        // eskiden "Düzenle / Sil" araçları gerçek bahçe parsellerini değiştirip silebiliyordu
+        parcelLayer = L.featureGroup().addTo(map);
+        recordAreaLayer = L.featureGroup().addTo(map);
+        drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            edit: false,
+            draw: {
+                polygon: { allowIntersection: false, showArea: true },
+                rectangle: true,
+                polyline: false,
+                circle: false,
+                marker: false,
+                circlemarker: false
+            }
+        });
+        map.addControl(drawControl);
+
+        // Canlı Konum Kontrolü Ekleme (Leaflet Live Location Control)
+        const LiveLocationControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function (map) {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-livelocation');
+                const button = L.DomUtil.create('a', '', container);
+                button.href = '#';
+                button.title = 'Canlı Konum Takibi (GPS)';
+                button.id = 'leafletBtnHerbicideLiveLocation';
+                button.role = 'button';
+                button.ariaLabel = 'Canlı Konum Takibi';
+                button.innerHTML = '<i class="bi bi-crosshair" id="herbicideLiveLocationIcon"></i>';
+
+                L.DomEvent.disableClickPropagation(button);
+                L.DomEvent.on(button, 'click', function (e) {
+                    L.DomEvent.preventDefault(e);
+                    toggleHerbicideLiveLocation();
+                });
+
+                return container;
+            }
+        });
+        map.addControl(new LiveLocationControl());
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const layer = e.layer;
+            if (pendingDrawnLayer) drawnItems.removeLayer(pendingDrawnLayer);
+            pendingDrawnLayer = layer;
+            drawnItems.addLayer(layer);
+
+            const areaInSqMeters = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+            const areaInDecares = Math.round((areaInSqMeters / 1000) * 10) / 10;
+
+            openAddHerbicideModal({ keepDrawing: true });
+            document.getElementById('recordArea').value = areaInDecares;
+            document.getElementById('drawnPolygonGeoJSON').value = JSON.stringify(layer.toGeoJSON());
+            recalculateAllProductTotals();
+        });
+
+        // Dikim sırası detayları (ağaç / sıra no) görünen alana göre çizildiği için harita hareket edince yenile
+        let rowDetailTimer = null;
+        map.on('moveend', () => {
+            if (!showNorthSouthRowsHerbicide) return;
+            clearTimeout(rowDetailTimer);
+            rowDetailTimer = setTimeout(renderNorthSouthRowLinesHerbicide, 250);
+        });
+
+        // Kullanıcı haritayı elle kaydırınca canlı konum takibini duraklat
+        map.on('dragstart', () => {
+            if (liveLocationWatchId !== null && liveLocationFollow) {
+                liveLocationFollow = false;
+                updateHerbicideFollowButtonUI();
+            }
+        });
+
+        // Canlı konum rozetini harita içine al: tam ekran / mobilde de görünür, tıklamalar haritaya geçmez
+        const overlay = document.getElementById('herbicideLiveLocationOverlay');
+        if (overlay) {
+            map.getContainer().appendChild(overlay);
+            L.DomEvent.disableClickPropagation(overlay);
+        }
+    }
+
+    // Live Location State Variables for Herbicide Map
+    let liveLocationWatchId = null;
+    let liveLocationMarker = null;
+    let liveLocationCircle = null;
+    let liveLocationFollow = true;
+    let lastLivePosition = null;
+    let liveLocationFixCount = 0;
+    let liveLocationIsCoarse = null;
+
+    function buildHerbicideLiveIcon(isCoarse) {
+        return L.divIcon({
+            className: 'live-location-custom-icon',
+            html: `
+                <div class="live-location-pin">
+                    <div class="live-location-pulse" style="${isCoarse ? 'background-color: rgba(255, 193, 7, 0.4);' : ''}"></div>
+                    <div class="live-location-dot" style="${isCoarse ? 'background-color: #ffc107;' : ''}"></div>
+                </div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+    }
+
+    window.toggleHerbicideLiveLocation = function() {
+        if (liveLocationWatchId !== null) {
+            stopHerbicideLiveLocation();
+        } else {
+            startHerbicideLiveLocation();
+        }
+    };
+
+    window.startHerbicideLiveLocation = function(useHighAccuracy = true) {
+        if (!navigator.geolocation) {
+            alert("Cihazınız veya tarayıcınız konum bilgisini desteklemiyor!");
+            return;
+        }
+
+        const btnGPS = document.getElementById('btnHerbicideLiveGPS');
+        const btnGPSText = document.getElementById('btnHerbicideLiveGPSText');
+        const overlayBadge = document.getElementById('herbicideLiveLocationOverlay');
+        const overlayMsg = document.getElementById('herbicideLiveLocationStatusMsg');
+        const leafletBtn = document.getElementById('leafletBtnHerbicideLiveLocation');
+
+        if (btnGPS) {
+            btnGPS.classList.remove('btn-outline-primary');
+            btnGPS.classList.add('btn-primary');
+        }
+        if (btnGPSText) btnGPSText.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Aranıyor...`;
+        if (overlayBadge) overlayBadge.style.display = 'flex';
+        if (overlayMsg) overlayMsg.innerHTML = `<b>📍 Canlı Konum:</b> Aranıyor...`;
+        if (leafletBtn) leafletBtn.classList.add('active');
+
+        liveLocationFollow = true;
+        updateHerbicideFollowButtonUI();
+        if (useHighAccuracy) liveLocationFixCount = 0;
+
+        if (liveLocationWatchId !== null) {
+            navigator.geolocation.clearWatch(liveLocationWatchId);
+            liveLocationWatchId = null;
+        }
+
+        const geoOptions = {
+            enableHighAccuracy: useHighAccuracy,
+            maximumAge: useHighAccuracy ? 3000 : 10000,
+            timeout: useHighAccuracy ? 15000 : 25000
+        };
+
+        liveLocationWatchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                const accuracy = pos.coords.accuracy;
+                lastLivePosition = { lat, lng, accuracy };
+
+                const latlng = L.latLng(lat, lng);
+                const accText = `±${Math.round(accuracy)} m`;
+
+                // Coarse accuracy check: > 300m means cell tower / IP guess
+                const isCoarseFix = accuracy > 300;
+                const isFirstGoodFix = !isCoarseFix && liveLocationFixCount === 0;
+                if (!isCoarseFix) liveLocationFixCount++;
+
+                if (!liveLocationMarker) {
+                    liveLocationMarker = L.marker(latlng, { icon: buildHerbicideLiveIcon(isCoarseFix), zIndexOffset: 2000 }).addTo(map);
+                } else {
+                    if (liveLocationIsCoarse !== isCoarseFix) liveLocationMarker.setIcon(buildHerbicideLiveIcon(isCoarseFix));
+                    liveLocationMarker.setLatLng(latlng);
+                }
+                liveLocationIsCoarse = isCoarseFix;
+
+                liveLocationMarker.bindPopup(`
+                    <div class="p-1 text-center">
+                        <h6 class="fw-bold ${isCoarseFix ? 'text-warning' : 'text-primary'} mb-1">
+                            <i class="bi bi-geo-alt-fill me-1"></i>${isCoarseFix ? 'Şebeke/IP Konumu' : 'Canlı GPS Konumunuz'}
+                        </h6>
+                        <div class="small text-muted mb-1">Enlem: ${lat.toFixed(6)}<br>Boylam: ${lng.toFixed(6)}</div>
+                        <div class="badge ${isCoarseFix ? 'bg-warning text-dark' : 'bg-primary text-white'}" style="font-size:0.75rem;">Hassasiyet: ${accText}</div>
+                    </div>
+                `);
+
+                if (!liveLocationCircle) {
+                    liveLocationCircle = L.circle(latlng, {
+                        radius: accuracy,
+                        color: isCoarseFix ? '#ffc107' : '#0d6efd',
+                        weight: 1.5,
+                        fillColor: isCoarseFix ? '#ffc107' : '#0d6efd',
+                        fillOpacity: 0.12,
+                        interactive: false
+                    }).addTo(map);
+                } else {
+                    liveLocationCircle.setLatLng(latlng);
+                    liveLocationCircle.setRadius(accuracy);
+                    liveLocationCircle.setStyle({ color: isCoarseFix ? '#ffc107' : '#0d6efd', fillColor: isCoarseFix ? '#ffc107' : '#0d6efd' });
+                }
+
+                // İlk hassas konumda yakınlaş; sonra yalnızca konum ekranın orta bölgesinden
+                // çıktığında yumuşakça kaydır (her güncellemede zorla ortalamak titreme yapıyordu)
+                if (liveLocationFollow && !isCoarseFix) {
+                    if (isFirstGoodFix) {
+                        map.setView(latlng, Math.max(map.getZoom(), 17), { animate: true });
+                    } else {
+                        const size = map.getSize();
+                        const pt = map.latLngToContainerPoint(latlng);
+                        if (pt.x < size.x * 0.25 || pt.x > size.x * 0.75 || pt.y < size.y * 0.25 || pt.y > size.y * 0.75) {
+                            map.panTo(latlng, { animate: true, duration: 0.6 });
+                        }
+                    }
+                }
+
+                if (btnGPSText) btnGPSText.innerHTML = `Canlı Konumu Kapat`;
+                if (isCoarseFix) {
+                    if (overlayMsg) overlayMsg.innerHTML = `<b>⚠️ Sinyal Zayıf:</b> Şebeke Tahmini (${accText})`;
+                } else {
+                    if (overlayMsg) overlayMsg.innerHTML = `<b>📍 Canlı Konum:</b> Aktif (${accText})`;
+                }
+            },
+            (err) => {
+                console.warn("GPS Canlı Konum Hatası:", err);
+
+                // Şebeke konumuna yalnızca hiç GPS konumu alınamadıysa geç; konum alındıktan
+                // sonraki zaman aşımı normaldir ve izleme kendiliğinden sürer
+                if (useHighAccuracy && liveLocationFixCount === 0 && (err.code === err.TIMEOUT || err.code === err.POSITION_UNAVAILABLE)) {
+                    console.log("Hassas GPS yanıt vermedi, standart şebeke/wifi konumuna geçiliyor...");
+                    startHerbicideLiveLocation(false);
+                    return;
+                }
+                if (err.code === err.TIMEOUT && liveLocationFixCount > 0) {
+                    if (overlayMsg) overlayMsg.innerHTML = `<b>📍 Canlı Konum:</b> Sinyal bekleniyor...`;
+                    return;
+                }
+
+                let msg = "GPS sinyali alınamadı.";
+                if (err.code === err.PERMISSION_DENIED) {
+                    msg = "Lütfen tarayıcınızın ve cihazınızın konum iznini etkinleştirin.";
+                } else if (err.code === err.TIMEOUT) {
+                    msg = "Zaman aşımı! Lütfen GPS / Konum servisinizin açık olduğundan emin olun.";
+                }
+                if (overlayMsg) overlayMsg.innerHTML = `<b>📍 Canlı Konum:</b> Hata (${msg})`;
+                if (leafletBtn) leafletBtn.classList.remove('active');
+                if (err.code === err.PERMISSION_DENIED) {
+                    navigator.geolocation.clearWatch(liveLocationWatchId);
+                    liveLocationWatchId = null;
+                    if (btnGPSText) btnGPSText.innerHTML = `Canlı Konumumu Göster`;
+                    if (btnGPS) {
+                        btnGPS.classList.remove('btn-primary');
+                        btnGPS.classList.add('btn-outline-primary');
+                    }
+                }
+            },
+            geoOptions
+        );
+    };
+
+    window.stopHerbicideLiveLocation = function() {
+        if (liveLocationWatchId !== null) {
+            navigator.geolocation.clearWatch(liveLocationWatchId);
+            liveLocationWatchId = null;
+        }
+        lastLivePosition = null;
+        liveLocationIsCoarse = null;
+
+        if (liveLocationMarker) {
+            map.removeLayer(liveLocationMarker);
+            liveLocationMarker = null;
+        }
+        if (liveLocationCircle) {
+            map.removeLayer(liveLocationCircle);
+            liveLocationCircle = null;
+        }
+
+        const btnGPS = document.getElementById('btnHerbicideLiveGPS');
+        const btnGPSText = document.getElementById('btnHerbicideLiveGPSText');
+        const overlayBadge = document.getElementById('herbicideLiveLocationOverlay');
+        const leafletBtn = document.getElementById('leafletBtnHerbicideLiveLocation');
+
+        if (btnGPS) {
+            btnGPS.classList.remove('btn-primary');
+            btnGPS.classList.add('btn-outline-primary');
+        }
+        if (btnGPSText) btnGPSText.innerHTML = `Canlı Konumumu Göster`;
+        if (overlayBadge) overlayBadge.style.display = 'none';
+        if (leafletBtn) leafletBtn.classList.remove('active');
+    };
+
+    window.toggleHerbicideLocationFollow = function() {
+        liveLocationFollow = !liveLocationFollow;
+        updateHerbicideFollowButtonUI();
+        if (liveLocationFollow && lastLivePosition) {
+            map.setView([lastLivePosition.lat, lastLivePosition.lng], Math.max(map.getZoom(), 17), { animate: true });
+        }
+    };
+
+    function updateHerbicideFollowButtonUI() {
+        const btn = document.getElementById('btnToggleHerbicideFollow');
+        if (!btn) return;
+        if (liveLocationFollow) {
+            btn.className = "btn btn-sm btn-outline-light rounded-pill px-2 py-0";
+            btn.innerHTML = `<i class="bi bi-lock-fill me-1"></i>Takip: AÇIK`;
+        } else {
+            btn.className = "btn btn-sm btn-warning text-dark rounded-pill px-2 py-0 fw-bold";
+            btn.innerHTML = `<i class="bi bi-unlock-fill me-1"></i>Takip: KAPALI`;
+        }
+    }
+
+    // Bahçe parselleri sunucudaki harita verisinden gelir (çeşit parselleri; yoksa sulama parselleri).
+    // Eskiden önce tarayıcıdaki eski bir kopya okunuyor, hiç parsel yoksa sahte örnek parseller gösteriliyordu.
+    async function loadGardenVarietyPlots() {
+        let plots = [];
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${encodeURIComponent(gardenId)}&t=${Date.now()}`);
+            if (res.ok) plots = await res.json();
+        } catch (e) {
+            console.warn('Bahçe parselleri yüklenemedi', e);
+        }
+        if (!Array.isArray(plots)) plots = [];
+        const valid = plots.filter(p => p && Array.isArray(p.coordinates) && p.coordinates.length >= 3);
+        const varieties = valid.filter(p => p.type === 'variety' || p.type === 'tracker' || p.type === 'route');
+        gardenVarietyPlots = varieties.length > 0 ? varieties : valid.filter(p => p.type === 'irrigation');
+
+        const emptyBox = document.getElementById('herbicideNoParcelsBox');
+        if (emptyBox) emptyBox.style.display = gardenVarietyPlots.length === 0 ? 'block' : 'none';
+
+        populateVarietySelectDropdown();
+        renderMapPolygons();
+    }
+
+    function populateVarietySelectDropdown() {
+        const select = document.getElementById('selectGardenVarietyPlot');
+        select.innerHTML = '<option value="">-- Çeşit Parseli Seçin --</option>';
+        gardenVarietyPlots.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `${p.name || p.variety || 'Parsel'} (${p.area || '?'} da)`;
+            select.appendChild(opt);
+        });
+    }
+
+    function onVarietyPlotSelectChange(plotId) {
+        const plot = gardenVarietyPlots.find(p => p.id === plotId);
+        const infoBox = document.getElementById('selectedPlotInfoBox');
+        if (!plot) {
+            infoBox.style.display = 'none';
+            return;
+        }
+
+        const lastRecord = findLatestRecordForPlot(plot);
+        document.getElementById('infoPlotName').textContent = plot.name || 'Çeşit Parseli';
+        document.getElementById('infoPlotArea').textContent = `${plot.area || 0} da`;
+        document.getElementById('infoPlotVariety').textContent = lastRecord
+            ? `Son kayıt: ${lastRecord.startDate || '-'} • ${statusLabel(effectiveStatus(lastRecord))}`
+            : 'Bu parselde henüz herbisit kaydı yok';
+        infoBox.style.display = 'block';
+
+        if (plot.coordinates && plot.coordinates.length > 0) {
+            if (liveLocationFollow && liveLocationWatchId !== null) {
+                liveLocationFollow = false;
+                updateHerbicideFollowButtonUI();
+            }
+            const bounds = L.latLngBounds(plot.coordinates.map(c => [c.lat, c.lng]));
+            map.fitBounds(bounds, { padding: [40, 40] });
+        }
+    }
+
+    function openModalForSelectedPlot() {
+        const plotId = document.getElementById('selectGardenVarietyPlot').value;
+        const plot = gardenVarietyPlots.find(p => p.id === plotId);
+        if (!plot) return;
+        quickAddForParcel(plot.name || plot.variety || 'Bahçe Parseli', plot.area);
+    }
+
+    function plotLabel(plot) {
+        return plot.name || plot.variety || 'Parsel';
+    }
+
+    // Kayıtlar en yeni başta tutulur; parsele ait en güncel kaydı döndürür
+    function findLatestRecordForPlot(plot) {
+        const label = plotLabel(plot);
+        return herbicideRecords.find(r => r.parcelName === label || r.parcelName === plot.name || r.parcelName === plot.variety) || null;
+    }
+
+    const STATUS_COLORS = { completed: '#10b981', planned: '#f59e0b', overdue: '#ef4444' };
+
+    function renderMapPolygons() {
+        parcelLayer.clearLayers();
+        recordAreaLayer.clearLayers();
+        const boundsList = [];
+
+        gardenVarietyPlots.forEach(plot => {
+            const latlngs = plot.coordinates.map(c => [c.lat, c.lng]);
+            boundsList.push(...latlngs);
+
+            const matchingRecord = findLatestRecordForPlot(plot);
+            const status = matchingRecord ? effectiveStatus(matchingRecord) : null;
+            const polygonColor = status ? STATUS_COLORS[status] : (plot.color || '#64748b');
+            const fillOpacity = status ? 0.55 : 0.3;
+
+            const poly = L.polygon(latlngs, {
+                color: polygonColor,
+                fillColor: polygonColor,
+                fillOpacity: fillOpacity,
+                weight: 3
+            }).addTo(parcelLayer);
+
+            const label = plotLabel(plot);
+            poly.bindTooltip(escapeHtml(label), { permanent: false, direction: 'center', className: 'fw-semibold' });
+            poly.bindPopup(`
+                <div class="p-1" style="min-width: 220px;">
+                    <strong class="fs-6">${escapeHtml(label)}</strong><br>
+                    <span class="badge bg-info text-dark">Alan: ${escapeHtml(plot.area)} da</span>
+                    ${status ? getStatusBadgeHTML(status) : ''}<br>
+                    ${matchingRecord ? `<hr class="my-1"><strong>Tarih:</strong> ${escapeHtml(matchingRecord.startDate)} - ${escapeHtml(matchingRecord.endDate)}<br><strong>Herbisitler:</strong> ${getProductsListSummary(matchingRecord.products)}` : '<span class="text-muted small">Henüz herbisit kaydı yok.</span>'}<br>
+                    <button class="btn btn-sm btn-primary w-100 mt-2 rounded-pill" data-plot-id="${escapeHtml(plot.id)}" onclick="quickAddForPlotId(this.dataset.plotId)"><i class="bi bi-plus-circle me-1"></i>Herbisit Kaydı Ekle</button>
+                </div>
+            `);
+        });
+
+        // Elle çizilmiş uygulama alanları (parsel adından bağımsız) kendi durum renkleriyle gösterilir
+        herbicideRecords.forEach(record => {
+            if (!record.geoJSON) return;
+            try {
+                const status = effectiveStatus(record);
+                const color = STATUS_COLORS[status] || '#64748b';
+                const layer = L.geoJSON(record.geoJSON, {
+                    style: { color, fillColor: color, fillOpacity: 0.35, weight: 2, dashArray: '6, 4' }
+                }).addTo(recordAreaLayer);
+                layer.bindPopup(`
+                    <div class="p-1" style="min-width: 200px;">
+                        <strong>${escapeHtml(record.parcelName)}</strong> ${getStatusBadgeHTML(status)}<br>
+                        <small class="text-muted">${escapeHtml(record.startDate)} - ${escapeHtml(record.endDate)} • ${escapeHtml(record.area)} da</small><br>
+                        ${getProductsListSummary(record.products)}
+                        <button class="btn btn-sm btn-outline-primary w-100 mt-2 rounded-pill" data-record-id="${escapeHtml(record.id)}" onclick="showRecordDetail(this.dataset.recordId)">Detay</button>
+                    </div>
+                `);
+            } catch (e) {
+                console.warn('Kayıt alanı çizilemedi', record.id, e);
+            }
+        });
+
+        // Haritayı yalnızca ilk yüklemede parsellere sığdır; kayıt eklemek / silmek haritayı kaydırmasın
+        if (!hasFittedParcels && boundsList.length > 0) {
+            map.fitBounds(L.latLngBounds(boundsList), { padding: [30, 30] });
+            hasFittedParcels = true;
+        }
+
+        renderNorthSouthRowLinesHerbicide();
+    }
+
+    let showNorthSouthRowsHerbicide = true;
+    let northSouthRowSpacingHerbicide = 5.0;
+    let northSouthRowLayersHerbicide = [];
+
+    function generateNorthSouthRowsForPlot(plot, spacing = 5) {
+        if (!plot || !plot.coordinates || plot.coordinates.length < 3) return [];
+
+        const activeGarden = localStorage.getItem('selected_garden_name') || '';
+        const isIcachem = activeGarden.toLowerCase().includes('icachem');
+        if (!isIcachem) return [];
+
+        const isMerkez = (plot.name && plot.name.toLowerCase().includes('merkez')) || 
+                         (plot.variety && plot.variety.toLowerCase().includes('merkez'));
+        if (isMerkez) return [];
+        
+        let sumLat = 0;
+        plot.coordinates.forEach(c => sumLat += c.lat);
+        const centerLat = sumLat / plot.coordinates.length;
+        
+        const metersPerDegreeLat = 111132;
+        const metersPerDegreeLng = 111320 * Math.cos(centerLat * Math.PI / 180);
+        if (isNaN(metersPerDegreeLng) || metersPerDegreeLng <= 0) return [];
+
+        const pts = plot.coordinates.map(c => ({
+            x: c.lng * metersPerDegreeLng,
+            y: c.lat * metersPerDegreeLat
+        }));
+        
+        let minX = Infinity, maxX = -Infinity;
+        pts.forEach(p => {
+            if (p.x < minX) minX = p.x;
+            if (p.x > maxX) maxX = p.x;
+        });
+        
+        if (minX === Infinity || maxX === -Infinity || minX >= maxX) return [];
+        
+        const rows = [];
+        // Number rows from RIGHT (East / maxX) to LEFT (West / minX)
+        let currentX = maxX - spacing / 2;
+        let rowIndex = 1;
+        
+        while (currentX > minX) {
+            const intersectionsY = [];
+            for (let i = 0; i < pts.length; i++) {
+                const p1 = pts[i];
+                const p2 = pts[(i + 1) % pts.length];
+                if ((p1.x <= currentX && p2.x > currentX) || (p2.x <= currentX && p1.x > currentX)) {
+                    if (p2.x !== p1.x) {
+                        const t = (currentX - p1.x) / (p2.x - p1.x);
+                        const yInt = p1.y + t * (p2.y - p1.y);
+                        intersectionsY.push(yInt);
+                    }
+                }
+            }
+            
+            intersectionsY.sort((a, b) => a - b);
+
+            // Clean up duplicate Y values closer than 0.05 meters (prevents double lines at vertices)
+            const cleanIntersectionsY = [];
+            for (let yVal of intersectionsY) {
+                if (!cleanIntersectionsY.some(ey => Math.abs(ey - yVal) < 0.05)) {
+                    cleanIntersectionsY.push(yVal);
+                }
+            }
+
+            for (let idx = 0; idx < cleanIntersectionsY.length; idx += 2) {
+                if (idx + 1 < cleanIntersectionsY.length) {
+                    const y1 = cleanIntersectionsY[idx];
+                    const y2 = cleanIntersectionsY[idx + 1];
+
+                    // Ignore sub-meter micro-segments
+                    if (Math.abs(y2 - y1) < 0.5) continue;
+
+                    const lengthMeters = Math.abs(y2 - y1);
+                    const inRowSpacing = 3.0; // 3 meters spacing between trees along the row
+                    const treeCount = Math.max(1, Math.floor(lengthMeters / inRowSpacing) + 1);
+
+                    const treeCoords = [];
+                    const minY = Math.min(y1, y2);
+                    const maxY = Math.max(y1, y2);
+                    for (let t = 0; t < treeCount; t++) {
+                        const yTree = minY + t * inRowSpacing;
+                        if (yTree <= maxY + 0.01) {
+                            treeCoords.push({
+                                lat: yTree / metersPerDegreeLat,
+                                lng: currentX / metersPerDegreeLng
+                            });
+                        }
+                    }
+                    
+                    const pt1_latlng = {
+                        lat: y1 / metersPerDegreeLat,
+                        lng: currentX / metersPerDegreeLng
+                    };
+                    const pt2_latlng = {
+                        lat: y2 / metersPerDegreeLat,
+                        lng: currentX / metersPerDegreeLng
+                    };
+                    
+                    rows.push({
+                        id: `row_ns_${plot.id}_${rowIndex}`,
+                        index: rowIndex,
+                        start: pt1_latlng,
+                        end: pt2_latlng,
+                        lengthMeters: lengthMeters,
+                        inRowSpacing: inRowSpacing,
+                        treeCount: treeCount,
+                        treeCoords: treeCoords,
+                        plotId: plot.id,
+                        plotName: plot.name || plot.variety
+                    });
+                }
+            }
+            currentX -= spacing;
+            rowIndex++;
+        }
+        return rows;
+    }
+
+    function renderNorthSouthRowLinesHerbicide() {
+        if (typeof map === 'undefined' || !map) return;
+        northSouthRowLayersHerbicide.forEach(l => map.removeLayer(l));
+        northSouthRowLayersHerbicide = [];
+
+        const activeGarden = localStorage.getItem('selected_garden_name') || '';
+        const isIcachem = activeGarden.toLowerCase().includes('icachem');
+
+        const cardEl = document.getElementById('icachemRowLinesHerbicideCard');
+        if (cardEl) cardEl.style.display = isIcachem ? 'block' : 'none';
+
+        if (!isIcachem || !showNorthSouthRowsHerbicide) return;
+
+        // Deduplicate plots with identical coordinate signatures to avoid rendering double lines for overlapping plots
+        const drawnGeomKeys = new Set();
+        const uniqueParcels = [];
+
+        gardenVarietyPlots.forEach(plot => {
+            if (!plot.coordinates || plot.coordinates.length < 3) return;
+            
+            const key = plot.coordinates.map(c => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`).sort().join('|');
+            if (drawnGeomKeys.has(key)) return;
+            drawnGeomKeys.add(key);
+
+            uniqueParcels.push(plot);
+        });
+
+        // Ağaç noktaları ve sıra numaraları yalnızca yakın zoomda ve ekranda görünen bölgede çizilir:
+        // uzak zoomda on binlerce işaretçi haritayı kilitliyor ve görüntüyü okunmaz hale getiriyordu
+        const showRowDetail = map.getZoom() >= 17;
+        const showTreeDetail = map.getZoom() >= 19;
+        const rowViewBounds = map.getBounds().pad(0.25);
+
+        let grandTotalRows = 0;
+        let grandTotalTrees = 0;
+
+        uniqueParcels.forEach(plot => {
+            const isMerkez = (plot.name && plot.name.toLowerCase().includes('merkez')) || 
+                             (plot.variety && plot.variety.toLowerCase().includes('merkez'));
+            if (isMerkez) return;
+
+            const rows = generateNorthSouthRowsForPlot(plot, northSouthRowSpacingHerbicide);
+            const plotTotalTrees = rows.reduce((sum, r) => sum + r.treeCount, 0);
+            const plotTotalRows = rows.length;
+
+            rows.forEach(r => {
+                grandTotalRows++;
+                grandTotalTrees += r.treeCount;
+
+                // 1. Draw North-South Row Line
+                const polyline = L.polyline([
+                    [r.start.lat, r.start.lng],
+                    [r.end.lat, r.end.lng]
+                ], {
+                    color: '#059669',
+                    weight: 2,
+                    opacity: 0.85,
+                    dashArray: '5, 5',
+                    interactive: true
+                }).addTo(map);
+
+                const hoverTooltipContent = `
+                    <div style="font-family: system-ui, sans-serif; padding: 2px;">
+                        <div style="font-weight: 700; color: #065F46; font-size: 12px;">Sağdan ${r.index}. Sıra (${plot.name || plot.variety})</div>
+                        <div style="font-size: 11px; color: #374151; margin-top: 3px; line-height: 1.4;">
+                            📏 Sıra Uzunluğu: <strong>${r.lengthMeters.toFixed(1)} m</strong><br/>
+                            🌳 Sıradaki Ağaç: <strong>${r.treeCount} Adet</strong> <span style="color:#6B7280;">(3m dikim aralığı)</span><br/>
+                            🏡 Parsel Toplam Ağaç: <strong>${plotTotalTrees.toLocaleString('tr-TR')} Adet</strong> <span style="color:#6B7280;">(${plotTotalRows} sıra)</span>
+                        </div>
+                    </div>
+                `;
+
+                polyline.bindTooltip(hoverTooltipContent, {
+                    direction: 'top',
+                    sticky: true
+                });
+
+                northSouthRowLayersHerbicide.push(polyline);
+
+                // 2. Draw Representative Tree Markers (3m in-row spacing)
+                (showTreeDetail ? r.treeCoords.filter(tc => rowViewBounds.contains([tc.lat, tc.lng])) : []).forEach(tc => {
+                    const treeMarker = L.circleMarker([tc.lat, tc.lng], {
+                        radius: 2.5,
+                        fillColor: '#10B981',
+                        color: '#047857',
+                        weight: 1,
+                        fillOpacity: 0.95,
+                        interactive: false
+                    }).addTo(map);
+                    northSouthRowLayersHerbicide.push(treeMarker);
+                });
+
+                // 3. Draw Clean Row Header Badge (Circle with Row Number)
+                if (showRowDetail && rowViewBounds.contains([r.end.lat, r.end.lng])) {
+                    const badgeMarker = L.marker([r.end.lat, r.end.lng], {
+                        icon: L.divIcon({
+                            className: 'row-number-badge',
+                            html: `<div style="
+                                background: #059669;
+                                color: white;
+                                border-radius: 50%;
+                                width: 20px;
+                                height: 20px;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 10px;
+                                font-weight: 800;
+                                border: 1.5px solid white;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                            ">${r.index}</div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        }),
+                        interactive: true
+                    }).addTo(map);
+
+                    badgeMarker.bindTooltip(hoverTooltipContent, {
+                        direction: 'top',
+                        sticky: true
+                    });
+
+                    northSouthRowLayersHerbicide.push(badgeMarker);
+                }
+            });
+        });
+
+        // Update total rows & trees counter in sidebar
+        const rowsCountEl = document.getElementById('totalRowsHerbicideCount');
+        const treesCountEl = document.getElementById('totalTreesHerbicideCount');
+        if (rowsCountEl) rowsCountEl.innerText = grandTotalRows.toLocaleString('tr-TR');
+        if (treesCountEl) treesCountEl.innerText = grandTotalTrees.toLocaleString('tr-TR');
+    }
+
+    window.toggleNorthSouthRowsHerbicide = function(enabled) {
+        showNorthSouthRowsHerbicide = enabled;
+        const body = document.getElementById('rowLinesHerbicideControlBody');
+        if (body) body.style.display = enabled ? 'block' : 'none';
+        renderNorthSouthRowLinesHerbicide();
+    };
+
+    window.updateNorthSouthRowSpacingHerbicide = function(val) {
+        northSouthRowSpacingHerbicide = parseFloat(val) || 4.0;
+        const label = document.getElementById('nsRowSpacingHerbicideVal');
+        if (label) label.innerText = northSouthRowSpacingHerbicide.toFixed(1) + ' m';
+        renderNorthSouthRowLinesHerbicide();
+    };
+
+    function quickAddForParcel(name, area) {
+        openAddHerbicideModal();
+        document.getElementById('recordParcelName').value = name;
+        document.getElementById('recordArea').value = area || '';
+        recalculateAllProductTotals();
+    }
+
+    function quickAddForPlotId(plotId) {
+        const plot = gardenVarietyPlots.find(p => p.id === plotId);
+        if (!plot) return;
+        map.closePopup();
+        quickAddForParcel(plotLabel(plot), plot.area);
+    }
+
+    function resetRecordForm() {
+        document.getElementById('herbicideForm').reset();
+        document.getElementById('editRecordId').value = '';
+        document.getElementById('drawnPolygonGeoJSON').value = '';
+        document.getElementById('recordWaterRate').value = '';
+        const today = todayIso();
+        document.getElementById('recordStartDate').value = today;
+        document.getElementById('recordEndDate').value = today;
+        document.getElementById('productsContainer').innerHTML = '';
+        document.getElementById('modalTitle').innerHTML = '<i class="bi bi-journal-plus me-2 text-warning"></i>Herbisit Uygulama & Plan Kaydı';
+    }
+
+    // Dynamic Multi-product rows management
+    // Yeni kayıt için formu sıfırlar; aynı modal örneği yeniden kullanılır (her açılışta yeni örnek
+    // oluşturmak kapanmayan karartma katmanı bırakıyordu)
+    function openAddHerbicideModal(options = {}) {
+        const modalEl = document.getElementById('addHerbicideModal');
+        if (!options.keepDrawing && pendingDrawnLayer) {
+            drawnItems.removeLayer(pendingDrawnLayer);
+            pendingDrawnLayer = null;
+        }
+        resetRecordForm();
+        addProductRow('Glifosat Isopropilamin (%48)', 200, 'ml');
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function editHerbicideRecord(id) {
+        const r = herbicideRecords.find(rec => rec.id === id);
+        if (!r) return;
+        const detail = bootstrap.Modal.getInstance(document.getElementById('detailHerbicideModal'));
+        if (detail) detail.hide();
+
+        resetRecordForm();
+        document.getElementById('modalTitle').innerHTML = '<i class="bi bi-pencil-square me-2 text-warning"></i>Herbisit Kaydını Düzenle';
+        document.getElementById('editRecordId').value = r.id;
+        document.getElementById('recordParcelName').value = r.parcelName || '';
+        document.getElementById('recordType').value = r.type || 'Sıra Arası';
+        document.getElementById('recordStartDate').value = r.startDate || r.date || '';
+        document.getElementById('recordEndDate').value = r.endDate || r.date || '';
+        document.getElementById('recordStatus').value = r.status || 'planned';
+        document.getElementById('recordArea').value = r.area || '';
+        document.getElementById('recordTotalWater').value = r.totalWater || '';
+        document.getElementById('recordOperator').value = r.operator || '';
+        document.getElementById('recordNotes').value = r.notes || '';
+        document.getElementById('drawnPolygonGeoJSON').value = r.geoJSON ? JSON.stringify(r.geoJSON) : '';
+        (r.products || []).forEach(p => addProductRow(p.name, p.dose, p.unit));
+        if (!(r.products || []).length) addProductRow();
+        recalculateAllProductTotals();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addHerbicideModal')).show();
+    }
+
+    function addProductRow(name = '', dose = '', unit = 'ml') {
+        const container = document.getElementById('productsContainer');
+        const rowId = 'prod_row_' + Date.now() + Math.random().toString(36).substr(2, 4);
+
+        const div = document.createElement('div');
+        div.className = 'product-input-row';
+        div.id = rowId;
+        div.innerHTML = `
+            <div class="row g-2 align-items-center">
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm prod-name" placeholder="İlaç Adı (Örn: Glifosat / Klopiralid)" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <input type="number" step="any" min="0" class="form-control form-control-sm prod-dose" placeholder="Dekara Doz" oninput="recalculateAllProductTotals()">
+                </div>
+                <div class="col-4 col-md-2">
+                    <select class="form-select form-select-sm prod-unit" onchange="recalculateAllProductTotals()">
+                        <option value="ml" ${unit==='ml'?'selected':''}>ml/da</option>
+                        <option value="g" ${unit==='g'?'selected':''}>g/da</option>
+                        <option value="L" ${unit==='L'?'selected':''}>L/da</option>
+                    </select>
+                </div>
+                <div class="col-2 col-md-2 d-flex justify-content-between align-items-center">
+                    <small class="fw-bold text-primary prod-total">0</small>
+                    <button type="button" class="btn btn-sm btn-outline-danger border-0 p-0 px-1" title="Kaldır" onclick="document.getElementById('${rowId}').remove(); recalculateAllProductTotals();"><i class="bi bi-x-circle-fill"></i></button>
+                </div>
+            </div>
+        `;
+        // Değerler HTML'e gömülmeden atanır (tırnak/özel karakter içeren ürün adları bozulmasın)
+        div.querySelector('.prod-name').value = name;
+        div.querySelector('.prod-dose').value = dose;
+        container.appendChild(div);
+        recalculateAllProductTotals();
+    }
+
+    function recalculateAllProductTotals() {
+        const area = parseFloat(document.getElementById('recordArea').value) || 0;
+        const rows = document.querySelectorAll('.product-input-row');
+        rows.forEach(row => {
+            const dose = parseFloat(row.querySelector('.prod-dose').value) || 0;
+            const unit = row.querySelector('.prod-unit').value;
+            const totalEl = row.querySelector('.prod-total');
+
+            const total = Math.round((area * dose) * 10) / 10;
+            if (unit === 'ml' && total >= 1000) {
+                totalEl.textContent = `${Math.round((total / 1000) * 100) / 100} L`;
+            } else if (unit === 'g' && total >= 1000) {
+                totalEl.textContent = `${Math.round((total / 1000) * 100) / 100} kg`;
+            } else {
+                totalEl.textContent = `${total} ${unit}`;
+            }
+        });
+        recalculateWaterRate();
+    }
+
+    function recalculateWaterRate() {
+        const area = parseFloat(document.getElementById('recordArea').value) || 0;
+        const totalWater = parseFloat(document.getElementById('recordTotalWater').value) || 0;
+        const rateEl = document.getElementById('recordWaterRate');
+        if (area > 0 && totalWater > 0) {
+            const rate = Math.round(totalWater / area);
+            rateEl.value = `${rate} L/da`;
+        } else {
+            rateEl.value = '';
+        }
+    }
+
+    async function saveHerbicideRecord(e) {
+        e.preventDefault();
+        const startDate = document.getElementById('recordStartDate').value;
+        const endDate = document.getElementById('recordEndDate').value;
+        if (endDate && startDate && endDate < startDate) {
+            alert('Bitiş tarihi başlangıç tarihinden önce olamaz.');
+            return;
+        }
+
+        const editId = document.getElementById('editRecordId').value;
+        const id = editId || Date.now().toString();
+        const geoText = document.getElementById('drawnPolygonGeoJSON').value;
+
+        // Gather products list
+        const products = [];
+        document.querySelectorAll('.product-input-row').forEach(row => {
+            const name = row.querySelector('.prod-name').value.trim();
+            const dose = parseFloat(row.querySelector('.prod-dose').value) || 0;
+            const unit = row.querySelector('.prod-unit').value;
+            const totalText = row.querySelector('.prod-total').textContent;
+            if (name) {
+                products.push({ name, dose, unit, totalAmount: totalText });
+            }
+        });
+
+        const record = {
+            id,
+            parcelName: document.getElementById('recordParcelName').value.trim(),
+            type: document.getElementById('recordType').value,
+            startDate,
+            endDate,
+            status: document.getElementById('recordStatus').value,
+            area: parseFloat(document.getElementById('recordArea').value) || 0,
+            totalWater: parseFloat(document.getElementById('recordTotalWater').value) || 0,
+            products,
+            operator: document.getElementById('recordOperator').value.trim(),
+            notes: document.getElementById('recordNotes').value.trim(),
+            geoJSON: geoText ? JSON.parse(geoText) : null,
+            updatedAt: new Date().toISOString(),
+            updatedBy: localStorage.getItem('userName') || ''
+        };
+
+        const previous = herbicideRecords.slice();
+        const idx = herbicideRecords.findIndex(r => r.id === id);
+        if (idx >= 0) {
+            herbicideRecords[idx] = record;
+        } else {
+            herbicideRecords.unshift(record);
+        }
+
+        const submitBtn = e.submitter || document.querySelector('#herbicideForm button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        const saved = await saveHerbicideRecords();
+        if (submitBtn) submitBtn.disabled = false;
+        if (!saved) {
+            herbicideRecords = previous;
+            return;
+        }
+
+        // Kaydedilen çizim artık kaydın alanı olarak gösterilir
+        if (pendingDrawnLayer) {
+            drawnItems.removeLayer(pendingDrawnLayer);
+            pendingDrawnLayer = null;
+        }
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('addHerbicideModal')).hide();
+        resetRecordForm();
+
+        renderHerbicideRecordsTable();
+        renderMapPolygons();
+        updateStats();
+    }
+
+    function renderHerbicideRecordsTable() {
+        const tbody = document.getElementById('herbicideRecordsTbody');
+        const filterStatus = document.getElementById('filterStatus').value;
+        const searchQuery = document.getElementById('searchTableInput').value.toLocaleLowerCase('tr');
+
+        tbody.innerHTML = '';
+
+        const filtered = herbicideRecords.filter(r => {
+            const matchStatus = filterStatus === 'all' || effectiveStatus(r) === filterStatus;
+            const matchSearch = !searchQuery || (r.parcelName || '').toLocaleLowerCase('tr').includes(searchQuery) ||
+                (r.products && r.products.some(p => (p.name || '').toLocaleLowerCase('tr').includes(searchQuery)));
+            return matchStatus && matchSearch;
+        });
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">${herbicideRecords.length === 0 ? 'Henüz kayıtlı herbisit uygulaması bulunamadı.' : 'Filtreye uyan kayıt bulunamadı.'}</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(r => {
+            const tr = document.createElement('tr');
+            const dateStr = (r.startDate && r.endDate && r.startDate !== r.endDate) ? `${r.startDate} - ${r.endDate}` : (r.startDate || r.date || '-');
+            const productsSummary = getProductsListSummary(r.products || []);
+            const status = effectiveStatus(r);
+            const safeId = escapeHtml(r.id);
+
+            tr.innerHTML = `
+                <td class="fw-bold text-nowrap">${escapeHtml(dateStr)}</td>
+                <td class="fw-bold text-dark">${escapeHtml(r.parcelName)}</td>
+                <td>${productsSummary}</td>
+                <td>${escapeHtml(r.type)}</td>
+                <td class="fw-bold text-nowrap">${escapeHtml(r.area)} da</td>
+                <td class="fw-bold text-primary text-nowrap">${r.totalWater ? escapeHtml(r.totalWater) + ' L' : '-'}</td>
+                <td>${getStatusBadgeHTML(status)}</td>
+                <td>${escapeHtml(r.operator || '-')}</td>
+                <td class="text-end text-nowrap">
+                    <button class="btn btn-sm btn-outline-info rounded-pill px-2 py-0 me-1" data-id="${safeId}" onclick="showRecordDetail(this.dataset.id)" title="Detay"><i class="bi bi-info-circle"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 me-1" data-id="${safeId}" onclick="editHerbicideRecord(this.dataset.id)" title="Düzenle"><i class="bi bi-pencil"></i></button>
+                    ${status !== 'completed' ? `<button class="btn btn-sm btn-outline-success rounded-pill px-2 py-0 me-1" data-id="${safeId}" onclick="markAsCompleted(this.dataset.id)" title="Uygulandı Yap"><i class="bi bi-check-lg"></i></button>` : ''}
+                    <button class="btn btn-sm btn-outline-danger rounded-pill px-2 py-0" data-id="${safeId}" onclick="deleteHerbicideRecord(this.dataset.id)" title="Sil"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function getProductsListSummary(products) {
+        if (!Array.isArray(products) || products.length === 0) return '<span class="text-muted">-</span>';
+        return products.map(p => `<span class="badge bg-warning-subtle text-dark border border-warning me-1 mb-1">${escapeHtml(p.name)} (${escapeHtml(p.totalAmount)})</span>`).join('');
+    }
+
+    function showRecordDetail(id) {
+        const r = herbicideRecords.find(rec => rec.id === id);
+        if (!r) return;
+        map.closePopup();
+
+        const body = document.getElementById('detailModalBody');
+        body.innerHTML = `
+            <div class="mb-3">
+                <h6 class="fw-bold text-dark mb-1">${escapeHtml(r.parcelName)}</h6>
+                <small class="text-muted">Tarih Aralığı: ${escapeHtml(r.startDate || r.date)} &rarr; ${escapeHtml(r.endDate || r.date)}</small>
+            </div>
+            <div class="p-3 bg-light rounded-3 mb-3 border">
+                <div class="row g-2">
+                    <div class="col-6"><strong>Uygulama Alanı:</strong> ${escapeHtml(r.area)} da</div>
+                    <div class="col-6"><strong>Kullanılan Su:</strong> ${escapeHtml(r.totalWater || 0)} Litre</div>
+                    <div class="col-6"><strong>Uygulama Türü:</strong> ${escapeHtml(r.type)}</div>
+                    <div class="col-6"><strong>Durum:</strong> ${getStatusBadgeHTML(effectiveStatus(r))}</div>
+                </div>
+            </div>
+            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-droplet-fill text-warning me-1"></i>Kullanılan Herbisitler (Tank Karışımı)</h6>
+            <ul class="list-group mb-3">
+                ${(r.products || []).map(p => `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${escapeHtml(p.name)}</strong><br>
+                            <small class="text-muted">Doz: ${escapeHtml(p.dose)} ${escapeHtml(p.unit)}/da</small>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">${escapeHtml(p.totalAmount)}</span>
+                    </li>
+                `).join('') || '<li class="list-group-item text-muted">Ürün girilmemiş.</li>'}
+            </ul>
+            ${r.operator ? `<p class="mb-1"><strong>Uygulayan:</strong> ${escapeHtml(r.operator)}</p>` : ''}
+            ${r.notes ? `<p class="mb-1"><strong>Notlar:</strong> ${escapeHtml(r.notes)}</p>` : ''}
+            ${r.updatedBy ? `<p class="mb-0 small text-muted">Son güncelleyen: ${escapeHtml(r.updatedBy)}</p>` : ''}
+            <div class="text-end mt-3">
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" data-id="${escapeHtml(r.id)}" onclick="editHerbicideRecord(this.dataset.id)"><i class="bi bi-pencil me-1"></i>Düzenle</button>
+            </div>
+        `;
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('detailHerbicideModal')).show();
+    }
+
+    function statusLabel(status) {
+        if (status === 'completed') return 'Uygulandı';
+        if (status === 'planned') return 'Planlandı';
+        return 'Gecikti';
+    }
+
+    function getStatusBadgeHTML(status) {
+        if (status === 'completed') return `<span class="badge badge-status-completed px-2 py-1 rounded-pill"><i class="bi bi-check-circle me-1"></i>Uygulandı</span>`;
+        if (status === 'planned') return `<span class="badge badge-status-planned px-2 py-1 rounded-pill"><i class="bi bi-clock me-1"></i>Planlandı</span>`;
+        return `<span class="badge badge-status-overdue px-2 py-1 rounded-pill"><i class="bi bi-exclamation-triangle me-1"></i>Gecikti</span>`;
+    }
+
+    async function markAsCompleted(id) {
+        const rec = herbicideRecords.find(r => r.id === id);
+        if (!rec) return;
+        const prevStatus = rec.status;
+        rec.status = 'completed';
+        if (!(await saveHerbicideRecords())) {
+            rec.status = prevStatus;
+            return;
+        }
+        renderHerbicideRecordsTable();
+        renderMapPolygons();
+        updateStats();
+    }
+
+    async function deleteHerbicideRecord(id) {
+        if (!confirm('Bu herbisit kaydını silmek istediğinize emin misiniz?')) return;
+        const previous = herbicideRecords;
+        herbicideRecords = herbicideRecords.filter(r => r.id !== id);
+        if (!(await saveHerbicideRecords())) {
+            herbicideRecords = previous;
+            return;
+        }
+        renderHerbicideRecordsTable();
+        renderMapPolygons();
+        updateStats();
+    }
+
+    function updateStats() {
+        let completedArea = 0;
+        let plannedArea = 0;
+        let overdueCount = 0;
+        let totalWater = 0;
+
+        herbicideRecords.forEach(r => {
+            const status = effectiveStatus(r);
+            if (status === 'completed') {
+                completedArea += (r.area || 0);
+                totalWater += (r.totalWater || 0); // yalnızca gerçekten uygulanan kayıtların suyu harcanmıştır
+            }
+            if (status === 'planned') plannedArea += (r.area || 0);
+            if (status === 'overdue') overdueCount++;
+        });
+
+        document.getElementById('statCompletedArea').textContent = `${Math.round(completedArea * 10) / 10} da`;
+        document.getElementById('statPlannedArea').textContent = `${Math.round(plannedArea * 10) / 10} da`;
+        document.getElementById('statOverdueCount').textContent = `${overdueCount} Kayıt`;
+        document.getElementById('statTotalWater').textContent = `${Math.round(totalWater).toLocaleString('tr-TR')} L`;
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+<script src="assets/js/banned_ingredients.js"></script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

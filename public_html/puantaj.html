@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İşçilik ve Servis Puantaj Listesi</title>
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }</script>
+    <style>
+        /* Force Leaflet interactive paths to ignore external border-radius overrides */
+        path.leaflet-interactive {
+            border-radius: 0 !important;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            margin-bottom: 50px;
+        }
+        h2 {
+            text-align: center;
+            text-transform: uppercase;
+            font-size: 18px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            /* table-layout: fixed; */ /* Sütun genişliklerini sabitler */
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 4px 6px;
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.2;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 6px 6px;
+        }
+        tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+        input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 13px;
+            text-align: center;
+            padding: 2px 3px;
+            transition: background 0.2s;
+        }
+        input:focus {
+            background-color: #e8f0fe;
+        }
+        .action-buttons {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        @page {
+            size: A4 landscape;
+            margin: 8mm 6mm;
+        }
+        @media print {
+            nav, .navbar, .action-buttons, .btn, .print-btn, .btn-success, .filter-card, .modal, .scroll-top-btn, .action-col {
+                display: none !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font-size: 10px !important;
+                width: 100% !important;
+            }
+            .container, .container-fluid {
+                box-shadow: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                border: 1px solid #000 !important;
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            th, td {
+                border: 1px solid #000 !important;
+                padding: 3px 4px !important;
+                font-size: 10px !important;
+            }
+            th {
+                background-color: #f2f2f2 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            input {
+                font-size: 10px !important;
+                padding: 0 !important;
+                border: none !important;
+                background: transparent !important;
+            }
+        }
+        .total-row-input { font-weight: bold; color: #d32f2f; }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none; margin: 0;
+        }
+        /* Chrome, Safari, Edge, Opera */
+        input[type=number]::-webkit-outer-spin-button,
+        input[type=number]::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        /* Yetki bazlı gizleme sınıfları */
+        .admin-only { display: none !important; }
+        body.is-admin .admin-only { display: inline-block !important; }
+        body.is-admin th.admin-only, body.is-admin td.admin-only { display: table-cell !important; }
+
+        .editor-visible { display: none !important; }
+        body.is-editor-or-admin .editor-visible { display: inline-block !important; }
+
+        /* Mobil Uyumluluk ve Okunabilirlik İyileştirmeleri */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px 5px;
+            }
+            th, td {
+                padding: 3px 2px;
+                font-size: 11px;
+                line-height: 1.1;
+            }
+            input {
+                font-size: 11px;
+                padding: 1px 1px;
+            }
+            h2 {
+                font-size: 16px;
+            }
+        /* Sütun Genişlikleri & Okunabilirlik Düzenlemeleri */
+        .tarih-col {
+            width: 105px !important;
+            min-width: 95px !important;
+            max-width: 110px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+        }
+        input.tarih-input {
+            width: 100% !important;
+            font-size: 11px !important;
+            padding: 2px 0 !important;
+            text-align: center;
+        }
+        .parsel-col {
+            min-width: 120px !important;
+            max-width: 170px !important;
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+        }
+        .parsel-input {
+            font-size: 12px;
+            text-align: left;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            resize: none;
+            overflow: hidden;
+            display: block;
+            margin: 0;
+            padding: 2px 0;
+            font-family: inherit;
+        }
+        .is-col {
+            min-width: 105px !important;
+            max-width: 160px !important;
+        }
+        .is-input {
+            text-align: left;
+            font-size: 12px;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            resize: none;
+            overflow: hidden;
+            display: block;
+            margin: 0;
+            padding: 2px 0;
+            font-family: inherit;
+        }
+        .isci-sayisi-col, .servis-col {
+            width: 46px !important;
+            min-width: 40px !important;
+            max-width: 50px !important;
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+        }
+        input.worker-count, input.servis-input {
+            width: 100% !important;
+            max-width: 44px !important;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .yevmiye-col, .sucreti-col {
+            width: 75px !important;
+            min-width: 70px !important;
+            max-width: 85px !important;
+        }
+        .cavus-col {
+            min-width: 100px !important;
+            max-width: 130px !important;
+        }
+        input.cavus-input {
+            font-size: 12px;
+            font-weight: 500;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .aciklama-col {
+            min-width: 110px !important;
+            max-width: 170px !important;
+        }
+        .aciklama-input {
+            font-size: 12px;
+            text-align: left;
+            white-space: pre-wrap !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 100%;
+            resize: none;
+            overflow: hidden;
+            display: block;
+            margin: 0;
+            padding: 2px 0;
+            font-family: inherit;
+        }
+        .kullanici-col {
+            width: 85px !important;
+            min-width: 75px !important;
+            max-width: 95px !important;
+            font-size: 11px !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        input.kullanici-input {
+            font-size: 11px !important;
+            color: #666;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            overflow: hidden;
+            cursor: default;
+        }
+        .toplam-col {
+            width: 90px !important;
+            min-width: 85px !important;
+            max-width: 100px !important;
+        }
+        .action-col {
+            width: 70px !important;
+            min-width: 65px !important;
+            max-width: 75px !important;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px 5px; }
+            th, td { padding: 3px 2px; font-size: 11px; line-height: 1.1; }
+            input { font-size: 11px; padding: 1px 1px; }
+            h2 { font-size: 16px; }
+            .parsel-col { max-width: 130px !important; min-width: 100px !important; }
+            .kullanici-col { width: 75px !important; min-width: 65px !important; }
+            .tarih-col { width: 95px !important; }
+        }
+
+        .parsel-badge-display {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.35;
+            display: block;
+            width: 100%;
+        }
+        /* Premium Passive Tooltip styling */
+        .premium-tooltip-passive {
+            background: #424242 !important;
+            color: #bdbdbd !important;
+            border: 1px solid #757575 !important;
+            border-radius: 6px !important;
+            font-weight: 500;
+            font-size: 0.75rem;
+            opacity: 0.75 !important;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+            padding: 2px 6px !important;
+        /* Anında Hücre Sınırı Okuma Popover İpucu */
+        .instant-cell-tooltip {
+            position: fixed;
+            display: none;
+            z-index: 99999;
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+            border: 1.5px solid #10b981;
+            pointer-events: none;
+            max-width: 360px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.35;
+            transform: translate(-50%, -100%);
+            margin-top: -8px;
+            transition: opacity 0.08s ease-in-out;
+        }
+        td.instant-hover-active {
+            outline: 2px solid #10b981 !important;
+            outline-offset: -2px;
+            background-color: #f0fdf4 !important;
+            cursor: pointer;
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+<!-- Navigasyon Menüsü -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link active" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container shadow-sm">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div id="activeGardenBadge" class="fw-bold text-muted"></div>
+        <div class="action-buttons">
+            <div id="foremanFilterStatus" style="display: none; align-items: center; gap: 5px; margin-right: 10px;">
+                <span class="badge bg-primary">Çavuş: <span id="activeForemanName"></span></span>
+                <button class="btn btn-sm btn-outline-light text-white" onclick="clearForemanFilter()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <button class="btn btn-outline-success btn-sm" onclick="exportToExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+            <button class="btn btn-outline-danger btn-sm print-btn" onclick="window.print()"><i class="bi bi-file-pdf"></i> PDF</button>
+            <button class="btn btn-warning btn-sm editor-visible" onclick="openPaymentModal()"><i class="bi bi-cash-stack"></i> Ödeme Girişi</button>
+            <button class="btn btn-primary btn-sm" onclick="addRow()"><i class="bi bi-plus-circle"></i> Yeni Satır Ekle</button>
+        </div>
+    </div>
+    
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" id="recordSearch" class="form-control border-start-0 ps-0" placeholder="Parsel, iş veya çavuş adına göre ara..." oninput="renderPuantajTable()">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select id="recordTypeFilter" class="form-select border" onchange="renderPuantajTable()">
+                <option value="all">Tümü (İşçilik + Çavuş Ödemeleri)</option>
+                <option value="work">Sadece İşçilik Kayıtları</option>
+                <option value="payment">Sadece Çavuş Ödemeleri</option>
+            </select>
+        </div>
+        <div class="col-md-5">
+            <div class="d-flex align-items-center gap-2">
+                <div class="input-group">
+                    <span class="input-group-text bg-light small px-2">Başlangıç</span>
+                    <input type="date" id="filterStartDate" class="form-control form-control-sm" onchange="renderPuantajTable()">
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text bg-light small px-2">Bitiş</span>
+                    <input type="date" id="filterEndDate" class="form-control form-control-sm" onchange="renderPuantajTable()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Çavuş Özet Kartları -->
+    <div id="foremanStatsContainer" class="row g-3 mb-4">
+        <!-- Kartlar JS ile dolacak -->
+    </div>
+
+    <!-- Haritadan Çeşit/Parsel Seçim Paneli -->
+    <div id="puantajMapSelectionCard" class="card border-0 shadow mb-4" style="display: none; border-radius: 16px;">
+        <div class="card-header bg-success text-white p-3 d-flex justify-content-between align-items-center" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <h5 class="card-title fw-bold mb-0" style="font-size: 16px;"><i class="bi bi-map me-2"></i>Haritadan Çeşit/Parsel Seç</h5>
+            <button type="button" class="btn-close btn-close-white" onclick="closeMapSelectionForPuantaj()"></button>
+        </div>
+        <div class="card-body p-0 position-relative" style="background-color: #f8f9fa;">
+            <!-- Map Container -->
+            <div id="puantajSelectionMap" style="height: 480px; width: 100%;"></div>
+            
+            <!-- Map Info Overlay -->
+            <div class="position-absolute top-0 start-0 m-3 p-2 bg-dark bg-opacity-75 text-white rounded-3 shadow" style="z-index: 1000; font-size: 12px; pointer-events: none;">
+                <i class="bi bi-info-circle-fill text-warning me-1"></i> Parselleri seçmek veya seçimi kaldırmak için üzerlerine tıklayın.
+            </div>
+        </div>
+        <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+            <div class="text-start flex-grow-1 me-3" style="max-width: 70%; overflow: hidden;">
+                <div class="small text-muted" style="font-size: 11px;">Seçilen Çeşitler: <span id="puantajMapSelectedVarieties" class="fw-bold text-dark" style="word-break: break-all;">-</span></div>
+                <div class="small text-muted" style="font-size: 11px;">Toplam Alan: <span id="puantajMapSelectedArea" class="fw-bold text-success">0 da</span></div>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeMapSelectionForPuantaj()">İptal</button>
+                <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="confirmMapSelectionForPuantaj()">Seçimi Uygula</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigasyon Menüsü -->
+    <ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded-3 shadow-sm border" id="puantajTabMenu" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold py-2" id="tab-all-records-btn" data-bs-toggle="pill" data-bs-target="#tab-all-records" type="button" role="tab">
+                <i class="bi bi-list-check me-2 fs-6 text-primary"></i>Tüm Puantaj & Ödeme Kayıtları
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold py-2 text-success" id="tab-category-analysis-btn" data-bs-toggle="pill" data-bs-target="#tab-category-analysis" type="button" role="tab" onclick="renderCategoryAnalysis()">
+                <i class="bi bi-diagram-3-fill me-2 fs-6 text-success"></i>İşçilik Kategorileri & Analiz
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab İçerikleri -->
+    <div class="tab-content" id="puantajTabContent">
+        <!-- Sekme 1: Tüm Puantaj & Ödemeler -->
+        <div class="tab-pane fade show active" id="tab-all-records" role="tabpanel">
+            <h2 class="mt-2">İşçilik ve Servis Puantaj Listesi</h2>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="tarih-col">TARİH</th>
+                            <th class="parsel-col">PARSEL/ÇEŞİT</th>
+                            <th class="is-col">YAPILAN İŞ</th>
+                            <th class="numeric-col isci-sayisi-col">İŞÇİ SAY.</th>
+                            <th class="numeric-col">YEVMİYE (₺)</th>
+                            <th class="numeric-col servis-col">SERVİS</th>
+                            <th class="numeric-col">S. ÜCRETİ (₺)</th>
+                            <th class="parsel-col">İŞÇİ ÇVŞ.</th>
+                            <th class="aciklama-col">AÇIKLAMA</th>
+                            <th class="parsel-col">KULLANICI</th>
+                            <th class="numeric-col">TOPLAM</th>
+                            <th class="action-col">İŞLEM</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Puantaj ve Çavuş Ödeme kayıtları buraya dinamik olarak eklenecek -->
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #fff5f5; font-weight: bold;">
+                            <td colspan="10" style="text-align: right; font-size: 14px;" class="text-danger"><i class="bi bi-dash-circle me-1"></i>TOPLAM İŞÇİLİK HAK EDİŞİ (BORÇ):</td>
+                            <td><input type="text" id="grand-total-earned" class="total-row-input text-danger fw-bold" readonly value="0,00 ₺" style="font-size: 14px;"></td>
+                            <td></td>
+                        </tr>
+                        <tr style="background-color: #f0fdf4; font-weight: bold;">
+                            <td colspan="10" style="text-align: right; font-size: 14px;" class="text-success"><i class="bi bi-check-circle me-1"></i>ÇAVUŞA ÖDENEN TOPLAM:</td>
+                            <td><input type="text" id="grand-total-paid" class="total-row-input text-success fw-bold" readonly value="0,00 ₺" style="font-size: 14px;"></td>
+                            <td></td>
+                        </tr>
+                        <tr style="background-color: #e2e8f0; font-weight: bold;">
+                            <td colspan="10" style="text-align: right; font-size: 15px;" class="text-dark"><i class="bi bi-wallet2 me-1"></i>KALAN NET ÇAVUŞ BAKİYESİ:</td>
+                            <td><input type="text" id="grand-total-balance" class="total-row-input fw-bold text-primary" readonly value="0,00 ₺" style="font-size: 15px;"></td>
+                            <td></td>
+                        </tr>
+                        <input type="hidden" id="grand-total" value="0,00 ₺">
+                        <tr>
+                            <td id="save-button-row" colspan="12" class="text-center p-2">
+                                <button class="btn btn-success btn-sm" onclick="syncPuantaj()"><i class="bi bi-save me-1"></i> Tüm Değişiklikleri Kaydet</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sekme 2: Kategorilere Göre İşçilik Analizi -->
+        <div class="tab-pane fade" id="tab-category-analysis" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0 text-dark" style="font-size: 1.1rem;"><i class="bi bi-diagram-3-fill me-2 text-success"></i>Kategorilere Göre İşçilik Dağılımı ve Detaylar</h4>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success px-3 py-2 fw-semibold" id="categoryActiveGardenBadge"></span>
+            </div>
+
+            <!-- Kategori Üst İstatistik Kartları -->
+            <div class="row g-3 mb-4" id="categoryMetricsCards">
+                <!-- JS ile dolacak -->
+            </div>
+
+            <!-- Kategori İlerleme / Yüzde Dağılım Paneli -->
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; background: #ffffff;">
+                <div class="card-body p-4">
+                    <h6 class="fw-bold text-muted mb-3"><i class="bi bi-bar-chart-line me-2"></i>Kategori Bazlı Harcama Oranları</h6>
+                    <div id="categoryProgressBarContainer">
+                        <!-- JS ile dolacak -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kategorilere Göre Detaylı İşçilik Listeleri (Accordion) -->
+            <div class="accordion shadow-sm rounded-3 overflow-hidden" id="categoryAccordion">
+                <!-- JS ile dolacak -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ödeme Girişi Modalı -->
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin me-2"></i>Çavuş Ödeme Girişi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="paymentForm">
+                    <div class="mb-3">
+                        <label class="form-label">Çavuş Seçin</label>
+                        <select id="payForeman" class="form-select" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tarih</label>
+                        <input type="date" id="payDate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ödenen Tutar (₺)</label>
+                        <input type="number" step="0.01" id="payAmount" class="form-control" placeholder="0.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ödeme Yöntemi</label>
+                        <select id="payMethod" class="form-select" required>
+                            <option value="Nakit">💵 Nakit (Kasadan Ödeme - Kasa Hesabından Düşer)</option>
+                            <option value="Muhasebe">🏢 Banka Havalesi / Şirket (Muhasebe Ödemesi)</option>
+                            <option value="Kredi Kartı">💳 Kredi Kartı</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Açıklama / Detay</label>
+                        <input type="text" id="payNote" class="form-control" placeholder="Örn: Avans, Ödeme, Dekont No vb.">
+                    </div>
+                    <button type="submit" class="btn btn-warning w-100 fw-bold">Ödemeyi Kaydet</button>
+                </form>
+                <hr>
+                <h6 class="fw-bold mb-3">Son Ödemeler</h6>
+                <div class="table-responsive" style="max-height: 200px;">
+                    <table class="table table-sm table-hover" style="font-size: 12px;">
+                        <thead><tr><th>Tarih</th><th>Çavuş</th><th>Tutar</th><th></th></tr></thead>
+                        <tbody id="paymentHistoryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Çeşit Seçim Listesi Modalı (Puantaj İçin) -->
+<div class="modal fade" id="puantajListSelectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <div class="modal-header bg-success text-white p-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                <h5 class="modal-title fw-bold"><i class="bi bi-list-check me-2"></i>Puantaj İçin Çeşit/Parsel Seç</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-3">
+                <!-- Arama Kutusu & Hızlı Seçim Butonları -->
+                <div class="mb-3">
+                    <input type="text" id="puantajListSearch" class="form-control form-control-sm border mb-2" placeholder="Çeşit veya parsel adına göre ara..." oninput="filterPuantajSelectionList()">
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="toggleAllPuantajSelectionList(true)">Tümünü Seç</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 11px;" onclick="toggleAllPuantajSelectionList(false)">Seçimleri Temizle</button>
+                    </div>
+                </div>
+                <!-- Çeşit Listesi Konteyneri -->
+                <div id="puantajSelectionListContainer" style="max-height: 280px; overflow-y: auto; padding-right: 5px; border: 1px solid #dee2e6; border-radius: 8px; background: #fdfdfd;">
+                    <!-- Liste Elemanları Dinamik Olarak Eklenecek -->
+                    <div class="p-3 text-center text-muted small">Yükleniyor...</div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                <div class="text-start">
+                    <div class="small text-muted" style="font-size: 11px;">Seçilen Çeşitler: <span id="puantajListSelectedVarieties" class="fw-bold text-dark" style="word-break: break-all;">-</span></div>
+                    <div class="small text-muted" style="font-size: 11px;">Toplam Alan: <span id="puantajListSelectedArea" class="fw-bold text-success">0 da</span></div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success btn-sm fw-bold px-3" onclick="confirmListSelectionForPuantaj()">Seçimi Uygula</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dış Kütüphaneler -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let puantajRecords = [];
+    let paymentRecords = [];
+    let currentForemanFilter = null; // Yeni: Aktif işçi çavuşu filtresi
+    const userRole = localStorage.getItem('userRole');
+    const isAdmin = userRole === 'admin';
+    const isEditorOrAdmin = userRole === 'admin' || userRole === 'editor';
+
+    const gardenId = localStorage.getItem('selected_garden_id');
+    const gardenName = localStorage.getItem('selected_garden_name');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const userName = localStorage.getItem('userName');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        if (permissions.hidden) {
+            permissions.hidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) navLink.parentElement.style.display = 'none';
+            });
+        }
+
+        if (!gardenId) {
+            document.querySelector('.container').innerHTML = `
+                <div class="alert alert-warning text-center">
+                    <i class="bi bi-exclamation-triangle me-2 fs-4"></i><br>
+                    Puantaj listesini görüntülemek için lütfen bir bahçe seçiniz.
+                    <br><br><a href="gardens.html" class="btn btn-warning btn-sm">Bahçe Seçimine Git</a>
+                </div>
+            `;
+            return;
+        }
+
+        if (gardenName) {
+            document.getElementById('activeGardenBadge').innerHTML = 
+                `<span class="badge bg-dark text-white shadow-sm"><i class="bi bi-pin-map-fill text-success me-1"></i>${gardenName}</span>`;
+        }
+
+        if (isAdmin) {
+            document.body.classList.add('is-admin');
+        }
+        if (isEditorOrAdmin) {
+            document.body.classList.add('is-editor-or-admin');
+        }
+
+        document.getElementById('paymentForm').onsubmit = handlePaymentSubmit;
+        await Promise.all([loadPuantaj(), loadPayments()]);
+        renderPuantajTable();
+        calculateForemanStats();
+        updateFilterDisplay();
+        preloadPuantajMapData();
+    });
+
+    // Sayı formatını temizleyip float'a çeviren fonksiyon
+    const parseVal = (val) => {
+        let cleanVal = val.toString().replace(/\./g, '').replace(',', '.').replace(/[^\d.-]/g, '');
+        return parseFloat(cleanVal) || 0;
+    };
+
+    // Kelimelerin ilk harflerini büyük harfe dönüştüren fonksiyon (Title Case)
+    function formatTitleCaseEveryWord(str) {
+        if (!str || typeof str !== 'string') return str || '';
+        return str.split(/(\s+|[\/\-\._,()+])/).map(part => {
+            if (!part || /^\s+|[\/\-\._,()+]+$/.test(part)) return part;
+            if (/^[\d.,₺$€%:-]+$/.test(part)) return part;
+            const firstChar = part.charAt(0).toLocaleUpperCase('tr-TR');
+            const rest = part.slice(1).toLocaleLowerCase('tr-TR');
+            return firstChar + rest;
+        }).join('');
+    }
+    window.formatTitleCaseEveryWord = formatTitleCaseEveryWord;
+
+    function applyTitleCaseToInput(el) {
+        if (!el || el.readOnly || el.disabled) return;
+        const val = el.value;
+        if (!val || typeof val !== 'string') return;
+        const formatted = formatTitleCaseEveryWord(val);
+        if (formatted !== val) {
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            el.value = formatted;
+            if (document.activeElement === el && typeof start === 'number') {
+                try {
+                    el.setSelectionRange(start, end);
+                } catch (e) {}
+            }
+        }
+    }
+
+    // Giriş alanını para birimi formatına sokar
+    function formatInput(input) {
+        const val = parseVal(input.value);
+        if (val !== 0) {
+            input.value = val.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+        } else {
+            input.value = "";
+        }
+        // Update record and sync on blur for formatted fields
+        const index = input.closest('tr').dataset.index;
+        if (index !== undefined) {
+            const field = input.classList.contains('wage') ? 'yevmiye' : 's_ucreti';
+            puantajRecords[index][field] = parseVal(input.value);
+        }
+    }
+
+    // Düzenleme için formatı temizler
+    function unformatInput(input) {
+        const val = parseVal(input.value);
+        if (val === 0) {
+            input.value = '';
+        } else {
+            input.value = input.value.replace(/\./g, '').replace(' ₺', '');
+        }
+    }
+
+    // Satırın düzenleme modunu açar/kapatır
+    function toggleEdit(btn) {
+        if (!isEditorOrAdmin) return;
+        const row = btn.closest('tr');
+        const index = parseInt(row.dataset.index);
+        if (index === undefined || isNaN(index) || !puantajRecords[index]) return;
+
+        const isEditing = puantajRecords[index]._editing === true;
+
+        if (!isEditing) {
+            // Düzenleme moduna gir
+            puantajRecords[index]._editing = true;
+            renderPuantajTable();
+            // Düzenlenen satırdaki ilk input elemanına odaklan (date input)
+            const updatedRow = document.querySelector(`tr[data-index="${index}"]`);
+            if (updatedRow) {
+                const firstInput = updatedRow.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }
+        } else {
+            // Düzenleme modundan çık ve kaydet
+            delete puantajRecords[index]._editing;
+            renderPuantajTable();
+        }
+    }
+
+    // Filtreleme ve kayıt birleştirme fonksiyonu
+    function getCombinedRecords() {
+        const search = (document.getElementById('recordSearch')?.value || "").toLowerCase().trim();
+        const start = document.getElementById('filterStartDate')?.value;
+        const end = document.getElementById('filterEndDate')?.value;
+        const typeFilter = document.getElementById('recordTypeFilter')?.value || 'all';
+
+        const combined = [];
+
+        // İşçilik kayıtları ekle
+        if (typeFilter === 'all' || typeFilter === 'work') {
+            puantajRecords.forEach((r, i) => {
+                if (!r || typeof r !== 'object') return;
+                if (r.yapilan_is) r.yapilan_is = formatTitleCaseEveryWord(r.yapilan_is);
+                if (r.isci_cavus) r.isci_cavus = formatTitleCaseEveryWord(r.isci_cavus);
+                if (r.parsel_cesit) r.parsel_cesit = formatTitleCaseEveryWord(r.parsel_cesit);
+                if (r.servis) r.servis = formatTitleCaseEveryWord(r.servis);
+
+                const matchesSearch = !search || 
+                    (r.parsel_cesit || "").toLowerCase().includes(search) || 
+                    (r.yapilan_is || "").toLowerCase().includes(search) || 
+                    (r.aciklama || "").toLowerCase().includes(search) || 
+                    (r.isci_cavus || "").toLowerCase().includes(search);
+                
+                const matchesDate = (!start || r.tarih >= start) && (!end || r.tarih <= end);
+                const matchesForeman = !currentForemanFilter || formatTitleCaseEveryWord(r.isci_cavus) === currentForemanFilter;
+
+                if (matchesSearch && matchesDate && matchesForeman) {
+                    combined.push({
+                        _recordType: 'work',
+                        record: r,
+                        originalIndex: i,
+                        date: r.tarih || ''
+                    });
+                }
+            });
+        }
+
+        // Çavuş ödeme kayıtlarını ekle
+        if (typeFilter === 'all' || typeFilter === 'payment') {
+            paymentRecords.forEach((p, i) => {
+                if (!p || typeof p !== 'object') return;
+                if (p.foreman) p.foreman = formatTitleCaseEveryWord(p.foreman);
+                if (p.note) p.note = formatTitleCaseEveryWord(p.note);
+
+                const foreman = p.foreman || '';
+                const note = p.note || 'Çavuş Ödemesi / Avans';
+                const date = p.date || '';
+
+                const matchesSearch = !search || 
+                    foreman.toLowerCase().includes(search) || 
+                    note.toLowerCase().includes(search);
+
+                const matchesDate = (!start || date >= start) && (!end || date <= end);
+                const matchesForeman = !currentForemanFilter || formatTitleCaseEveryWord(foreman) === currentForemanFilter;
+
+                if (matchesSearch && matchesDate && matchesForeman) {
+                    combined.push({
+                        _recordType: 'payment',
+                        record: p,
+                        originalPaymentIndex: i,
+                        date: date
+                    });
+                }
+            });
+        }
+
+        // Tarihe göre azalan sırala (en yeni üstte)
+        combined.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        return combined;
+    }
+
+    function getFilteredRecords() {
+        return getCombinedRecords().filter(item => item._recordType === 'work');
+    }
+
+    function updateGrandTotal() {
+        let totalEarned = 0;
+        let totalPaid = 0;
+
+        const combinedItems = getCombinedRecords();
+
+        combinedItems.forEach(item => {
+            if (item._recordType === 'work') {
+                const r = item.record;
+                const wage = parseVal(r.yevmiye);
+                const service = parseVal(r.s_ucreti);
+                const count = parseVal(r.isci_sayisi);
+                totalEarned += (count * wage) + service;
+            } else if (item._recordType === 'payment') {
+                totalPaid += parseVal(item.record.amount);
+            }
+        });
+
+        const netBalance = totalEarned - totalPaid;
+
+        const earnedEl = document.getElementById('grand-total-earned');
+        const paidEl = document.getElementById('grand-total-paid');
+        const balanceEl = document.getElementById('grand-total-balance');
+        const oldGrandTotalEl = document.getElementById('grand-total');
+
+        if (earnedEl) earnedEl.value = totalEarned.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+        if (paidEl) paidEl.value = totalPaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+        if (balanceEl) {
+            balanceEl.value = netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+            if (netBalance > 0) {
+                balanceEl.className = 'total-row-input fw-bold text-danger';
+            } else {
+                balanceEl.className = 'total-row-input fw-bold text-success';
+            }
+        }
+        if (oldGrandTotalEl) oldGrandTotalEl.value = netBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    }
+
+    function calculateRow(input) {
+        const row = input.closest('tr');
+        if (!row) return;
+        const index = row.dataset.index;
+        
+        // Metin girişlerinde kelime ilk harflerini büyük harfe çevir (Title Case)
+        if (input.classList.contains('is-input') || 
+            input.classList.contains('cavus-input') || 
+            input.classList.contains('servis-input') || 
+            input.classList.contains('parsel-input')) {
+            applyTitleCaseToInput(input);
+        }
+
+        if (index === undefined) return; // Should not happen if rows are rendered from puantajRecords
+
+        input.title = input.value || '';
+
+        // Update the record in the array first
+        if (input.classList.contains('worker-count')) puantajRecords[index].isci_sayisi = parseVal(input.value);
+        else if (input.classList.contains('wage')) puantajRecords[index].yevmiye = parseVal(input.value);
+        else if (input.classList.contains('service-fee')) puantajRecords[index].s_ucreti = parseVal(input.value);
+        else if (input.classList.contains('tarih-input')) puantajRecords[index].tarih = input.value;
+        else if (input.classList.contains('parsel-input')) puantajRecords[index].parsel_cesit = input.value;
+        else if (input.classList.contains('is-input')) puantajRecords[index].yapilan_is = input.value;
+        else if (input.classList.contains('aciklama-input')) puantajRecords[index].aciklama = input.value;
+        else if (input.classList.contains('cavus-input')) puantajRecords[index].isci_cavus = input.value;
+        else if (input.classList.contains('servis-input')) puantajRecords[index].servis = input.value;
+
+        // İşlemi yapan kullanıcıyı güncelle
+        puantajRecords[index].kullanici = localStorage.getItem('userName') || 'Bilinmeyen';
+        row.querySelector('.kullanici-input').value = puantajRecords[index].kullanici;
+
+        const count = parseVal(puantajRecords[index].isci_sayisi);
+        const wage = parseVal(puantajRecords[index].yevmiye);
+        const service = parseVal(puantajRecords[index].s_ucreti);
+        
+        const total = (count * wage) + service;
+        puantajRecords[index].toplam = total;
+        row.querySelector('.total-row-input').value = total.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+        
+        updateGrandTotal();
+    }
+
+    async function loadPuantaj() {
+        try {
+            const response = await fetch(`api/get_puantaj.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (response.ok) {
+                const data = await response.json();
+                puantajRecords = Array.isArray(data) ? data : [];
+            } else {
+                puantajRecords = [];
+            }
+            puantajRecords.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+        } catch (error) {
+            console.error("Puantaj verileri yüklenirken hata oluştu:", error);
+            puantajRecords = [];
+        }
+        renderPuantajTable();
+        calculateForemanStats();
+    }
+
+    async function loadPayments() {
+        try {
+            const response = await fetch(`api/get_payments.php?garden_id=${gardenId}&t=${Date.now()}`);
+            paymentRecords = response.ok ? await response.json() : [];
+            calculateForemanStats();
+            renderPuantajTable();
+            await syncPuantajToCari();
+        } catch (e) { paymentRecords = []; }
+    }
+
+    async function syncPayments() {
+        await fetch(`api/save_payments.php?garden_id=${gardenId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(paymentRecords)
+        });
+    }
+
+    function calculateForemanStats() {
+        const stats = {};
+        
+        // Hak edilenleri hesapla (Borç)
+        puantajRecords.forEach(r => {
+            if (!r || typeof r !== 'object') return;
+            const rawName = (r.isci_cavus || "Belirtilmemiş").trim();
+            const name = formatTitleCaseEveryWord(rawName);
+            if (!stats[name]) stats[name] = { workers: 0, days: new Set(), earned: 0, paid: 0 };
+            stats[name].workers += parseVal(r.isci_sayisi);
+            if (r.tarih) stats[name].days.add(r.tarih);
+            stats[name].earned += parseVal(r.toplam);
+        });
+
+        // Ödenenleri hesapla
+        paymentRecords.forEach(p => {
+            if (!p || typeof p !== 'object') return;
+            const rawName = (p.foreman || "Belirtilmemiş").trim();
+            const name = formatTitleCaseEveryWord(rawName);
+            if (!stats[name]) stats[name] = { workers: 0, days: new Set(), earned: 0, paid: 0 };
+            stats[name].paid += parseVal(p.amount);
+        });
+
+        renderForemanCards(stats);
+        updatePaymentForemanList(Object.keys(stats));
+    }
+
+    function renderForemanCards(stats) {
+        const container = document.getElementById('foremanStatsContainer');
+        container.innerHTML = '';
+        
+        Object.entries(stats).forEach(([name, data]) => {
+            const balance = data.earned - data.paid;
+            const card = document.createElement('div');
+            card.className = 'col-md-4';
+            card.innerHTML = `
+                <div class="card foreman-card shadow-sm h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="fw-bold mb-0 text-success">${name}</h5>
+                            <button class="btn btn-sm btn-outline-secondary py-0" onclick="filterByForeman('${name}')">Detay</button>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6"><div class="stats-label">İşçi / Gün</div><div class="stats-value">${data.workers} / ${data.days.size}</div></div>
+                            <div class="col-6"><div class="stats-label">Toplam Hak</div><div class="stats-value text-primary">${data.earned.toLocaleString('tr-TR')} ₺</div></div>
+                            <div class="col-6"><div class="stats-label">Ödenen</div><div class="stats-value text-success">${data.paid.toLocaleString('tr-TR')} ₺</div></div>
+                            <div class="col-6"><div class="stats-label">Kalan Bakiye</div><div class="stats-value ${balance > 0 ? 'balance-positive' : ''}">${balance.toLocaleString('tr-TR')} ₺</div></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function updatePaymentForemanList(names) {
+        const select = document.getElementById('payForeman');
+        if(!select) return;
+        select.innerHTML = '<option value="" disabled selected>Seçiniz...</option>' + 
+            names.filter(n => n !== "Belirtilmemiş").map(n => `<option value="${n}">${n}</option>`).join('');
+    }
+
+    function openPaymentModal() {
+        document.getElementById('payDate').value = new Date().toISOString().split('T')[0];
+        renderPaymentHistory();
+        new bootstrap.Modal(document.getElementById('paymentModal')).show();
+    }
+
+    function renderPaymentHistory() {
+        const body = document.getElementById('paymentHistoryBody');
+        body.innerHTML = paymentRecords.slice().reverse().map((p, i) => {
+            const m = p.method || 'Nakit';
+            const methodLabel = m === 'Muhasebe' ? 'Banka' : m;
+            return `
+            <tr>
+                <td>${p.date}</td>
+                <td>${p.foreman} <small class="badge bg-light text-dark border ms-1">${methodLabel}</small></td>
+                <td class="fw-bold text-success">${parseVal(p.amount).toLocaleString('tr-TR')} ₺</td>
+                <td>${isAdmin ? `<i class="bi bi-x-circle text-danger" style="cursor:pointer" onclick="deletePayment(${paymentRecords.length - 1 - i})"></i>` : ''}</td>
+            </tr>
+            `;
+        }).join('');
+    }
+
+    async function handlePaymentSubmit(e) {
+        e.preventDefault();
+        const payment = {
+            id: Date.now(),
+            foreman: document.getElementById('payForeman').value,
+            date: document.getElementById('payDate').value,
+            amount: document.getElementById('payAmount').value,
+            method: document.getElementById('payMethod')?.value || 'Nakit',
+            note: document.getElementById('payNote').value
+        };
+        paymentRecords.push(payment);
+        await syncPayments();
+        await syncPuantajToCari();
+        document.getElementById('paymentForm').reset();
+        calculateForemanStats();
+        renderPaymentHistory();
+        renderPuantajTable();
+        const modalEl = document.getElementById('paymentModal');
+        const modalInst = bootstrap.Modal.getInstance(modalEl);
+        if (modalInst) modalInst.hide();
+    }
+
+    async function deletePayment(index) {
+        if (confirm('Bu çavuş ödeme kaydını silmek istediğinize emin misiniz?')) {
+            paymentRecords.splice(index, 1);
+            await syncPayments();
+            await syncPuantajToCari();
+            calculateForemanStats();
+            renderPaymentHistory();
+            renderPuantajTable();
+        }
+    }
+
+    async function syncPuantajToCari() {
+        try {
+            const res = await fetch(`api/get_cari.php?garden_id=${gardenId}&t=${Date.now()}`);
+            let cariData = res.ok ? await res.json() : [];
+            if (!Array.isArray(cariData)) cariData = [];
+
+            // Puantaj kaynaklı tüm eski kayıtları temizle
+            cariData = cariData.filter(r => !r.source || !r.source.startsWith('puantaj'));
+
+            // SADECE çavuşa/ekip liderine GERÇEKLEŞTİRİLEN ÖDEMELERİ Cari Kayıtlara gir (Ödeme yapılmadıysa işleme sokma)
+            paymentRecords.forEach((p, idx) => {
+                const amount = parseVal(p.amount);
+                if (amount > 0) {
+                    const noteLower = (p.note || '').toLowerCase();
+                    let method = p.method;
+
+                    if (noteLower.includes('banka') || noteLower.includes('havale') || noteLower.includes('eft') || noteLower.includes('şirket')) {
+                        method = 'Muhasebe';
+                    } else if (noteLower.includes('nakit') || noteLower.includes('elden') || noteLower.includes('kasa')) {
+                        method = 'Nakit';
+                    } else if (!method) {
+                        method = 'Nakit';
+                    }
+
+                    let category = 'İşçilik';
+                    if (noteLower.includes('servis')) {
+                        category = 'Servis Giderleri';
+                    }
+
+                    cariData.push({
+                        id: `puantaj_p_${p.id || idx}`,
+                        date: p.date || new Date().toISOString().split('T')[0],
+                        type: 'gider',
+                        category: category,
+                        method: method,
+                        vendor: (p.foreman || 'Çavuş').trim(),
+                        plot: '',
+                        amount: amount,
+                        docNo: '',
+                        notes: `Ekip Lideri Çavuş Ödemesi (${method === 'Muhasebe' ? 'Banka / Muhasebe' : 'Nakit / Kasa'}): ${p.note || 'Ödeme / Avans'}`,
+                        source: 'puantaj_payment',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            });
+
+            await fetch(`api/save_cari.php?garden_id=${gardenId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cariData)
+            });
+
+            console.log("Puantaj ve Çavuş Ödemeleri Cari Hesaba senkronize edildi.");
+        } catch (e) {
+            console.error("Cari senkronizasyon hatası:", e);
+        }
+    }
+
+    async function syncPuantaj() {
+        try {
+            const response = await fetch(`api/save_puantaj.php?garden_id=${gardenId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(puantajRecords)
+            });
+            const result = await response.json();
+            if (result.status === 'success') {
+                await syncPuantajToCari();
+                alert("Puantaj ve Cari Hesap entegrasyonu başarıyla kaydedildi.");
+                location.reload(); // Sayfayı yenile
+            } else {
+                console.error("Puantaj verileri kaydedilirken hata oluştu:", result.message);
+                alert("Hata: " + result.message);
+            }
+        } catch (error) {
+            console.error("Puantaj verileri sunucuya gönderilirken hata oluştu:", error);
+            alert("Sunucuyla iletişim kurulurken bir hata oluştu.");
+        }
+    }
+
+    function getParselBadgeHtml(val) {
+        if (!val) return '<span class="text-muted">-</span>';
+        const parts = val.split(',').map(p => p.trim()).filter(Boolean);
+        if (parts.length <= 1) {
+            return `<span>${val}</span>`;
+        }
+        return `<span>${parts[0]}</span><span class="badge bg-success ms-1 animate-fade-in" style="font-size: 10px; padding: 2px 5px; border-radius: 4px; font-weight: bold; position: relative; top: -1px;" title="${val}">+${parts.length - 1}</span>`;
+    }
+
+    // Seçilen Parsel/Çeşitlerin listelendiği şık detay modalını gösterir
+    function showParselDetails(val, date, job) {
+        if (!val) return;
+        const parts = val.split(',').map(p => p.trim()).filter(Boolean);
+        
+        let modalHtml = `
+        <div class="modal fade" id="parselDetailsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                    <div class="modal-header bg-success text-white p-3" style="border-top-left-radius: 16px; border-top-right-radius: 16px;">
+                        <h6 class="modal-title fw-bold m-0"><i class="bi bi-pin-map-fill me-2"></i>Seçili Çeşitler/Parseller</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                    </div>
+                    <div class="modal-body p-3">
+                        <div class="mb-2 text-muted small"><strong>Tarih:</strong> ${date || '-'}</div>
+                        <div class="mb-3 text-muted small"><strong>Yapılan İş:</strong> ${job || '-'}</div>
+                        <div class="list-group list-group-flush border rounded-3" style="max-height: 250px; overflow-y: auto;">
+                            ${parts.map((p, idx) => `
+                                <div class="list-group-item d-flex align-items-center gap-2 py-2 px-3 small">
+                                    <span class="badge bg-success rounded-circle" style="width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px;">${idx + 1}</span>
+                                    <span class="fw-semibold text-dark">${p}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="mt-3 text-end text-muted small fw-bold">Toplam: ${parts.length} Adet</div>
+                    </div>
+                    <div class="modal-footer bg-light p-2 border-0 d-flex justify-content-end" style="border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+                        <button type="button" class="btn btn-secondary btn-sm py-1 px-3 fw-bold" style="font-size: 11px; border-radius: 20px;" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Varsa eski modalı kaldır
+        const oldModal = document.getElementById('parselDetailsModal');
+        if (oldModal) {
+            const bsModal = bootstrap.Modal.getInstance(oldModal);
+            if (bsModal) bsModal.hide();
+            oldModal.remove();
+        }
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const newModal = new bootstrap.Modal(document.getElementById('parselDetailsModal'));
+        newModal.show();
+    }
+
+    function renderPuantajTable() {
+        const tbody = document.querySelector('tbody');
+        tbody.innerHTML = ''; // Clear existing rows
+
+        const combinedItems = getCombinedRecords();
+
+        if (combinedItems.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-4">Kayıt bulunamadı.</td></tr>`;
+            updateGrandTotal();
+            return;
+        }
+
+        combinedItems.forEach(item => {
+            if (item._recordType === 'work') {
+                const record = item.record;
+                const originalIndex = item.originalIndex; // Bu, puantajRecords dizisindeki doğru indekstir.
+                
+                const isEditing = record._editing === true;
+                const readonlyAttr = isEditing ? '' : 'readonly';
+                const btnClass = isEditing ? 'btn-success' : 'btn-warning';
+                const btnIcon = isEditing ? 'bi-check-lg' : 'bi-pencil';
+
+                const foremanClickAttr = !isEditorOrAdmin ? `onclick="filterByForeman('${record.isci_cavus}')" style="cursor: pointer;"` : '';
+
+                const parselValue = record.parsel_cesit || '';
+                const parselHtml = isEditing ? `
+                    <div class="d-flex align-items-center gap-1">
+                        <textarea class="parsel-input text-start" rows="1" title="${parselValue}" oninput="autoExpandTextarea(this); calculateRow(this)" onclick="if(this.value) showParselDetails(this.value, this.closest('tr').querySelector('.tarih-input').value, this.closest('tr').querySelector('.is-input').value)" style="cursor: pointer;" readonly placeholder="Seçiniz...">${parselValue}</textarea>
+                        <button type="button" class="btn btn-outline-primary btn-sm border-0 p-1 lh-1" onclick="openMapSelectionForPuantaj(this)" title="Haritadan Seç"><i class="bi bi-map" style="font-size: 15px;"></i></button>
+                        <button type="button" class="btn btn-outline-success btn-sm border-0 p-1 lh-1" onclick="openListSelectionForPuantaj(this)" title="Listeden Seç"><i class="bi bi-list-check" style="font-size: 15px;"></i></button>
+                    </div>
+                ` : `
+                    <div class="parsel-badge-display text-center px-1 py-1" title="${parselValue}" style="cursor: pointer; font-size: 13px; font-weight: 500;" onclick="showParselDetails(this.getAttribute('title'), '${record.tarih || ''}', '${record.yapilan_is || ''}')">
+                        ${getParselBadgeHtml(parselValue)}
+                    </div>
+                `;
+
+                const row = document.createElement('tr');
+                row.dataset.index = originalIndex; // Store index for easy access
+                row.innerHTML = `
+                    <td class="tarih-col"><input type="date" class="tarih-input" ${readonlyAttr} value="${record.tarih || ''}" title="${record.tarih || ''}" onchange="calculateRow(this)"></td>
+                    <td class="parsel-col position-relative">
+                        ${parselHtml}
+                    </td>
+                    <td class="is-col"><textarea class="is-input" rows="1" ${readonlyAttr} title="${record.yapilan_is || ''}" oninput="autoExpandTextarea(this); calculateRow(this)">${record.yapilan_is || ''}</textarea></td>
+                    <td class="isci-sayisi-col"><input type="number" inputmode="decimal" class="worker-count" ${readonlyAttr} value="${record.isci_sayisi || ''}" title="${record.isci_sayisi || ''}" oninput="calculateRow(this)"></td>
+                    <td class="yevmiye-col"><input type="text" inputmode="decimal" class="wage" ${readonlyAttr} value="${record.yevmiye ? record.yevmiye.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺' : ''}" title="${record.yevmiye ? record.yevmiye.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺' : ''}" oninput="calculateRow(this)" onblur="formatInput(this)" onfocus="unformatInput(this)"></td>
+                    <td class="servis-col"><input type="text" class="servis-input" ${readonlyAttr} value="${record.servis || ''}" title="${record.servis || ''}" oninput="calculateRow(this)"></td>
+                    <td class="sucreti-col"><input type="text" inputmode="decimal" class="service-fee" ${readonlyAttr} value="${record.s_ucreti ? record.s_ucreti.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺' : ''}" title="${record.s_ucreti ? record.s_ucreti.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺' : ''}" oninput="calculateRow(this)" onblur="formatInput(this)" onfocus="unformatInput(this)"></td>
+                    <td class="cavus-col"><input type="text" class="cavus-input" ${readonlyAttr} value="${record.isci_cavus || ''}" title="${record.isci_cavus || ''}" oninput="calculateRow(this)" ${foremanClickAttr}></td>
+                    <td class="aciklama-col"><textarea class="aciklama-input text-start" rows="1" ${readonlyAttr} title="${record.aciklama || ''}" placeholder="Açıklama / Not..." oninput="autoExpandTextarea(this); calculateRow(this)">${record.aciklama || ''}</textarea></td>
+                    <td class="kullanici-col"><input type="text" class="kullanici-input" readonly value="${record.kullanici || ''}" title="${record.kullanici || ''}"></td>
+                    <td class="toplam-col"><input type="text" class="total-row-input text-danger fw-bold" readonly value="${(record.toplam || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'}" title="${(record.toplam || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'}"></td>
+                    <td class="action-col">
+                        ${isEditorOrAdmin ? `<button class="btn ${btnClass} btn-sm p-1 px-2" onclick="toggleEdit(this)" title="Düzelt"><i class="bi ${btnIcon}"></i></button>` : ''}
+                        ${isAdmin ? `<button class="btn btn-danger btn-sm p-1 px-2" onclick="deleteRow(${originalIndex})" title="Sil"><i class="bi bi-trash"></i></button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            } else if (item._recordType === 'payment') {
+                const p = item.record;
+                const pIndex = item.originalPaymentIndex;
+                const pAmt = parseVal(p.amount);
+
+                const row = document.createElement('tr');
+                row.className = 'table-success bg-opacity-25';
+                row.style.backgroundColor = '#e8f5e9';
+                row.innerHTML = `
+                    <td class="tarih-col fw-bold text-success" title="${p.date || ''}">${p.date || '-'}</td>
+                    <td class="parsel-col" title="ÇAVUŞ ÖDEMESİ"><span class="badge bg-success text-white px-2 py-1"><i class="bi bi-cash-coin me-1"></i>ÇAVUŞ ÖDEMESİ</span></td>
+                    <td class="is-col fw-semibold text-dark" title="Çavuş Ödemesi / Avans">Çavuş Ödemesi / Avans</td>
+                    <td class="isci-sayisi-col text-muted">-</td>
+                    <td class="yevmiye-col text-muted">-</td>
+                    <td class="servis-col text-muted">-</td>
+                    <td class="sucreti-col text-muted">-</td>
+                    <td class="cavus-col" title="${p.foreman || ''}"><span class="fw-bold text-success" onclick="filterByForeman('${p.foreman}')" style="cursor:pointer;" title="Çavuş: ${p.foreman || ''}"><i class="bi bi-person-check-fill me-1"></i>${p.foreman || '-'}</span></td>
+                    <td class="aciklama-col text-muted small" title="${p.note || ''}">${p.note || '-'}</td>
+                    <td class="kullanici-col text-muted small" title="Sistem / Yönetici">Sistem</td>
+                    <td class="toplam-col fw-bold text-success" style="font-size: 14px;" title="-${pAmt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺">-${pAmt.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                    <td class="action-col">
+                        ${isAdmin ? `<button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="deletePayment(${pIndex})" title="Ödeme Kaydını Sil"><i class="bi bi-trash"></i></button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        });
+
+        // Tüm textareaları otomatik yükseklik olarak ayarla
+        tbody.querySelectorAll('textarea').forEach(ta => autoExpandTextarea(ta));
+
+        updateGrandTotal();
+        if (typeof renderCategoryAnalysis === 'function') {
+            renderCategoryAnalysis();
+        }
+    }
+
+    function autoExpandTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.max(22, el.scrollHeight) + 'px';
+    }
+
+    function filterByForeman(foremanName) {
+        const formattedName = formatTitleCaseEveryWord(foremanName);
+        if (currentForemanFilter === formattedName) {
+            currentForemanFilter = null; // Toggle filter off if clicked again
+        } else {
+            currentForemanFilter = formattedName;
+        }
+        renderPuantajTable();
+        updateFilterDisplay();
+    }
+
+    function clearForemanFilter() {
+        currentForemanFilter = null;
+        renderPuantajTable();
+        updateFilterDisplay();
+    }
+
+    function updateFilterDisplay() {
+        const filterStatusDiv = document.getElementById('foremanFilterStatus');
+        const activeForemanNameSpan = document.getElementById('activeForemanName');
+        if (currentForemanFilter) {
+            activeForemanNameSpan.textContent = currentForemanFilter;
+            filterStatusDiv.style.display = 'flex';
+        } else {
+            filterStatusDiv.style.display = 'none';
+        }
+    }
+
+    function addRow() {
+        // Yeni satır eklendiğinde görünür olması için aktif tüm filtreleri temizliyoruz
+        if(document.getElementById('recordSearch')) document.getElementById('recordSearch').value = '';
+        if(document.getElementById('filterStartDate')) document.getElementById('filterStartDate').value = '';
+        if(document.getElementById('filterEndDate')) document.getElementById('filterEndDate').value = '';
+        if(document.getElementById('recordTypeFilter')) document.getElementById('recordTypeFilter').value = 'all';
+        currentForemanFilter = null;
+        updateFilterDisplay();
+
+        const newRecord = {
+            tarih: new Date().toISOString().split('T')[0],
+            parsel_cesit: '',
+            yapilan_is: '',
+            aciklama: '',
+            isci_sayisi: 0,
+            yevmiye: 0,
+            servis: '',
+            s_ucreti: 0,
+            isci_cavus: '',
+            kullanici: localStorage.getItem('userName') || 'Bilinmeyen',
+            toplam: 0,
+            _editing: true // Yeni eklenen satırı düzenleme modunda aç
+        };
+        puantajRecords.push(newRecord);
+        puantajRecords.sort((a, b) => new Date(b.tarih) - new Date(a.tarih)); // Yeni satırı ekledikten sonra tekrar sırala
+        renderPuantajTable();
+    }
+
+    function deleteRow(index) {
+        if (confirm('Bu satırı silmek istediğinize emin misiniz?')) {
+            puantajRecords.splice(index, 1);
+            renderPuantajTable();
+            syncPuantaj();
+        }
+    }
+
+    function trChars(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+.replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function exportToExcel() {
+        const items = getCombinedRecords();
+        const exportData = items.map(item => {
+            if (item._recordType === 'work') {
+                const record = item.record;
+                return {
+                    'TARİH': record.tarih || '',
+                    'KAYIT TÜRÜ': 'İşçilik Hak Ediş',
+                    'PARSEL/ÇEŞİT': record.parsel_cesit || '',
+                    'YAPILAN İŞ': record.yapilan_is || '',
+                    'İŞÇİ SAY.': record.isci_sayisi || 0,
+                    'YEVMİYE (₺)': record.yevmiye || 0,
+                    'SERVİS': record.servis || '',
+                    'S. ÜCRETİ (₺)': record.s_ucreti || 0,
+                    'İŞÇİ ÇVŞ.': record.isci_cavus || '',
+                    'AÇIKLAMA': record.aciklama || '',
+                    'KULLANICI': record.kullanici || '',
+                    'TOPLAM (₺)': record.toplam || 0
+                };
+            } else {
+                const p = item.record;
+                return {
+                    'TARİH': p.date || '',
+                    'KAYIT TÜRÜ': 'Çavuş Ödemesi',
+                    'PARSEL/ÇEŞİT': 'ÇAVUŞ ÖDEMESİ',
+                    'YAPILAN İŞ': 'Çavuş Ödemesi / Avans',
+                    'İŞÇİ SAY.': '-',
+                    'YEVMİYE (₺)': '-',
+                    'SERVİS': '-',
+                    'S. ÜCRETİ (₺)': '-',
+                    'İŞÇİ ÇVŞ.': p.foreman || '',
+                    'AÇIKLAMA': p.note || '-',
+                    'KULLANICI': 'Sistem / Yönetici',
+                    'TOPLAM (₺)': -parseVal(p.amount)
+                };
+            }
+        });
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Puantaj ve Ödemeler");
+        XLSX.writeFile(wb, "Puantaj_ve_Cavus_Odemeleri.xlsx");
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+        
+        doc.text(trChars("İşçilik ve Çavuş Ödemeleri Puantaj Listesi"), 14, 15);
+        
+        const items = getCombinedRecords();
+        const rows = items.map(item => {
+            if (item._recordType === 'work') {
+                const record = item.record;
+                return [
+                    record.tarih || '',
+                    trChars(record.parsel_cesit || ''),
+                    trChars(record.yapilan_is || ''),
+                    record.isci_sayisi || '0',
+                    (record.yevmiye || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺',
+                    trChars(record.servis || ''),
+                    (record.s_ucreti || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺',
+                    trChars(record.isci_cavus || ''),
+                    trChars(record.aciklama || ''),
+                    trChars(record.kullanici || ''),
+                    (record.toplam || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'
+                ];
+            } else {
+                const p = item.record;
+                return [
+                    p.date || '',
+                    trChars('ÇAVUŞ ÖDEMESİ'),
+                    trChars('Çavuş Ödemesi / Avans'),
+                    '-',
+                    '-',
+                    '-',
+                    '-',
+                    trChars(p.foreman || ''),
+                    trChars(p.note || '-'),
+                    trChars('Sistem'),
+                    '-' + parseVal(p.amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'
+                ];
+            }
+        });
+
+        doc.autoTable({
+            head: [[
+                trChars('TARİH'), trChars('PARSEL/ÇEŞİT'), trChars('YAPILAN İŞ'), trChars('İŞÇİ SAY.'),
+                trChars('YEVMİYE (₺)'), trChars('SERVİS'), trChars('S. ÜCRETİ (₺)'), trChars('İŞÇİ ÇVŞ.'),
+                trChars('AÇIKLAMA'), trChars('KULLANICI'), trChars('TOPLAM (₺)')
+            ]],
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: [242, 242, 242], textColor: [0, 0, 0], fontStyle: 'bold' },
+            didDrawPage: function (data) {
+                let str = "Sayfa " + doc.internal.getNumberOfPages();
+                doc.setFontSize(10);
+                doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+            }
+        });
+
+        const finalY = doc.autoTable.previous.finalY;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(trChars('GENEL TOPLAM:'), doc.internal.pageSize.width - 70, finalY + 10, { align: 'right' });
+        doc.text(document.getElementById('grand-total').value, doc.internal.pageSize.width - 14, finalY + 10, { align: 'right' });
+
+        doc.save("Puantaj_Listesi.pdf");
+    }
+
+    function getRecordsToExport() {
+        return getFilteredRecords().map(item => item.record);
+    }
+
+    // Listeden Çeşit/Parsel Seçimi Mantığı (Puantaj İçin)
+    let puantajListSelectionModalInstance = null;
+    let puantajActiveRowInput = null;
+    let puantajActiveOriginalIndex = null;
+    let puantajMapPlots = [];
+
+    async function preloadPuantajMapData() {
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                puantajMapPlots = await res.json();
+                if (!Array.isArray(puantajMapPlots)) puantajMapPlots = [];
+            }
+        } catch (e) {
+            console.warn("Puantaj harita/parsel verileri önceden yüklenemedi", e);
+        }
+    }
+
+    async function getOrLoadPuantajMapPlots() {
+        if (puantajMapPlots && puantajMapPlots.length > 0) {
+            return puantajMapPlots;
+        }
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                puantajMapPlots = await res.json();
+                if (!Array.isArray(puantajMapPlots)) puantajMapPlots = [];
+            }
+        } catch (e) {
+            console.warn("Puantaj harita/parsel verileri yüklenemedi", e);
+        }
+        return puantajMapPlots;
+    }
+
+    async function openListSelectionForPuantaj(btn) {
+        const row = btn.closest('tr');
+        puantajActiveOriginalIndex = parseInt(row.dataset.index);
+        puantajActiveRowInput = row.querySelector('.parsel-input');
+
+        if (!puantajListSelectionModalInstance) {
+            const modalEl = document.getElementById('puantajListSelectionModal');
+            puantajListSelectionModalInstance = new bootstrap.Modal(modalEl);
+        }
+
+        // Bahçe parsel verilerini yükle ve kontrol et
+        await getOrLoadPuantajMapPlots();
+        
+        // Modal içerisindeki çoklu seçim listesini oluştur
+        buildPuantajSelectionList();
+
+        // Arama kutusunu sıfırla
+        document.getElementById('puantajListSearch').value = '';
+
+        puantajListSelectionModalInstance.show();
+    }
+
+    function buildPuantajSelectionList() {
+        const container = document.getElementById('puantajSelectionListContainer');
+        container.innerHTML = '';
+
+        const varietyPlots = puantajMapPlots.filter(p => p.type === 'variety');
+
+        if (varietyPlots.length === 0) {
+            container.innerHTML = `
+                <div class="p-4 text-center text-muted small">
+                    <i class="bi bi-exclamation-circle text-warning fs-4 d-block mb-2"></i>
+                    Bu bahçe için henüz çeşit parseli çizilmemiş.<br>
+                    İnteraktif Harita sayfasından çizim yapabilirsiniz.
+                </div>
+            `;
+            updatePuantajListSummary();
+            return;
+        }
+
+        // Satırdaki mevcut çeşit seçimlerini al
+        const currentVal = (puantajActiveRowInput.value || "").toLowerCase();
+        const currentVarieties = currentVal.split(',').map(v => v.trim()).filter(Boolean);
+
+        varietyPlots.forEach((plot, i) => {
+            const plotName = plot.name || `Çeşit ${i+1}`;
+            const plotNameLower = plotName.trim().toLowerCase();
+            const plotArea = parseFloat((plot.area || '0').toString().replace(',', '.'));
+            const validPlotArea = isNaN(plotArea) ? 0 : plotArea;
+
+            // Seçililik durumunu kontrol et
+            let isSelected = false;
+            currentVarieties.forEach(v => {
+                if (plotNameLower === v.trim().toLowerCase()) {
+                    isSelected = true;
+                }
+            });
+
+            const checkedAttr = isSelected ? 'checked' : '';
+
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'puantaj-list-item d-flex align-items-center justify-content-between p-2.5 bg-white';
+            itemDiv.style.cursor = 'pointer';
+            itemDiv.style.borderBottom = '1px solid #f2f2f2';
+            itemDiv.style.transition = 'background-color 0.15s ease';
+            
+            // Satıra tıklandığında checkbox'ı tetikle
+            itemDiv.onclick = (e) => {
+                if (e.target.type === 'checkbox' || e.target.tagName === 'LABEL') {
+                    return;
+                }
+                const checkbox = itemDiv.querySelector('.puantaj-list-cb');
+                checkbox.checked = !checkbox.checked;
+                updatePuantajListSummary();
+            };
+
+            // Fare üzerine geldiğinde hafif yeşile boya
+            itemDiv.onmouseenter = () => { itemDiv.style.backgroundColor = '#f4fcf7'; };
+            itemDiv.onmouseleave = () => { itemDiv.style.backgroundColor = '#ffffff'; };
+
+            itemDiv.innerHTML = `
+                <div class="form-check d-flex align-items-center mb-0 gap-2" style="user-select: none;">
+                    <input type="checkbox" class="form-check-input puantaj-list-cb m-0" id="cb-variety-${plot.id || i}" ${checkedAttr} data-name="${plotName}" data-area="${validPlotArea}" onchange="updatePuantajListSummary()">
+                    <label class="form-check-label fw-semibold text-dark small mb-0 ms-2" for="cb-variety-${plot.id || i}" style="cursor: pointer;">${plotName}</label>
+                </div>
+                <span class="badge bg-light text-success border px-2 py-1 small" style="font-size: 11px; font-weight: 600;">${validPlotArea} da</span>
+            `;
+            container.appendChild(itemDiv);
+        });
+
+        updatePuantajListSummary();
+    }
+
+    function filterPuantajSelectionList() {
+        const query = (document.getElementById('puantajListSearch').value || "").toLowerCase();
+        const items = document.querySelectorAll('#puantajSelectionListContainer .puantaj-list-item');
+
+        items.forEach(item => {
+            const label = item.querySelector('.form-check-label').textContent.toLowerCase();
+            if (label.includes(query)) {
+                item.style.setProperty('display', 'flex', 'important');
+            } else {
+                item.style.setProperty('display', 'none', 'important');
+            }
+        });
+    }
+
+    function toggleAllPuantajSelectionList(status) {
+        const checkboxes = document.querySelectorAll('#puantajSelectionListContainer .puantaj-list-cb');
+        checkboxes.forEach(cb => {
+            const item = cb.closest('.puantaj-list-item');
+            if (item.style.display !== 'none') {
+                cb.checked = status;
+            }
+        });
+        updatePuantajListSummary();
+    }
+
+    function updatePuantajListSummary() {
+        const checkboxes = document.querySelectorAll('#puantajSelectionListContainer .puantaj-list-cb:checked');
+        const selectedNames = [];
+        let totalArea = 0;
+
+        checkboxes.forEach(cb => {
+            selectedNames.push(cb.getAttribute('data-name'));
+            totalArea += parseFloat(cb.getAttribute('data-area')) || 0;
+        });
+
+        totalArea = Math.max(0, parseFloat(totalArea.toFixed(2)));
+
+        document.getElementById('puantajListSelectedVarieties').innerText = selectedNames.length > 0 ? selectedNames.join(', ') : '-';
+        document.getElementById('puantajListSelectedArea').innerText = `${totalArea} da`;
+    }
+
+    function confirmListSelectionForPuantaj() {
+        const checkboxes = document.querySelectorAll('#puantajSelectionListContainer .puantaj-list-cb:checked');
+        const selectedNames = [];
+
+        checkboxes.forEach(cb => {
+            selectedNames.push(cb.getAttribute('data-name'));
+        });
+
+        if (selectedNames.length === 0) {
+            alert("Lütfen en az bir parsel/çeşit seçin!");
+            return;
+        }
+
+        // Satırdaki girdiyi güncelle
+        const resultString = selectedNames.join(', ');
+        puantajActiveRowInput.value = resultString;
+        
+        // Satırı hesapla ve model verisini güncelle
+        calculateRow(puantajActiveRowInput);
+
+        puantajListSelectionModalInstance.hide();
+    }
+
+    // Haritadan Çeşit/Parsel Seçimi Mantığı
+    let puantajSelectionMapInstance = null;
+    let puantajMapSelectedPlots = new Set();
+    let puantajMapPolygons = [];
+    let puantajMapBounds = null;
+
+    async function openMapSelectionForPuantaj(btn) {
+        const row = btn.closest('tr');
+        puantajActiveOriginalIndex = parseInt(row.dataset.index);
+        puantajActiveRowInput = row.querySelector('.parsel-input');
+
+        // Harita seçim kartını görünür yap
+        const cardEl = document.getElementById('puantajMapSelectionCard');
+        cardEl.style.display = 'block';
+
+        // Haritaya rahat odaklanabilmesi için sayfayı oraya kaydır
+        cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        // Get or load garden plot coordinates
+        await getOrLoadPuantajMapPlots();
+
+        // Initialize Map if not already created
+        if (!puantajSelectionMapInstance) {
+            puantajSelectionMapInstance = L.map('puantajSelectionMap', {
+                center: [39.0, 35.0],
+                zoom: 6,
+                zoomControl: false
+            });
+            L.control.zoom({ position: 'topright' }).addTo(puantajSelectionMapInstance);
+
+            // Premium Google Hybrid Satellite layer
+            L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                maxZoom: 21,
+                attribution: '&copy; Google Maps'
+            }).addTo(puantajSelectionMapInstance);
+        }
+
+        // Setup current selections based on row's input value
+        puantajMapSelectedPlots.clear();
+        const currentVal = (puantajActiveRowInput.value || "").toLowerCase();
+        const currentSelectedArr = currentVal.split(',').map(v => v.trim()).filter(Boolean);
+        
+        currentSelectedArr.forEach(name => {
+            const nameLower = name.trim().toLowerCase();
+            // Find match in puantajMapPlots by name (case-insensitive)
+            const matchedPlot = puantajMapPlots.find(p => (p.name || "").trim().toLowerCase() === nameLower);
+            if (matchedPlot) {
+                puantajMapSelectedPlots.add(matchedPlot.name.trim());
+            } else {
+                // Check if any plot name contains this string
+                const match = puantajMapPlots.find(p => (p.name || "").trim().toLowerCase().includes(nameLower));
+                if (match) {
+                    puantajMapSelectedPlots.add(match.name.trim());
+                } else {
+                    // Try exact match or add anyway
+                    puantajMapSelectedPlots.add(name);
+                }
+            }
+        });
+
+        // Draw polygons on map
+        drawSelectionMapPlots();
+
+        // Haritanın DOM yerleşimi tamamlandığında tam boyutu alması için invalidateSize tetikliyoruz
+        setTimeout(() => {
+            if (puantajSelectionMapInstance) {
+                puantajSelectionMapInstance.invalidateSize();
+                if (puantajMapBounds) {
+                    puantajSelectionMapInstance.fitBounds(puantajMapBounds, { padding: [30, 30] });
+                }
+            }
+        }, 150);
+    }
+
+    function closeMapSelectionForPuantaj() {
+        document.getElementById('puantajMapSelectionCard').style.display = 'none';
+    }
+
+    function drawSelectionMapPlots() {
+        // Clear old polygons
+        puantajMapPolygons.forEach(layer => puantajSelectionMapInstance.removeLayer(layer));
+        puantajMapPolygons = [];
+        puantajMapBounds = null;
+
+        const bounds = L.latLngBounds();
+        let hasPlots = false;
+
+        // Only variety plots are shown
+        const plots = puantajMapPlots.filter(p => p.type === 'variety');
+
+        plots.forEach((plot, i) => {
+            if (!plot.coordinates || plot.coordinates.length < 3) return;
+            const latlngs = plot.coordinates.map(c => [c.lat, c.lng]);
+            const plotName = plot.name || (plot.type === 'variety' ? `Çeşit ${i+1}` : `Parsel ${i+1}`);
+            const plotNameTrimmed = plotName.trim();
+            
+            // Extend bounds
+            latlngs.forEach(ll => bounds.extend(ll));
+            hasPlots = true;
+
+            const isSelected = puantajMapSelectedPlots.has(plotNameTrimmed);
+
+            // Normal and selected styles
+            const normalStyle = {
+                color: plot.color || '#3e8f3e',
+                fillColor: plot.color || '#3e8f3e',
+                fillOpacity: 0.35,
+                weight: 2
+            };
+
+            const selectedStyle = {
+                color: '#ffffff', // bright white for selected boundary
+                fillColor: '#ffffff', // bright white for selected fill
+                fillOpacity: 0.55, // opacity to keep satellite map visible
+                weight: 4,
+                dashArray: null
+            };
+
+            const styleToUse = isSelected ? selectedStyle : normalStyle;
+
+            const polygon = L.polygon(latlngs, styleToUse).addTo(puantajSelectionMapInstance);
+            
+            // Add a permanent premium tooltip with name
+            polygon.bindTooltip(
+                `<div class="text-center"><strong>${plotName}</strong><br><small>${plot.area || 0} da</small></div>`,
+                {
+                    permanent: true,
+                    direction: 'center',
+                    className: 'premium-tooltip-passive'
+                }
+            );
+
+            // Clicking toggles selection
+            polygon.on('click', () => {
+                if (puantajMapSelectedPlots.has(plotNameTrimmed)) {
+                    puantajMapSelectedPlots.delete(plotNameTrimmed);
+                    polygon.setStyle(normalStyle);
+                } else {
+                    puantajMapSelectedPlots.add(plotNameTrimmed);
+                    polygon.setStyle(selectedStyle);
+                }
+                updatePuantajMapSummary();
+            });
+
+            // Hover animations
+            polygon.on('mouseover', () => {
+                if (!puantajMapSelectedPlots.has(plotNameTrimmed)) {
+                    polygon.setStyle({ fillOpacity: 0.5, weight: 3 });
+                }
+            });
+            polygon.on('mouseout', () => {
+                if (!puantajMapSelectedPlots.has(plotNameTrimmed)) {
+                    polygon.setStyle(normalStyle);
+                }
+            });
+
+            puantajMapPolygons.push(polygon);
+        });
+
+        if (hasPlots) {
+            puantajMapBounds = bounds;
+        } else {
+            puantajMapBounds = null;
+        }
+
+        updatePuantajMapSummary();
+    }
+
+    function updatePuantajMapSummary() {
+        const selectedNames = Array.from(puantajMapSelectedPlots);
+        
+        // Calculate total area for selected plots
+        let totalArea = 0;
+        selectedNames.forEach(name => {
+            const plot = puantajMapPlots.find(p => (p.name || "").trim() === name);
+            if (plot) {
+                const plotArea = parseFloat((plot.area || '0').toString().replace(',', '.'));
+                totalArea += isNaN(plotArea) ? 0 : plotArea;
+            }
+        });
+        totalArea = Math.max(0, parseFloat(totalArea.toFixed(2)));
+
+        document.getElementById('puantajMapSelectedVarieties').innerText = selectedNames.length > 0 ? selectedNames.join(', ') : '-';
+        document.getElementById('puantajMapSelectedArea').innerText = `${totalArea} da`;
+    }
+
+    function confirmMapSelectionForPuantaj() {
+        const selectedNames = Array.from(puantajMapSelectedPlots);
+
+        if (selectedNames.length === 0) {
+            alert("Lütfen en az bir parsel/çeşit seçin!");
+            return;
+        }
+
+        // Update active row input
+        const resultString = selectedNames.join(', ');
+        puantajActiveRowInput.value = resultString;
+        
+        // Recalculate row details
+        calculateRow(puantajActiveRowInput);
+
+        closeMapSelectionForPuantaj();
+    }
+
+    function getCategoryInfo(jobName) {
+        if (!jobName || !jobName.trim()) {
+            return { name: "Genel & Diğer İşçilikler", icon: "bi-briefcase-fill", color: "#6c757d" };
+        }
+        const str = jobName.toLowerCase().trim();
+        if (str.includes('budam') || str.includes('seyrelt') || str.includes('terbiye') || str.includes('filiz') || str.includes('bağlama') || str.includes('baglama') || str.includes('aşı') || str.includes('asi')) {
+            return { name: "Budama, Seyreltme & Terbiye", icon: "bi-scissors", color: "#8e44ad" };
+        }
+        if (str.includes('hasat') || str.includes('topla') || str.includes('kasa') || str.includes('boyla') || str.includes('taşıma') || str.includes('tasima') || str.includes('kamyon') || str.includes('yükleme') || str.includes('yukleme')) {
+            return { name: "Hasat, Toplama & Kasalama", icon: "bi-basket3-fill", color: "#d35400" };
+        }
+        if (str.includes('herbisit') || str.includes('herbicide') || str.includes('ot') || str.includes('çapa') || str.includes('capa') || str.includes('biçme') || str.includes('bicme') || str.includes('temiz') || str.includes('ağaç altı') || str.includes('agac alti') || str.includes('dip') || str.includes('sürüm') || str.includes('surum')) {
+            return { name: "Ot Biçme, Çapa & Toprak Bakımı", icon: "bi-tree-fill", color: "#16a085" };
+        }
+        if (str.includes('ilaç') || str.includes('ilac') || str.includes('gübre') || str.includes('gubre') || str.includes('pulverizator') || str.includes('atım') || str.includes('atim')) {
+            return { name: "İlaçlama & Gübreleme İşçiliği", icon: "bi-droplet-fill", color: "#27ae60" };
+        }
+        if (str.includes('sula') || str.includes('mottor') || str.includes('boru') || str.includes('damlama') || str.includes('vana') || str.includes('motor') || str.includes('tamir') || str.includes('hat ser') || str.includes('hat top')) {
+            return { name: "Sulama, Boru & Tesisat Bakımı", icon: "bi-moisture", color: "#2980b9" };
+        }
+        return { name: "Genel & Diğer İşçilikler", icon: "bi-briefcase-fill", color: "#7f8c8d" };
+    }
+
+    function renderCategoryAnalysis() {
+        const activeBadge = document.getElementById('categoryActiveGardenBadge');
+        if (activeBadge) {
+            activeBadge.textContent = gardenName ? `Bahçe: ${gardenName}` : 'Tüm Bahçeler';
+        }
+
+        // Filtre uyumlu olarak işçilik kayıtlarını al
+        const search = (document.getElementById('recordSearch')?.value || "").toLowerCase().trim();
+        const start = document.getElementById('filterStartDate')?.value;
+        const end = document.getElementById('filterEndDate')?.value;
+
+        const filteredWorkRecords = puantajRecords.filter(r => {
+            const matchesSearch = !search || 
+                (r.parsel_cesit || "").toLowerCase().includes(search) || 
+                (r.yapilan_is || "").toLowerCase().includes(search) || 
+                (r.isci_cavus || "").toLowerCase().includes(search);
+            
+            const matchesDate = (!start || r.tarih >= start) && (!end || r.tarih <= end);
+            const matchesForeman = !currentForemanFilter || r.isci_cavus === currentForemanFilter;
+
+            return matchesSearch && matchesDate && matchesForeman;
+        });
+
+        const metricsContainer = document.getElementById('categoryMetricsCards');
+        const progressContainer = document.getElementById('categoryProgressBarContainer');
+        const accordionContainer = document.getElementById('categoryAccordion');
+
+        if (!filteredWorkRecords || filteredWorkRecords.length === 0) {
+            if (metricsContainer) metricsContainer.innerHTML = '';
+            if (progressContainer) progressContainer.innerHTML = `<div class="text-center text-muted p-4"><i class="bi bi-info-circle me-2 fs-5"></i> Seçili filtrelere uygun işçilik kaydı bulunamadı.</div>`;
+            if (accordionContainer) accordionContainer.innerHTML = '';
+            return;
+        }
+
+        // Kategori bazlı gruplama
+        const categoryGroups = {};
+        let totalLaborCost = 0;
+        let totalWorkerCount = 0;
+
+        filteredWorkRecords.forEach((r, idx) => {
+            const catObj = getCategoryInfo(r.yapilan_is);
+            const catName = catObj.name;
+            if (!categoryGroups[catName]) {
+                categoryGroups[catName] = {
+                    info: catObj,
+                    records: [],
+                    totalCost: 0,
+                    workerCount: 0,
+                    serviceCost: 0
+                };
+            }
+
+            const cost = parseVal(r.toplam);
+            const workers = parseVal(r.isci_sayisi);
+            const service = parseVal(r.s_ucreti);
+
+            categoryGroups[catName].records.push({ record: r, index: idx });
+            categoryGroups[catName].totalCost += cost;
+            categoryGroups[catName].workerCount += workers;
+            categoryGroups[catName].serviceCost += service;
+
+            totalLaborCost += cost;
+            totalWorkerCount += workers;
+        });
+
+        const categoryKeys = Object.keys(categoryGroups).sort((a, b) => categoryGroups[b].totalCost - categoryGroups[a].totalCost);
+
+        // 1. Üst İstatistik Kartları
+        const topCategoryKey = categoryKeys[0] || '-';
+        const topCategoryCost = topCategoryKey !== '-' ? categoryGroups[topCategoryKey].totalCost : 0;
+
+        if (metricsContainer) {
+            metricsContainer.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-white h-100" style="background: linear-gradient(135deg, #198754, #146c43); border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="small opacity-75 fw-bold text-uppercase">Toplam İşçilik Hak Edişi</div>
+                            <div class="fs-4 fw-bold mt-1">${totalLaborCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</div>
+                            <div class="small opacity-75 mt-1"><i class="bi bi-journal-text me-1"></i>${filteredWorkRecords.length} İşçilik Kaydı</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-dark h-100" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd); border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="small text-primary fw-bold text-uppercase">Toplam İşçi Gün (Yevmiye)</div>
+                            <div class="fs-4 fw-bold mt-1 text-primary">${totalWorkerCount} İşçi</div>
+                            <div class="small text-muted mt-1"><i class="bi bi-people me-1"></i>Çalıştırılan Toplam İnsan Gücü</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-dark h-100" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="small text-warning-emphasis fw-bold text-uppercase">Aktif İş Kategorisi</div>
+                            <div class="fs-4 fw-bold mt-1 text-dark">${categoryKeys.length} Kategori</div>
+                            <div class="small text-muted mt-1"><i class="bi bi-tags me-1"></i>Ayrıştırılmış İş Grubu</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-0 shadow-sm text-dark h-100" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="small text-danger fw-bold text-uppercase">En Yüksek Harcama Kalemi</div>
+                            <div class="fs-6 fw-bold mt-1 text-truncate text-danger" title="${topCategoryKey}">${topCategoryKey}</div>
+                            <div class="small text-muted mt-1 fw-semibold">${topCategoryCost.toLocaleString('tr-TR')} ₺ (%${totalLaborCost > 0 ? ((topCategoryCost / totalLaborCost) * 100).toFixed(1) : 0})</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Kategori Bazlı Oran İlerleme Çubukları
+        if (progressContainer) {
+            progressContainer.innerHTML = categoryKeys.map(catName => {
+                const group = categoryGroups[catName];
+                const pct = totalLaborCost > 0 ? ((group.totalCost / totalLaborCost) * 100).toFixed(1) : 0;
+                return `
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold small text-dark"><i class="bi ${group.info.icon} me-1" style="color: ${group.info.color}"></i>${catName} <span class="badge bg-light text-dark border ms-1">${group.records.length} Kayıt</span></span>
+                            <span class="fw-bold small text-dark">${group.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺ <span class="text-muted font-normal me-1">(%${pct})</span></span>
+                        </div>
+                        <div class="progress" style="height: 10px; border-radius: 6px; background-color: #f1f5f9;">
+                            <div class="progress-bar" role="progressbar" style="width: ${pct}%; background-color: ${group.info.color}; border-radius: 6px;" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 3. Detaylı Akordiyon Tabloları
+        if (accordionContainer) {
+            accordionContainer.innerHTML = categoryKeys.map((catName, catIdx) => {
+                const group = categoryGroups[catName];
+                const collapseId = `categoryCollapse_${catIdx}`;
+                const headingId = `categoryHeading_${catIdx}`;
+                const pct = totalLaborCost > 0 ? ((group.totalCost / totalLaborCost) * 100).toFixed(1) : 0;
+
+                const tableRows = group.records.map(itemObj => {
+                    const r = itemObj.record;
+                    return `
+                        <tr>
+                            <td>${r.tarih || '-'}</td>
+                            <td class="fw-semibold" title="${r.parsel_cesit || ''}">${getParselBadgeHtml(r.parsel_cesit || '')}</td>
+                            <td class="fw-bold text-dark" title="${r.yapilan_is || ''}">${r.yapilan_is || '-'}</td>
+                            <td class="fw-bold text-center">${r.isci_sayisi || 0}</td>
+                            <td class="text-center">${(parseVal(r.yevmiye) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                            <td class="text-center" title="${r.servis || ''}">${r.servis || '-'}</td>
+                            <td class="text-center">${(parseVal(r.s_ucreti) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                            <td class="fw-semibold" title="${r.isci_cavus || ''}">${r.isci_cavus || '-'}</td>
+                            <td class="text-muted small" title="${r.aciklama || ''}">${r.aciklama || '-'}</td>
+                            <td class="fw-bold text-end text-success">${(parseVal(r.toplam) || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="accordion-item border mb-3 rounded-3 overflow-hidden shadow-sm">
+                        <h2 class="accordion-header" id="${headingId}">
+                            <button class="accordion-button ${catIdx !== 0 ? 'collapsed' : ''} py-3" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${catIdx === 0 ? 'true' : 'false'}" aria-controls="${collapseId}" style="background-color: #f8fafc;">
+                                <div class="d-flex align-items-center justify-content-between w-100 me-3">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px; background-color: ${group.info.color}18; color: ${group.info.color};">
+                                            <i class="bi ${group.info.icon} fs-5"></i>
+                                        </span>
+                                        <div>
+                                            <span class="fw-bold text-dark fs-6">${catName}</span>
+                                            <span class="badge bg-secondary bg-opacity-10 text-secondary border ms-2" style="font-size: 11px;">${group.records.length} Kayıt</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="fw-bold text-success fs-6 me-2">${group.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</span>
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success" style="font-size: 11px;">%${pct}</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="${collapseId}" class="accordion-collapse collapse ${catIdx === 0 ? 'show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#categoryAccordion">
+                            <div class="accordion-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0 align-middle" style="font-size: 13px;">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>TARİH</th>
+                                                <th>PARSEL/ÇEŞİT</th>
+                                                <th>YAPILAN İŞ</th>
+                                                <th class="text-center">İŞÇİ SAY.</th>
+                                                <th class="text-center">YEVMİYE</th>
+                                                <th class="text-center">SERVİS</th>
+                                                <th class="text-center">S. ÜCRETİ</th>
+                                                <th>İŞÇİ ÇVŞ.</th>
+                                                <th>AÇIKLAMA</th>
+                                                <th class="text-end">TOPLAM</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${tableRows}
+                                        </tbody>
+                                        <tfoot class="table-light fw-bold">
+                                            <tr>
+                                                <td colspan="4" class="text-end text-uppercase text-muted">Kategori Toplamı:</td>
+                                                <td class="text-center text-primary fs-6">${group.workerCount} İşçi</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td class="text-center text-dark">${group.serviceCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                                                <td></td>
+                                                <td class="text-end text-success fs-6">${group.totalCost.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+// Hücre sınırları içine girildiğinde anında çalışan okunabilir popover sistemi
+(function initInstantCellHover() {
+    let tooltipEl = document.getElementById('instantCellTooltip');
+    if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'instantCellTooltip';
+        tooltipEl.className = 'instant-cell-tooltip';
+        document.body.appendChild(tooltipEl);
+    }
+
+    let activeCell = null;
+
+    document.addEventListener('mouseover', (e) => {
+        const td = e.target.closest('td');
+        if (!td || td.classList.contains('action-col') || td.id === 'save-button-row') {
+            hideInstantTooltip();
+            return;
+        }
+
+        // Eğer fare işlem/butonlar üzerindeyse popover açma
+        if (e.target.closest('button')) {
+            hideInstantTooltip();
+            return;
+        }
+
+        const input = td.querySelector('input');
+        let textVal = '';
+        if (input && input.value) {
+            textVal = input.value;
+        } else {
+            textVal = td.getAttribute('title') || td.textContent.trim();
+        }
+
+        // Temizle ve kontrol et
+        textVal = textVal.replace(/\s+/g, ' ').trim();
+        if (!textVal || textVal === '-' || textVal === 'Seçiniz...') {
+            hideInstantTooltip();
+            return;
+        }
+
+        // İlgili sütun başlığını bul
+        const table = td.closest('table');
+        let colName = '';
+        if (table) {
+            const cellIndex = td.cellIndex;
+            const th = table.querySelector(`thead th:nth-child(${cellIndex + 1})`);
+            if (th) colName = th.textContent.trim();
+        }
+
+        // Popover içeriğini hazırla
+        tooltipEl.innerHTML = (colName ? `<span style="color:#34d399; font-size:10px; display:block; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">${colName}</span>` : '') + textVal;
+
+        // Hücre konumunu al ve popover'ı tam üstüne hizala
+        const rect = td.getBoundingClientRect();
+        let top = rect.top;
+        let left = rect.left + (rect.width / 2);
+
+        // Ekranın üstünden taşarsa altına koy
+        if (top < 50) {
+            top = rect.bottom + 16;
+            tooltipEl.style.transform = 'translate(-50%, 0)';
+        } else {
+            tooltipEl.style.transform = 'translate(-50%, -100%)';
+        }
+
+        // Sol-Sağ ekran sınırları koruması
+        left = Math.max(120, Math.min(window.innerWidth - 120, left));
+
+        tooltipEl.style.top = top + 'px';
+        tooltipEl.style.left = left + 'px';
+        tooltipEl.style.display = 'block';
+
+        if (activeCell && activeCell !== td) {
+            activeCell.classList.remove('instant-hover-active');
+        }
+        activeCell = td;
+        td.classList.add('instant-hover-active');
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const td = e.target.closest('td');
+        if (td && (!e.relatedTarget || !td.contains(e.relatedTarget))) {
+            hideInstantTooltip();
+        }
+    });
+
+    function hideInstantTooltip() {
+        tooltipEl.style.display = 'none';
+        if (activeCell) {
+            activeCell.classList.remove('instant-hover-active');
+            activeCell = null;
+        }
+    }
+})();
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

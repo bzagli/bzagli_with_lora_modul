@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profesyonel Bahçe Takvimi & Ajandası</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --primary-light: #e8f5e9;
+            --secondary-color: #1565c0;
+            --accent-color: #ef6c00;
+            --text-color: #333;
+            --bg-color: #f5f5f5;
+            --border-color: #ddd;
+            --ilac-color: #ffebee;
+            --ilac-text: #c62828;
+            --gubre-color: #e3f2fd;
+            --gubre-text: #1565c0;
+            --diger-color: #fff3e0;
+            --diger-text: #ef6c00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: #1b5e20; }
+        .btn-secondary { background: #e0e0e0; color: #333; }
+        .btn-secondary:hover { background: #d5d5d5; }
+        .btn-danger { background: #c62828; color: white; }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout { grid-template-columns: 1fr; }
+        }
+
+        /* Kampanya / Takvim Kontrolleri */
+        .calendar-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .month-display {
+            font-size: 22px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-weight: 600;
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 10px 0;
+            border-radius: 6px;
+            margin-bottom: 5px;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            grid-auto-rows: minmax(120px, auto);
+            gap: 5px;
+        }
+
+        .day-cell {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 5px;
+            background: #fff;
+            transition: background 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .day-cell:hover { background: #f9f9f9; }
+        .day-cell.today { border: 2px solid var(--primary-color); background: #f1f8e9; }
+        .day-cell.other-month { background: #fafafa; color: #ccc; }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        /* Etkinlik Listesi Mini */
+        .event-list-mini {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mini-event {
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 500;
+            line-height: 1.2;
+            margin-bottom: 3px;
+        }
+        .mini-event div {
+            word-wrap: break-word;
+        }
+
+        .mini-event.ilaclama { background: var(--ilac-color); color: var(--ilac-text); border-left: 3px solid var(--ilac-text); }
+        .mini-event.gubreleme { background: var(--gubre-color); color: var(--gubre-text); border-left: 3px solid var(--gubre-text); }
+        .mini-event.diger { background: var(--diger-color); color: var(--diger-text); border-left: 3px solid var(--diger-text); }
+        .mini-event.completed { border-right: 4px solid var(--primary-color); }
+        .mini-event.planned { border-right: 4px solid var(--accent-color); }
+
+        /* Yan Panel / Form */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #444;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        /* Modal / Detay Görünümü */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-height: 90vh; /* Ekran yüksekliğinin %90'ı */
+            overflow-y: auto; /* İçerik taştığında kaydırma çubuğu */
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-modal {
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 10px;
+            margin: -10px;
+            display: inline-block;
+        }
+
+        .close-modal:hover { color: #333; }
+
+        .event-detail-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        /* Liste Görünümü Rozet ve Satır Stilleri */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .badge.ilaclama { background: var(--ilac-color); color: var(--ilac-text); }
+        .badge.gubreleme { background: var(--gubre-color); color: var(--gubre-text); }
+        .badge.diger { background: var(--diger-color); color: var(--diger-text); }
+        
+        /* Liste Satır Renkleri */
+        tr.completed { background-color: #e8f5e9 !important; }
+        tr.planned { background-color: #fff8e1 !important; }
+        
+        /* Üzeri çizili efekti kaldırıldı */
+        tr.completed td { opacity: 0.6; }
+
+        /* ===== Yenilenen Tasarım ===== */
+        body { background: #f1f5f2; }
+        header {
+            background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+            color: #fff; border-radius: 14px; flex-wrap: wrap; gap: 12px;
+            box-shadow: 0 6px 18px rgba(46,125,50,.25);
+        }
+        header h1 { color: #fff; font-size: 22px; flex-wrap: wrap; }
+        header .btn-group { flex-wrap: wrap; }
+        header .btn-primary { background: #fff; color: var(--primary-color); }
+        header .btn-primary:hover { background: #e8f5e9; }
+        header .btn-secondary { background: rgba(255,255,255,.18); color: #fff; }
+        header .btn-secondary:hover { background: rgba(255,255,255,.3); }
+
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card {
+            background: #fff; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1px solid transparent; transition: transform .15s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card.alert-on { border-color: #ef9a9a; background: #fff8f8; }
+        .stat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+        .stat-value { font-size: 26px; font-weight: 700; line-height: 1; }
+        .stat-label { font-size: 12px; color: #78909c; margin-top: 4px; }
+
+        .main-layout { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+        .calendar-wrapper, .side-panel { border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+        .calendar-header { gap: 12px; flex-wrap: wrap; }
+        .cal-nav { display: flex; gap: 6px; }
+        .cal-nav button { padding: 8px 12px; }
+        .month-display { font-size: 22px; flex: 1; text-align: center; }
+        .cal-legend { display: flex; gap: 6px; }
+        .legend-chip {
+            font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 20px; cursor: pointer; user-select: none;
+            border: 1px solid currentColor; transition: opacity .15s;
+        }
+        .legend-chip.ilaclama { background: var(--ilac-color); color: var(--ilac-text); }
+        .legend-chip.gubreleme { background: var(--gubre-color); color: var(--gubre-text); }
+        .legend-chip.diger { background: var(--diger-color); color: var(--diger-text); }
+        .legend-chip.off { opacity: .35; background: #fff; text-decoration: line-through; }
+
+        .weekdays { background: #f1f8e9; font-size: 13px; }
+        .days-grid { grid-auto-rows: minmax(112px, auto); gap: 6px; }
+        .day-cell { border-radius: 8px; padding: 6px; min-width: 0; border-color: #e5e9e6; }
+        .day-cell:hover { background: #f6faf6; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+        .day-cell.weekend { background: #fbfbfb; }
+        .day-cell.other-month { background: #f7f8f7; border-style: dashed; cursor: default; }
+        .day-cell.other-month:hover { box-shadow: none; background: #f7f8f7; }
+        .day-cell.today { border: 2px solid var(--primary-color); background: #f1f8e9; }
+        .day-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .day-number { margin: 0; display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; font-size: 13px; }
+        .day-cell.today .day-number { background: var(--primary-color); color: #fff; }
+        .day-count { font-size: 10px; font-weight: 700; background: #455a64; color: #fff; border-radius: 10px; padding: 1px 7px; }
+
+        .mini-event { display: flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 6px; border-radius: 5px; margin: 0; overflow: hidden; }
+        .mini-event .chip-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mini-event .state-icon { font-size: 10px; flex-shrink: 0; }
+        .mini-event.completed { border-right: 0; opacity: .65; }
+        .mini-event.completed .chip-text { text-decoration: line-through; }
+        .mini-event.planned { border-right: 0; }
+        .mini-event.overdue { border-right: 0; box-shadow: inset 0 0 0 1px #e53935; }
+        .more-events { font-size: 11px; color: #607d8b; font-weight: 600; padding-left: 4px; }
+
+        .side-panel { background: #fff; padding: 16px; position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow-y: auto; }
+        .panel-section-title { font-size: 13px; font-weight: 700; color: #455a64; margin: 4px 0 8px; display: flex; gap: 6px; align-items: center; }
+        .panel-section-title:not(:first-child) { margin-top: 16px; }
+        .agenda-item { display: flex; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; border-left: 4px solid #cfd8dc; margin-bottom: 6px; background: #fafafa; transition: background .15s; }
+        .agenda-item:hover { background: #f0f4f1; }
+        .agenda-item.ilaclama { border-left-color: var(--ilac-text); }
+        .agenda-item.gubreleme { border-left-color: var(--gubre-text); }
+        .agenda-item.diger { border-left-color: var(--diger-text); }
+        .agenda-item.is-overdue { background: #fff5f5; }
+        .agenda-item-date { min-width: 62px; display: flex; flex-direction: column; font-size: 13px; }
+        .agenda-item-date small { font-size: 10px; color: #78909c; }
+        .agenda-item.is-overdue .agenda-item-date small { color: #c62828; font-weight: 600; }
+        .agenda-item-body { min-width: 0; flex: 1; }
+        .agenda-item-title { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .agenda-item-sub { font-size: 11px; color: #607d8b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .panel-empty { text-align: center; color: #90a4ae; font-size: 13px; padding: 20px 0; }
+        .panel-empty i { font-size: 28px; }
+
+        .nav-tabs .nav-link { color: #546e7a; }
+        .nav-tabs .nav-link.active { color: var(--primary-color); border-bottom-color: #fff; }
+        .modal-content { border-radius: 14px; }
+        .event-detail-item { background: #fafafa; border-radius: 8px; border-bottom: 0; margin-bottom: 10px; }
+        #agendaListBody tr { transition: background .15s; }
+
+        @media (max-width: 1100px) {
+            .main-layout { grid-template-columns: 1fr; }
+            .side-panel { position: static; max-height: none; order: -1; }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-value { font-size: 22px; }
+            .calendar-wrapper { padding: 10px; }
+            .month-display { order: -1; flex-basis: 100%; font-size: 19px; }
+            .days-grid { gap: 3px; grid-auto-rows: minmax(64px, auto); }
+            .day-cell { padding: 3px; }
+            .mini-event { font-size: 0; padding: 0; height: 6px; border-radius: 3px; }
+            .mini-event .chip-text, .mini-event .state-icon, .more-events { display: none; }
+            .day-count { display: none; }
+            .weekdays { font-size: 11px; }
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link active" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <header>
+        <h1>🌱 Profesyonel Bahçe Yönetim Ajandası</h1>
+        <div class="btn-group">
+            <button class="btn-primary can-edit-agenda" onclick="openNewEventModal()"><i class="bi bi-plus-circle me-1"></i> Yeni İşlem Programla</button>
+            <button class="btn-secondary" onclick="exportToExcel()"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+            <button class="btn-secondary" onclick="exportToPDF()"><i class="bi bi-file-pdf"></i> PDF</button>
+            <button class="btn-secondary admin-only" onclick="exportData()">📥 Verileri Yedekle</button>
+            <button class="btn-secondary admin-only" onclick="document.getElementById('importFile').click()">📤 Yedek Yükle</button>
+            <input type="file" id="importFile" style="display:none" onchange="importData(event)">
+        </div>
+    </header>
+
+    <!-- Özet Kartları -->
+    <div class="stats-row">
+        <div class="stat-card"><i class="bi bi-calendar-week stat-icon" style="background:#e3f2fd;color:#1565c0"></i><div><div class="stat-value" id="statWeek">0</div><div class="stat-label">Önümüzdeki 7 gün</div></div></div>
+        <div class="stat-card" id="statOverdueCard"><i class="bi bi-exclamation-triangle stat-icon" style="background:#ffebee;color:#c62828"></i><div><div class="stat-value" id="statOverdue">0</div><div class="stat-label">Geciken işlem</div></div></div>
+        <div class="stat-card"><i class="bi bi-check2-circle stat-icon" style="background:#e8f5e9;color:#2e7d32"></i><div><div class="stat-value" id="statDone">0</div><div class="stat-label">Bu ay tamamlanan</div></div></div>
+        <div class="stat-card"><i class="bi bi-graph-up-arrow stat-icon" style="background:#fff3e0;color:#ef6c00"></i><div><div class="stat-value" id="statMonth">–</div><div class="stat-label">Bu ay tamamlanma</div></div></div>
+    </div>
+
+    <!-- Sekme Menüsü -->
+    <ul class="nav nav-tabs mb-4" id="agendaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar-view" type="button" role="tab">📅 Takvim Görünümü</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="list-tab" data-bs-toggle="tab" data-bs-target="#list-view" type="button" role="tab">📝 Liste Görünümü</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary-view" type="button" role="tab">📊 Ürün Kullanım Özeti</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="agendaTabsContent">
+        <!-- Takvim Görünümü Sekmesi -->
+        <div class="tab-pane fade show active" id="calendar-view" role="tabpanel">
+            <div class="main-layout">
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <div class="cal-nav">
+                            <button class="btn-secondary" onclick="prevMonth()" title="Önceki ay"><i class="bi bi-chevron-left"></i></button>
+                            <button class="btn-secondary" onclick="goToday()">Bugün</button>
+                            <button class="btn-secondary" onclick="nextMonth()" title="Sonraki ay"><i class="bi bi-chevron-right"></i></button>
+                        </div>
+                        <div class="month-display" id="monthYearDisplay">Mayıs 2026</div>
+                        <div class="cal-legend">
+                            <span class="legend-chip ilaclama" data-type="ilaclama" onclick="toggleCalType('ilaclama')"><i class="bi bi-shield-plus"></i> İlaç</span>
+                            <span class="legend-chip gubreleme" data-type="gubreleme" onclick="toggleCalType('gubreleme')"><i class="bi bi-moisture"></i> Gübre</span>
+                            <span class="legend-chip diger" data-type="diger" onclick="toggleCalType('diger')"><i class="bi bi-tools"></i> Diğer</span>
+                        </div>
+                    </div>
+                    
+                    <div class="weekdays">
+                        <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div>Cmt</div><div>Paz</div>
+                    </div>
+                    
+                    <div class="days-grid" id="calendarDays">
+                        <!-- Günler dinamik olarak buraya gelecek -->
+                    </div>
+                </div>
+                <aside class="side-panel" id="upcomingPanel"></aside>
+            </div>
+        </div>
+
+        <!-- Liste Görünümü Sekmesi -->
+        <div class="tab-pane fade" id="list-view" role="tabpanel">
+            <div class="card p-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4 p-3 border rounded bg-light shadow-sm">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold small"><i class="bi bi-funnel"></i> Tür:</span>
+                            <div class="form-check form-check-inline mb-0 small">
+                                <input class="form-check-input list-filter-check" type="checkbox" value="ilaclama" id="listCheckIlaclama" checked onchange="renderListView()">
+                                <label class="form-check-label" for="listCheckIlaclama">İlaçlama</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0 small">
+                                <input class="form-check-input list-filter-check" type="checkbox" value="gubreleme" id="listCheckGubreleme" checked onchange="renderListView()">
+                                <label class="form-check-label" for="listCheckGubreleme">Gübreleme</label>
+                            </div>
+                            <div class="form-check form-check-inline mb-0 small">
+                                <input class="form-check-input list-filter-check" type="checkbox" value="diger" id="listCheckDiger" checked onchange="renderListView()">
+                                <label class="form-check-label" for="listCheckDiger">Diğer</label>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 border-start ps-3">
+                            <span class="fw-bold small"><i class="bi bi-search"></i> Ara:</span>
+                            <input type="text" id="listSearch" class="form-control form-control-sm" placeholder="Parsel, ürün veya not..." style="width: 180px;" oninput="renderListView()">
+                        </div>
+                        <div class="d-flex align-items-center gap-2 border-start ps-3">
+                            <span class="fw-bold small"><i class="bi bi-calendar-range"></i> Tarih:</span>
+                            <input type="date" id="listFilterStartDate" class="form-control form-control-sm" style="width: 125px;" onchange="renderListView()">
+                            <input type="date" id="listFilterEndDate" class="form-control form-control-sm" style="width: 125px;" onchange="renderListView()">
+                            <button class="btn btn-sm btn-outline-danger px-1 py-0" onclick="resetListFilters()" title="Filtreleri Temizle"><i class="bi bi-x-circle"></i></button>
+                        </div>
+                    </div>
+                    <button class="btn-primary can-edit-agenda" onclick="openNewEventModal()"><i class="bi bi-plus-circle me-1"></i> Yeni İşlem Programla</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>Parsel/Çeşit</th>
+                                <th>İşlem Türü</th>
+                                <th>Ürünler & Dozlar</th>
+                                <th>Durum</th>
+                                <th>Notlar</th>
+                                <th class="text-end">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agendaListBody">
+                            <!-- Liste dinamik olarak buraya gelecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toplam Ürün Kullanımı Sekmesi -->
+        <div class="tab-pane fade" id="summary-view" role="tabpanel">
+            <div class="card p-3" id="agendaSummaryContainer">
+                <!-- Summary view content will be rendered here -->
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Yeni İşlem Modalı -->
+<div class="modal" id="eventEntryModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="formTitle">Yeni İşlem Programla</h3>
+            <span class="close-modal" onclick="closeEntryModal()">&times;</span>
+        </div>
+        <form id="eventForm" onsubmit="saveEvent(event)">
+            <input type="hidden" id="eventId">
+            <div class="form-group">
+                <label class="fw-bold text-dark">Tarih</label>
+                <input type="date" id="eventDate" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label id="parselCesitLabel" class="fw-bold text-dark">Parsel/Çeşit</label>
+                <select id="eventParselCesit" class="form-control" multiple size="5">
+                </select>
+                <div class="small text-muted mt-2">Birden fazla çeşit seçebilirsiniz.</div>
+                <div id="varietyParcelEmptyInfo" class="small text-muted mt-2" style="display: none;">
+                    Bu bahçe için önce İnteraktif Haritalar sayfasında çeşit parselleri oluşturulmalı.
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="fw-bold text-dark">İşlem Türü</label>
+                <select id="eventType" class="form-control" required onchange="updateFormRequirements()">
+                    <option value="ilaclama">İlaçlama (Fungisit/Insektisit)</option>
+                    <option value="gubreleme">Gübreleme / Besleme</option>
+                    <option value="diger">Diğer Kültürel İşlemler (Budama, Sulama vb.)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label id="productLabel" class="fw-bold text-dark">Uygulanan Ürünler</label>
+                <div id="productListContainer"></div>
+                <button type="button" class="btn-secondary" style="width: 100%; margin-top: 5px; font-size: 12px;" onclick="addProductField()">
+                    + Ürün Ekle
+                </button>
+            </div>
+            <div class="form-group">
+                <label class="fw-bold text-dark">Durum</label>
+                <select id="eventStatus" class="form-control">
+                    <option value="planned">📋 Planlandı</option>
+                    <option value="completed">✅ Tamamlandı (Gerçekleşti)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="fw-bold text-dark">Notlar (Hava durumu, parsel adı vb.)</label>
+                <textarea id="eventNotes" class="form-control" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn-primary" style="width: 100%;">Kaydet</button>
+            <button type="button" class="btn-secondary" id="cancelEditBtn" style="width: 100%; margin-top: 5px; display: none;" onclick="closeEntryModal()">Vazgeç</button>
+        </form>
+    </div>
+</div>
+
+<!-- Günlük Detay Modalı -->
+<div class="modal" id="dayModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalDateTitle">Seçilen Günün İşlemleri</h3>
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+        </div>
+        <div id="modalEventList">
+            <!-- O güne ait detaylı listeleme -->
+        </div>
+    </div>
+</div>
+
+<script src="assets/js/agenda_summary.js"></script>
+<script>
+    // Başlangıç Değişkenleri
+    let currentDateTime = new Date(); // Takvimi bugünün tarihiyle başlat
+    let events = [];
+    let eventEntryModal;
+    const userRole = localStorage.getItem('userRole');
+    const userName = localStorage.getItem('userName');
+    const canEditAgenda = userRole === 'admin' || userName === 'Begum' || userName === 'MAli';
+    const gardenId = localStorage.getItem('selected_garden_id') || 'default'; // Seçili bahçe ID'si
+    let varietyParcels = [];
+
+    const monthsTR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+    // Sayfa Yüklendiğinde
+    document.addEventListener('DOMContentLoaded', async function() {
+        // Formdaki tarih alanına bugünün tarihini (yerel formatta) ata
+        const today = new Date();
+        const localDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        document.getElementById('eventDate').value = localDate;
+        
+        if (document.getElementById('listFilterStartDate')) {
+            document.getElementById('listFilterStartDate').value = localDate;
+        }
+
+        eventEntryModal = document.getElementById('eventEntryModal');
+
+        // Takvimi boş olarak hemen çiz (Dilimler ve tarihler görünsün)
+        renderCalendar();
+
+        if (document.getElementById('productListContainer').children.length === 0) {
+            addProductField();
+        }
+
+        await fetchVarietyParcels();
+        populateVarietyParcelSelect();
+
+        // Ajanda verilerini sunucudan çek ve takvimi etkinliklerle güncelle
+        await fetchEvents();
+        renderCalendar();
+        renderListView();
+        renderAgendaSummary(events, 'agendaSummaryContainer');
+    });
+
+    // Ajanda verilerini sunucudan çeken fonksiyon
+    async function fetchEvents() {
+        try {
+            const response = await fetch(`api/get_agenda.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (response.ok) {
+                const data = await response.json();
+                events = Array.isArray(data) ? data : [];
+            } else {
+                console.error('Ajanda verileri yüklenirken hata oluştu:', response.statusText);
+                events = [];
+            }
+        } catch (error) {
+            console.error('Ajanda verileri yüklenirken ağ hatası oluştu:', error);
+            events = [];
+        }
+    }
+
+    async function fetchVarietyParcels() {
+        try {
+            const response = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (!response.ok) {
+                varietyParcels = [];
+                return;
+            }
+
+            const mapData = await response.json();
+            const seen = new Set();
+            varietyParcels = (Array.isArray(mapData) ? mapData : [])
+                .filter(plot => plot && plot.type === 'variety' && plot.name)
+                .map(plot => ({
+                    id: plot.id || plot.name,
+                    name: String(plot.name).trim(),
+                    area: plot.area
+                }))
+                .filter(plot => {
+                    const key = plot.name.toLocaleLowerCase('tr-TR');
+                    if (!key || seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+        } catch (error) {
+            console.error('Çeşit parselleri yüklenirken hata oluştu:', error);
+            varietyParcels = [];
+        }
+    }
+
+    function populateVarietyParcelSelect(selectedValues = []) {
+        const select = document.getElementById('eventParselCesit');
+        const info = document.getElementById('varietyParcelEmptyInfo');
+        if (!select) return;
+
+        const normalizedSelections = (Array.isArray(selectedValues) ? selectedValues : [selectedValues])
+            .map(value => String(value || '').trim().toLocaleUpperCase('tr-TR'))
+            .filter(Boolean);
+
+        select.innerHTML = '';
+
+        varietyParcels.forEach(plot => {
+            const option = document.createElement('option');
+            option.value = plot.name.toLocaleUpperCase('tr-TR');
+            option.textContent = plot.area ? `${plot.name} (${plot.area} da)` : plot.name;
+            select.appendChild(option);
+        });
+
+        normalizedSelections.forEach(selectedValue => {
+            if (Array.from(select.options).some(opt => opt.value === selectedValue)) return;
+            const option = document.createElement('option');
+            option.value = selectedValue;
+            option.textContent = `${selectedValue} (kayıtlı değer)`;
+            select.appendChild(option);
+        });
+
+        Array.from(select.options).forEach(option => {
+            option.selected = normalizedSelections.includes(option.value);
+        });
+        if (info) info.style.display = varietyParcels.length === 0 ? 'block' : 'none';
+    }
+
+    function ensureVarietyParcelsReady() {
+        if (varietyParcels.length > 0) return true;
+        const goToMap = confirm('Bu bahçe için çeşit parseli bulunamadı. Önce İnteraktif Haritalar sayfasında çeşit parselleri oluşturulsun mu?');
+        if (goToMap) {
+            window.location.href = 'garden_map.html?setup=1';
+        }
+        return false;
+    }
+
+    function updateFormRequirements() {
+        const type = document.getElementById('eventType').value;
+        const parselInput = document.getElementById('eventParselCesit');
+        const parselCesitLabel = document.getElementById('parselCesitLabel'); // Parsel/Çeşit etiketini al
+        const productNames = document.querySelectorAll('.product-name');
+        const productDoses = document.querySelectorAll('.product-dose');
+        const productLabel = document.getElementById('productLabel');
+        
+        let dosePlaceholder = "Miktar (Örn: 150 gr)";
+        if (type === 'ilaclama') {
+            dosePlaceholder = "Miktar (Örn: 150 gr/ton)";
+        } else if (type === 'gubreleme') {
+            dosePlaceholder = "Miktar (Örn: 2 lt/da)";
+        }
+
+        if (type === 'diger') {
+            parselInput.removeAttribute('required');
+            if (parselCesitLabel) parselCesitLabel.innerText = "Parsel/Çeşit (İsteğe Bağlı)"; // Etiket metnini güncelle
+            if (productLabel) productLabel.innerText = "Uygulanan Ürünler (İsteğe Bağlı)";
+            productNames.forEach(el => el.removeAttribute('required'));
+            productDoses.forEach(el => el.removeAttribute('required'));
+        } else {
+            parselInput.setAttribute('required', 'required');
+            if (parselCesitLabel) parselCesitLabel.innerText = "Parsel/Çeşit"; // Etiket metnini sıfırla
+            if (productLabel) productLabel.innerText = "Uygulanan Ürünler";
+            productNames.forEach(el => el.setAttribute('required', 'required'));
+            productDoses.forEach(el => el.setAttribute('required', 'required'));
+        }
+
+        // Update placeholders for all dose fields
+        productDoses.forEach(el => el.placeholder = dosePlaceholder);
+    }
+
+    function addProductField(name = '', dose = '') {
+        const container = document.getElementById('productListContainer');
+        const type = document.getElementById('eventType').value;
+        const req = type === 'diger' ? '' : 'required';
+        
+        let dosePlaceholder = "Miktar (Örn: 150 gr)";
+        if (type === 'ilaclama') {
+            dosePlaceholder = "Miktar (Örn: 150 gr/ton)";
+        } else if (type === 'gubreleme') {
+            dosePlaceholder = "Miktar (Örn: 2 lt/da)";
+        }
+
+        const div = document.createElement('div');
+        div.className = 'product-row';
+        div.style = 'display: flex; gap: 5px; margin-bottom: 5px;';
+        div.innerHTML = `
+            <input type="text" class="form-control product-name" placeholder="Ürün Adı" value="${name}" ${req} style="flex: 2;">
+            <input type="text" class="form-control product-dose" placeholder="${dosePlaceholder}" value="${dose}" ${req} style="flex: 1;">
+            <button type="button" class="btn-danger" style="padding: 5px 10px; border-radius: 6px;" onclick="this.parentElement.remove()">×</button>
+        `;
+        container.appendChild(div);
+    }
+
+    const TYPE_META = {
+        ilaclama:  { label: 'İlaç',  full: 'İlaçlama',  icon: 'bi-shield-plus',  color: 'var(--ilac-text)' },
+        gubreleme: { label: 'Gübre', full: 'Gübreleme', icon: 'bi-moisture',     color: 'var(--gubre-text)' },
+        diger:     { label: 'Diğer', full: 'Diğer',     icon: 'bi-tools',        color: 'var(--diger-text)' }
+    };
+    const calTypeFilter = { ilaclama: true, gubreleme: true, diger: true };
+    const MAX_CHIPS_PER_DAY = 3;
+
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function toDateStr(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function eventProductText(e) {
+        if (e.products && e.products.length > 0) return e.products.map(p => `${p.name} ${p.dose || ''}`.trim()).join(', ');
+        return e.name ? `${e.name} ${e.dose || ''}`.trim() : '';
+    }
+
+    function toggleCalType(type) {
+        calTypeFilter[type] = !calTypeFilter[type];
+        document.querySelectorAll(`.legend-chip[data-type="${type}"]`).forEach(el => el.classList.toggle('off', !calTypeFilter[type]));
+        renderCalendar();
+    }
+
+    function goToday() {
+        currentDateTime = new Date();
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const year = currentDateTime.getFullYear();
+        const month = currentDateTime.getMonth();
+        const todayStr = toDateStr(new Date());
+
+        document.getElementById('monthYearDisplay').innerText = `${monthsTR[month]} ${year}`;
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        // Pazartesi gününü haftanın ilk günü yapmak için ayarlama:
+        const startDay = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+        const totalDays = new Date(year, month + 1, 0).getDate();
+        const prevTotalDays = new Date(year, month, 0).getDate();
+
+        let html = '';
+
+        // Önceki aydan kalan boşluklar
+        for (let i = startDay; i > 0; i--) {
+            html += `<div class="day-cell other-month"><span class="day-number">${prevTotalDays - i + 1}</span></div>`;
+        }
+
+        // Aktif ayın günleri
+        for (let day = 1; day <= totalDays; day++) {
+            const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const weekday = (startDay + day - 1) % 7;
+            const classes = ['day-cell'];
+            if (dateString === todayStr) classes.push('today');
+            if (weekday >= 5) classes.push('weekend');
+
+            const dayEvents = events
+                .filter(e => e.date === dateString && calTypeFilter[e.type] !== false)
+                .sort((a, b) => (a.status === 'completed') - (b.status === 'completed'));
+
+            const chips = dayEvents.slice(0, MAX_CHIPS_PER_DAY).map(e => {
+                const meta = TYPE_META[e.type] || TYPE_META.diger;
+                const overdue = e.status !== 'completed' && dateString < todayStr;
+                const stateClass = e.status === 'completed' ? 'completed' : (overdue ? 'overdue' : 'planned');
+                const stateIcon = e.status === 'completed' ? 'bi-check-circle-fill' : (overdue ? 'bi-exclamation-circle-fill' : 'bi-clock');
+                const product = eventProductText(e);
+                const label = e.parselCesit || product || meta.full;
+                const tip = [meta.full, e.parselCesit && `Parsel: ${e.parselCesit}`, product && `Ürün: ${product}`, e.notes && `Not: ${e.notes}`]
+                    .filter(Boolean).join(' | ');
+                return `<div class="mini-event ${e.type} ${stateClass}" title="${esc(tip)}">
+                    <i class="bi ${stateIcon} state-icon"></i><span class="chip-text">${esc(label)}</span>
+                </div>`;
+            }).join('');
+
+            const more = dayEvents.length > MAX_CHIPS_PER_DAY
+                ? `<div class="more-events">+${dayEvents.length - MAX_CHIPS_PER_DAY} daha</div>` : '';
+            const count = dayEvents.length > 0 ? `<span class="day-count">${dayEvents.length}</span>` : '';
+
+            html += `
+                <div class="${classes.join(' ')}" onclick="handleDayClick('${dateString}')">
+                    <div class="day-top"><span class="day-number">${day}</span>${count}</div>
+                    <div class="event-list-mini">${chips}${more}</div>
+                </div>
+            `;
+        }
+
+        // Son satırı tamamla
+        const filled = startDay + totalDays;
+        const trailing = (7 - (filled % 7)) % 7;
+        for (let i = 1; i <= trailing; i++) {
+            html += `<div class="day-cell other-month"><span class="day-number">${i}</span></div>`;
+        }
+
+        document.getElementById('calendarDays').innerHTML = html;
+        renderDashboard();
+    }
+
+    // Özet kartları ve yaklaşan/geciken paneli
+    function renderDashboard() {
+        const now = new Date();
+        const todayStr = toDateStr(now);
+        const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+        const weekEndStr = toDateStr(weekEnd);
+        const monthPrefix = todayStr.slice(0, 7);
+
+        const planned = events.filter(e => e.status !== 'completed');
+        const overdue = planned.filter(e => e.date < todayStr).sort((a, b) => a.date.localeCompare(b.date));
+        const upcoming = planned.filter(e => e.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date));
+        const thisWeek = upcoming.filter(e => e.date <= weekEndStr);
+        const doneMonth = events.filter(e => e.status === 'completed' && (e.date || '').startsWith(monthPrefix));
+        const monthAll = events.filter(e => (e.date || '').startsWith(monthPrefix));
+
+        const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setText('statWeek', thisWeek.length);
+        setText('statOverdue', overdue.length);
+        setText('statDone', doneMonth.length);
+        setText('statMonth', monthAll.length ? Math.round(doneMonth.length / monthAll.length * 100) + '%' : '–');
+        const overdueCard = document.getElementById('statOverdueCard');
+        if (overdueCard) overdueCard.classList.toggle('alert-on', overdue.length > 0);
+
+        const dayLabel = ds => {
+            const diff = Math.round((new Date(ds + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / 86400000);
+            const d = new Date(ds + 'T00:00:00').toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
+            if (diff === 0) return { d, rel: 'Bugün' };
+            if (diff === 1) return { d, rel: 'Yarın' };
+            if (diff > 1) return { d, rel: `${diff} gün sonra` };
+            return { d, rel: `${-diff} gün gecikti` };
+        };
+
+        const item = (e, isOverdue) => {
+            const meta = TYPE_META[e.type] || TYPE_META.diger;
+            const lbl = dayLabel(e.date);
+            const product = eventProductText(e);
+            return `<div class="agenda-item ${e.type} ${isOverdue ? 'is-overdue' : ''}" onclick="handleDayClick('${e.date}')">
+                <div class="agenda-item-date"><b>${lbl.d}</b><small>${lbl.rel}</small></div>
+                <div class="agenda-item-body">
+                    <div class="agenda-item-title"><i class="bi ${meta.icon}" style="color:${meta.color}"></i> ${esc(e.parselCesit || meta.full)}</div>
+                    ${product ? `<div class="agenda-item-sub">${esc(product)}</div>` : ''}
+                </div>
+            </div>`;
+        };
+
+        const panel = document.getElementById('upcomingPanel');
+        if (!panel) return;
+        let out = '';
+        if (overdue.length) {
+            out += `<div class="panel-section-title text-danger"><i class="bi bi-exclamation-triangle-fill"></i> Geciken (${overdue.length})</div>`;
+            out += overdue.slice(-5).map(e => item(e, true)).join('');
+        }
+        out += `<div class="panel-section-title"><i class="bi bi-calendar-event"></i> Yaklaşan</div>`;
+        out += upcoming.length
+            ? upcoming.slice(0, 8).map(e => item(e, false)).join('')
+            : '<div class="panel-empty"><i class="bi bi-check2-all"></i><br>Planlanmış işlem yok</div>';
+        panel.innerHTML = out;
+    }
+
+    function renderListView() {
+        const tbody = document.getElementById('agendaListBody');
+        if (!tbody) return;
+
+        const selectedTypes = Array.from(document.querySelectorAll('.list-filter-check:checked')).map(cb => cb.value);
+        const startDate = document.getElementById('listFilterStartDate').value;
+        const endDate = document.getElementById('listFilterEndDate').value;
+        const searchTerm = document.getElementById('listSearch').value.toLowerCase();
+
+        const filtered = events.filter(item => {
+            const typeMatch = selectedTypes.includes(item.type);
+            const dateMatch = (!startDate || item.date >= startDate) && (!endDate || item.date <= endDate);
+            const searchMatch = !searchTerm || 
+                (item.parselCesit || "").toLowerCase().includes(searchTerm) || 
+                (item.notes || "").toLowerCase().includes(searchTerm) ||
+                (item.products || []).some(p => (p.name || "").toLowerCase().includes(searchTerm));
+            
+            return typeMatch && dateMatch && searchMatch;
+        });
+
+        const sortedEvents = filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        let html = '';
+        sortedEvents.forEach(e => {
+            let productsHtml = "";
+            if (e.products && e.products.length > 0) {
+                productsHtml = e.products.map(p => `• ${p.name} ${p.dose}`).join('<br>');
+            } else if (e.name) {
+                productsHtml = `• ${e.name} ${e.dose || ''}`;
+            }
+
+            const statusBadge = e.status === 'completed'
+                ? '<span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Tamamlandı</span>'
+                : '<span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1"><i class="bi bi-clock-history me-1"></i>Planlandı</span>';
+            const statusClass = e.status === 'completed' ? 'completed' : 'planned';
+            const typeLabel = e.type === 'ilaclama' ? 'İlaçlama' : (e.type === 'gubreleme' ? 'Gübreleme' : 'Diğer');
+
+            html += `
+                <tr class="${statusClass}">
+                    <td><span class="fw-bold">${new Date(e.date).toLocaleDateString('tr-TR')}</span></td>
+                    <td>${e.parselCesit || '-'}</td>
+                    <td><span class="badge ${e.type}">${typeLabel}</span></td>
+                    <td style="font-size: 0.85rem; font-weight: 500;">${productsHtml || '-'}</td>
+                    <td>${statusBadge}</td>
+                    <td style="font-size: 0.85rem; color: #666;"><small>${e.notes || '-'}</small></td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            ${canEditAgenda ? `
+                                <button class="btn btn-outline-primary" onclick="editEvent('${e.id}')" title="Düzenle"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-outline-danger" onclick="deleteEvent('${e.id}')" title="Sil"><i class="bi bi-trash"></i></button>
+                            ` : `
+                                <button class="btn btn-outline-info" onclick="editEvent('${e.id}', true)" title="Detay"><i class="bi bi-info-circle"></i></button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted py-4">Henüz kayıtlı bir ajanda notu bulunmamaktadır.</td></tr>';
+    }
+
+    function resetListFilters() {
+        document.querySelectorAll('.list-filter-check').forEach(cb => cb.checked = true);
+        document.getElementById('listFilterStartDate').value = '';
+        document.getElementById('listFilterEndDate').value = '';
+        document.getElementById('listSearch').value = '';
+        renderListView();
+    }
+
+    function prevMonth() {
+        currentDateTime.setDate(1); // Ay değişiminde rollover hatasını önlemek için
+        currentDateTime.setMonth(currentDateTime.getMonth() - 1);
+        renderCalendar();
+    }
+
+    function nextMonth() {
+        currentDateTime.setDate(1);
+        currentDateTime.setMonth(currentDateTime.getMonth() + 1);
+        renderCalendar();
+    }
+
+    // Gün Tıklama Fonksiyonu
+    function handleDayClick(dateStr) {
+        document.getElementById('eventDate').value = dateStr;
+        const dayEvents = events.filter(e => e.date === dateStr);
+        
+        if (dayEvents.length > 0) {
+            showModal(dateStr, dayEvents);
+        } else {
+            openNewEventModal(dateStr);
+        }
+    }
+
+    // Yeni Kayıt Modalı Açma Fonksiyonu
+    function openNewEventModal(dateStr = null) {
+        if (!canEditAgenda) return;
+        if (!ensureVarietyParcelsReady()) return;
+        closeModal(); // Eğer o güne ait kayıtlar modalı açıksa (ilk tıklama ile açılmış olabilir) önce onu kapat
+        resetForm();
+        
+        if (dateStr) {
+            document.getElementById('eventDate').value = dateStr;
+        } else {
+            // Eğer tarih belirtilmeden açıldıysa (üstteki buton gibi) bugünü seç
+            const today = new Date();
+            const localDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+            document.getElementById('eventDate').value = localDate;
+        }
+        
+        document.getElementById('formTitle').innerText = "Yeni İşlem Programla";
+        eventEntryModal.style.display = "flex";
+    }
+
+    // Yeni Kayıt veya Güncelleme Kaydetme
+    async function saveEvent(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('eventId').value;
+        const eventType = document.getElementById('eventType').value;
+        if (eventType !== 'diger' && !ensureVarietyParcelsReady()) return;
+        const productRows = document.querySelectorAll('.product-row');
+        
+        const products = Array.from(productRows).map(row => {
+            let nameValue = row.querySelector('.product-name').value.trim();
+            let doseValue = row.querySelector('.product-dose').value.trim();
+            
+            if (nameValue !== "") {
+                // Ürün Baş Harfleri Büyük Yaz (Title Case)
+                nameValue = nameValue.split(' ').map(word => 
+                    word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1).toLocaleLowerCase('tr-TR')
+                ).join(' ');
+            }
+
+            if (doseValue !== "" && !doseValue.includes('/')) {
+                // Otomatik Birim Ekleme (150 gr -> 150 gr/ton veya 2 lt -> 2 lt/da)
+                if (eventType === 'ilaclama') {
+                    doseValue += '/ton';
+                } else if (eventType === 'gubreleme') {
+                    doseValue += '/da';
+                }
+            }
+            
+            return { name: nameValue, dose: doseValue }; // doseValue'yu doğru şekilde atıyoruz
+        }).filter(p => p.name !== "");
+
+        const selectedVarieties = Array.from(document.getElementById('eventParselCesit').selectedOptions)
+            .map(option => option.value.trim().toLocaleUpperCase('tr-TR'))
+            .filter(Boolean);
+
+        const eventData = {
+            id: id ? id : Date.now().toString(),
+            date: document.getElementById('eventDate').value, // YYYY-MM-DD formatında kalır
+            parselCesit: selectedVarieties.join(', '), // Liste ve eski kayıtlarla uyumluluk için
+            parselCesitler: selectedVarieties, // Haritadaki birden fazla çeşit parseli
+            type: eventType,
+            products: products,
+            name: products[0] ? products[0].name : "", // Geriye dönük uyumluluk için
+            dose: products[0] ? products[0].dose : "", 
+            status: document.getElementById('eventStatus').value,
+            notes: document.getElementById('eventNotes').value.trim()
+        };
+
+        if (id) {
+            // Düzenleme modu
+            const index = events.findIndex(e => e.id === id);
+            events[index] = eventData;
+        } else {
+            // Yeni kayıt modu
+            events.push(eventData);
+        }
+
+        await syncEvents(); // Sunucuya kaydet
+        resetForm();
+        renderCalendar();
+        renderListView();
+        renderAgendaSummary(events, 'agendaSummaryContainer');
+        closeEntryModal();
+        closeModal();
+    }
+
+    async function editEvent(id, isReadOnly = false) {
+        const ev = events.find(e => e.id === id);
+        if (!ev) return;
+
+        document.getElementById('eventId').value = ev.id;
+        document.getElementById('eventDate').value = ev.date;
+        const savedVarieties = Array.isArray(ev.parselCesitler) && ev.parselCesitler.length
+            ? ev.parselCesitler
+            : (ev.parselCesit ? [ev.parselCesit] : []);
+        populateVarietyParcelSelect(savedVarieties);
+        document.getElementById('eventType').value = ev.type;
+        
+        const container = document.getElementById('productListContainer');
+        container.innerHTML = '';
+        if (ev.products && ev.products.length > 0) {
+            ev.products.forEach(p => addProductField(p.name, p.dose)); // name ve dose ayrı ayrı gönderilir
+        } else {
+            addProductField(ev.name, ev.dose);
+        }
+        
+        document.getElementById('eventStatus').value = ev.status;
+        document.getElementById('eventNotes').value = ev.notes;
+
+        document.getElementById('formTitle').innerText = isReadOnly ? "İşlem Detayı" : "İşlemi Düzenle";
+        document.getElementById('cancelEditBtn').style.display = isReadOnly ? "none" : "block";
+        
+        // Salt okunur mod işlemleri
+        const inputs = document.getElementById('eventForm').querySelectorAll('input, select, textarea');
+        inputs.forEach(i => i.disabled = isReadOnly);
+        const saveBtn = document.getElementById('eventForm').querySelector('button[type="submit"]');
+        if (saveBtn) saveBtn.style.display = isReadOnly ? "none" : "block";
+
+        eventEntryModal.style.display = "flex";
+        updateFormRequirements();
+        closeModal();
+    }
+
+    async function deleteEvent(id) {
+        if (confirm('Bu uygulamayı programdan silmek istediğinize emin misiniz?')) {
+            events = events.filter(e => e.id !== id);
+            await syncEvents(); // Sunucuya kaydet
+            renderCalendar();
+            renderListView();
+            renderAgendaSummary(events, 'agendaSummaryContainer');
+            closeModal();
+        }
+    }
+
+    function resetForm() {
+        document.getElementById('eventId').value = '';
+        populateVarietyParcelSelect();
+        document.getElementById('productListContainer').innerHTML = '';
+        addProductField();
+        document.getElementById('eventNotes').value = '';
+        document.getElementById('formTitle').innerText = "Yeni İşlem Programla";
+        document.getElementById('cancelEditBtn').style.display = "none";
+
+        // Alanların kilidini aç
+        const inputs = document.getElementById('eventForm').querySelectorAll('input, select, textarea');
+        inputs.forEach(i => i.disabled = false);
+        const saveBtn = document.getElementById('eventForm').querySelector('button[type="submit"]');
+        if (saveBtn) saveBtn.style.display = "block";
+
+        updateFormRequirements();
+    }
+
+    // Modal Yönetimi
+    function showModal(dateStr, dayEvents) {
+        const modal = document.getElementById('dayModal');
+        const listContainer = document.getElementById('modalEventList');
+        document.getElementById('modalDateTitle').innerText = `${dateStr} Tarihli Uygulamalar`;
+        
+        listContainer.innerHTML = '';
+        // Listenin en üstüne yeni kayıt butonu ekle
+        if (canEditAgenda) {
+            listContainer.innerHTML = `
+                <button class="btn-primary w-100 mb-3" onclick="openNewEventModal('${dateStr}')">
+                    <i class="bi bi-plus-circle me-1"></i> Yeni İşlem Ekle
+                </button>
+            `;
+        }
+
+        dayEvents.forEach(e => {
+            const statusBadge = e.status === 'completed'
+                ? '<span class="badge bg-success-subtle text-success border border-success px-2 py-1" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill me-1"></i>Tamamlandı</span>'
+                : '<span class="badge bg-warning-subtle text-dark border border-warning px-2 py-1" style="font-size: 0.75rem;"><i class="bi bi-clock-history me-1"></i>Planlandı</span>';
+            
+            let productListHtml = "";
+            if (e.products && e.products.length > 0) {
+                productListHtml = e.products.map(p => `• ${p.name} ${p.dose}`).join('<br>');
+            } else {
+                productListHtml = `• ${e.name} ${e.dose || ''}`;
+            }
+
+            listContainer.innerHTML += `
+                <div class="event-detail-item" style="border-left: 5px solid ${(TYPE_META[e.type] || TYPE_META.diger).color}; padding-left:10px;">
+                    <strong>[${e.type.toUpperCase()}]</strong><br>
+                    <div style="margin: 5px 0;">${productListHtml}</div>
+                    <small>Parsel/Çeşit: ${e.parselCesit || 'Belirtilmedi'}</small><br>
+                    <div class="d-flex align-items-center gap-2 mt-1" style="font-size: 0.8rem;">
+                        <span>Durum: </span>${statusBadge}
+                        <span class="ms-2">| Notlar: ${e.notes || '-'}</span>
+                    </div>
+                    <div style="margin-top:5px;">
+                        ${canEditAgenda ? `
+                            <button class="btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="editEvent('${e.id}')">✏️ Düzenle</button>
+                            <button class="btn-danger" style="padding:4px 8px; font-size:12px;" onclick="deleteEvent('${e.id}')">🗑️ Sil</button>
+                        ` : `
+                            <button class="btn-secondary" style="padding:4px 8px; font-size:12px;" onclick="editEvent('${e.id}', true)">👁️ Detay</button>
+                        `}
+                    </div>
+                </div>
+            `;
+        });
+        
+        modal.style.display = "flex";
+    }
+
+    function closeModal() {
+        document.getElementById('dayModal').style.display = "none";
+    }
+
+    function closeEntryModal() {
+        document.getElementById('eventEntryModal').style.display = "none";
+    }
+
+    // Ajanda verilerini sunucuya senkronize eden fonksiyon
+    async function syncEvents() {
+        try {
+            const response = await fetch(`api/save_agenda.php?garden_id=${gardenId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(events)
+            });
+            const result = await response.json();
+            if (result.status !== 'success') {
+                console.error('Ajanda verileri sunucuya kaydedilirken hata oluştu:', result.message);
+            }
+        } catch (error) {
+            console.error('Ajanda verileri sunucuya kaydedilirken ağ hatası oluştu:', error);
+        }
+    }
+
+    // Yedekleme Fonksiyonları (Export / Import)
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(events));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `bahce_ajandası_yedek_${gardenId}_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    async function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            try {
+                const importedEvents = JSON.parse(e.target.result);
+                if (Array.isArray(importedEvents)) {
+                    events = importedEvents;
+                    await syncEvents(); // Sunucuya kaydet
+                    renderCalendar();
+                    renderListView();
+                    renderAgendaSummary(events, 'agendaSummaryContainer');
+                    alert('Veriler başarıyla yüklendi!');
+                } else {
+                    alert('Geçersiz dosya formatı.');
+                }
+            } catch (err) {
+                alert('Dosya okunurken bir hata oluştu.');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function trChars(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+            .replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function exportToExcel() {
+        if (events.length === 0) { alert("Aktarılacak veri bulunamadı."); return; }
+        const sortedEvents = [...events].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const ws = XLSX.utils.json_to_sheet(sortedEvents.map(e => ({
+            'Tarih': e.date,
+            'Parsel/Çeşit': e.parselCesit || '-',
+            'İşlem Türü': e.type === 'ilaclama' ? 'İlaçlama' : (e.type === 'gubreleme' ? 'Gübreleme' : 'Diğer'),
+            'Ürünler & Dozlar': e.products && e.products.length > 0 ? e.products.map(p => `${p.name} ${p.dose}`).join(', ') : (e.name ? `${e.name} ${e.dose || ''}` : '-'),
+            'Durum': e.status === 'completed' ? 'Tamamlandı' : 'Planlandı',
+            'Notlar': e.notes || '-'
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Ajanda");
+        XLSX.writeFile(wb, `Ajanda_${gardenId}.xlsx`);
+    }
+
+    async function exportToPDF() {
+        if (events.length === 0) { alert("Aktarılacak veri bulunamadı."); return; }
+        
+        const calendarTab = document.getElementById('calendar-tab');
+        if (calendarTab && calendarTab.classList.contains('active')) {
+            // Takvim Görünümü (Görsel) İndir
+            const element = document.querySelector('.calendar-wrapper');
+            const canvas = await html2canvas(element, { 
+                scale: 2,
+                useCORS: true,
+                scrollY: -window.scrollY // Sayfa aşağı kaydırılmışsa çekimi yukarıdan başlat
+            });
+            const imgData = canvas.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            
+            // Hem genişlik hem yükseklik için en uygun ölçeği hesapla (Sığdırma)
+            const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+            const imgWidth = canvas.width * ratio;
+            const imgHeight = canvas.height * ratio;
+            
+            // Sayfada ortala
+            const x = (pageWidth - imgWidth) / 2;
+            const y = (pageHeight - imgHeight) / 2;
+            
+            pdf.addImage(imgData, 'PNG', x, y, imgWidth, imgHeight);
+            pdf.save(`Ajanda_Takvim_${gardenId}.pdf`);
+            return;
+        }
+
+        // Liste Görünümü (Tablo) İndir
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        doc.text(trChars("Bahce Ajandasi Listesi"), 14, 15);
+        
+        const sortedEvents = [...events].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const rows = sortedEvents.map(e => [
+            new Date(e.date).toLocaleDateString('tr-TR'),
+            trChars(e.parselCesit || "-"),
+            trChars(e.type === 'ilaclama' ? 'Ilaclama' : (e.type === 'gubreleme' ? 'Gubreleme' : 'Diger')),
+            trChars(e.products && e.products.length > 0 ? e.products.map(p => `${p.name} ${p.dose}`).join('\n') : (e.name ? `${e.name} ${e.dose || ''}` : "-")),
+            trChars(e.status === 'completed' ? 'Tamamlandi' : 'Planlandi'),
+            trChars(e.notes || "-")
+        ]);
+
+        doc.autoTable({
+            head: [[trChars('Tarih'), trChars('Parsel/Cesit'), trChars('Islem Turu'), trChars('Urunler & Dozlar'), trChars('Durum'), trChars('Notlar')]],
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8 }
+        });
+        doc.save(`Ajanda_${gardenId}.pdf`);
+    }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const userRole = localStorage.getItem('userRole');
+        const userName = localStorage.getItem('userName');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        // Yetki bazlı menü gizleme
+        if (permissions.hidden) {
+            permissions.hidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) navLink.parentElement.style.display = 'none';
+            });
+        }
+
+        if (userRole === 'admin') {
+            const adminUsers = document.getElementById('adminUsers');
+            const adminLogs = document.getElementById('adminLogs');
+            if (adminUsers) adminUsers.style.display = 'block';
+            if (adminLogs) adminLogs.style.display = 'block';
+        }
+        if (userRole !== 'admin') {
+            document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+        }
+
+        const canEditAgenda = userRole === 'admin' || userName === 'Begum' || userName === 'MAli';
+        if (!canEditAgenda) {
+            document.querySelectorAll('.can-edit-agenda').forEach(el => el.style.display = 'none');
+        } else {
+            document.querySelectorAll('.can-edit-agenda').forEach(el => {
+                if (el.tagName === 'BUTTON') el.style.display = 'inline-block';
+                else el.style.display = 'block';
+            });
+        }
+
+        if (userName === 'Icachem') {
+            document.querySelectorAll('a[href="agenda.html"]').forEach(el => el.setAttribute('href', 'agenda_list.html'));
+        }
+        const gardenName = localStorage.getItem('selected_garden_name');
+        if (gardenName) {
+            const h1 = document.querySelector('header h1');
+            if (h1) h1.innerHTML += ` <span class="badge bg-success" style="font-size: 0.5em;">${gardenName}</span>`;
+        }
+    });
+    function logout() { localStorage.removeItem('isLoggedIn'); window.location.href = 'login.html'; }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/bku_database.js"></script>
+<script src="assets/js/banned_ingredients.js"></script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

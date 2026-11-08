@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bahçelerim & Sezon Arşiv Yönetimi - Bahçe Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/pastel_theme.css?v=1">
+    <style>
+        body { background-color: var(--p-canvas, #f4f6f4); font-family: var(--p-font-base, sans-serif); }
+        .garden-card { cursor: pointer; transition: var(--p-transition, all 0.25s ease); border: 1px solid var(--p-border, rgba(45,75,60,0.08)); border-radius: 20px; background: #ffffff; box-shadow: var(--p-shadow-card, 0 10px 24px -6px rgba(28,48,38,0.05)); }
+        .garden-card:hover { transform: translateY(-6px); box-shadow: var(--p-shadow-hover, 0 20px 35px -8px rgba(35,65,50,0.12)); border-color: var(--p-border-hover, rgba(58,117,89,0.25)); }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info active" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mb-5">
+    <div id="adminActions" class="d-flex justify-content-between align-items-center mb-4" style="display:none !important;">
+        <h2 class="fw-bold">Yönetilecek Bahçeyi Seçin</h2>
+        <button class="btn btn-success" onclick="addGarden()">+ Yeni Bahçe Ekle</button>
+    </div>
+    <div id="viewerHeader" class="mb-4" style="display:none;">
+        <h2 class="fw-bold">İzinli Bahçeleriniz</h2>
+    </div>
+    <div id="gardenList" class="row g-4 mb-5">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-2 text-muted">Bahçeler yükleniyor...</p>
+        </div>
+    </div>
+
+    <!-- Sezon & Yıl Arşiv Yönetim Kartı -->
+    <div id="seasonArchiveCard" class="card border-0 shadow-sm rounded-4 p-4 bg-white border border-warning" style="border: 1px solid #cbd5e1 !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h4 class="fw-bold text-dark mb-1"><i class="bi bi-archive-fill text-warning me-2"></i>Yıllık Sezon & Arşiv Yönetimi</h4>
+                <p class="text-muted mb-0">Aktif Çalışma Sezonu: <span class="badge bg-success fs-6" id="displayActiveSeasonYear">2026</span></p>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-warning fw-bold rounded-pill px-4 shadow-sm" onclick="promptArchiveSeason()">
+                    <i class="bi bi-calendar-plus me-1"></i>2026 Sezonunu Arşivle & 2027 Yeni Yıla Geç
+                </button>
+            </div>
+        </div>
+        <hr>
+        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-clock-history me-1 text-primary"></i>Kayıtlı Sezon & Arşiv Yılları</h6>
+        <div id="seasonsListContainer" class="d-flex flex-wrap gap-3">
+            <!-- Dynamic Season Badges -->
+        </div>
+    </div>
+</div>
+
+<!-- Yönetici Şifre Doğrulama Modalı -->
+<div class="modal fade" id="adminPasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-success text-white rounded-top-4">
+                <h5 class="modal-title fw-bold" id="adminPasswordTitle">Yönetici Onayı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <label for="adminPasswordInput" class="form-label fw-semibold">Yönetici şifrenizi girin</label>
+                <input type="password" id="adminPasswordInput" class="form-control form-control-lg" autocomplete="current-password" placeholder="Şifre">
+                <div class="form-text">Bu işlem yalnızca yönetici hesabıyla gerçekleştirilebilir.</div>
+            </div>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success fw-bold" onclick="submitAdminPassword()">Onayla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const userRole = localStorage.getItem('userRole');
+    if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+
+    if (userRole === 'admin') {
+        document.getElementById('adminActions').setAttribute('style', 'display: flex !important');
+        document.getElementById('adminUsers').style.display = 'block';
+        document.getElementById('adminLogs').style.display = 'block';
+    } else {
+        document.getElementById('viewerHeader').style.display = 'block';
+    }
+
+    let gardens = [];
+
+    async function loadGardens() {
+        try {
+            const res = await fetch('api/get_gardens.php?t=' + Date.now());
+            const serverGardens = await res.json();
+            const localGardens = JSON.parse(localStorage.getItem('user_gardens') || '[]');
+
+            if (serverGardens && serverGardens.length > 0) {
+                gardens = serverGardens;
+                localStorage.setItem('user_gardens', JSON.stringify(gardens));
+            } else if (localGardens.length > 0) {
+                gardens = localGardens;
+                await syncGardens();
+            } else {
+                gardens = [];
+            }
+            renderGardens();
+        } catch (e) {
+            gardens = JSON.parse(localStorage.getItem('user_gardens') || '[]');
+            renderGardens();
+        }
+    }
+
+    async function syncGardens() {
+        try {
+            const res = await fetch('api/save_gardens.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(gardens)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                localStorage.setItem('user_gardens', JSON.stringify(gardens));
+            }
+        } catch (e) {
+            localStorage.setItem('user_gardens', JSON.stringify(gardens));
+        }
+    }
+
+    function renderGardens() {
+        const list = document.getElementById('gardenList');
+        const allowedGardens = JSON.parse(localStorage.getItem('allowed_gardens') || '[]');
+        const visibleGardens = userRole === 'admin' ? gardens : gardens.filter(g => allowedGardens.includes(g.id));
+
+        if (visibleGardens.length === 0) {
+            list.innerHTML = '<div class="col-12 text-center text-muted">Henüz kayıtlı bahçe yok.</div>';
+            return;
+        }
+        list.innerHTML = visibleGardens.map(g => `
+            <div class="col-md-4">
+                <div class="card garden-card h-100 shadow-sm position-relative" onclick="selectGarden('${g.id}', '${g.name}')">
+                    ${userRole === 'admin' ? `
+                        <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle shadow"
+                                style="width:36px;height:36px;z-index:2" title="Bahçeyi Sil"
+                                onclick="event.stopPropagation(); deleteGarden('${g.id}')">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>` : ''}
+                    <div class="card-body text-center p-4">
+                        <i class="bi bi-pin-map-fill text-success fs-1 mb-3"></i>
+                        <h4 class="fw-bold">${g.name}</h4>
+                        <p class="text-muted mb-0">${g.location || 'Konum belirtilmedi'}</p>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderSeasonsUI() {
+        const activeYear = SeasonManager.getActiveYear();
+        document.getElementById('displayActiveSeasonYear').textContent = activeYear;
+
+        const seasons = SeasonManager.getAvailableSeasons();
+        const container = document.getElementById('seasonsListContainer');
+        container.innerHTML = '';
+
+        seasons.forEach(year => {
+            const isActive = year === activeYear;
+            const card = document.createElement('div');
+            card.className = `p-3 rounded-3 border d-flex align-items-center gap-3 ${isActive ? 'bg-success-subtle border-success' : 'bg-light'}`;
+            card.innerHTML = `
+                <div>
+                    <h6 class="fw-bold mb-0 text-dark">${year} Sezonu ${isActive ? '<span class="badge bg-success ms-1">Aktif</span>' : '<span class="badge bg-secondary ms-1">Arşiv</span>'}</h6>
+                    <small class="text-muted">${isActive ? 'Şu an çalışılan sezondur' : 'Arşivlenmiş sezondur (Salt Okunur)'}</small>
+                </div>
+                <button class="btn btn-sm ${isActive ? 'btn-outline-success disabled' : 'btn-outline-primary'} rounded-pill px-3" onclick="SeasonManager.switchSeason('${year}')">
+                    ${isActive ? 'Aktif' : 'İncele'}
+                </button>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function promptArchiveSeason() {
+        const activeYear = SeasonManager.getActiveYear();
+        const nextYear = (parseInt(activeYear) + 1).toString();
+
+        if (confirm(`⚠️ DİKKAT: ${activeYear} yılına ait tüm İlaçlama, Sulama, Herbisit, Puantaj ve Cari verileri güvenle arşivlenecektir.\n\n${nextYear} yılı için yeni ve temiz bir çalışma sayfası açılacaktır.\n\nDevam etmek istiyor musunuz?`)) {
+            SeasonManager.archiveAndCreateNextSeason(nextYear);
+        }
+    }
+
+    let adminPasswordModalInstance = null;
+    let adminPasswordResolver = null;
+
+    function requestAdminPassword(title) {
+        if (userRole !== 'admin') {
+            alert('Bu işlem yalnızca yönetici tarafından yapılabilir.');
+            return Promise.resolve(null);
+        }
+
+        const modalElement = document.getElementById('adminPasswordModal');
+        if (!adminPasswordModalInstance) {
+            adminPasswordModalInstance = new bootstrap.Modal(modalElement);
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                if (adminPasswordResolver) {
+                    adminPasswordResolver(null);
+                    adminPasswordResolver = null;
+                }
+            });
+            document.getElementById('adminPasswordInput').addEventListener('keydown', event => {
+                if (event.key === 'Enter') submitAdminPassword();
+            });
+        }
+
+        document.getElementById('adminPasswordTitle').textContent = title;
+        document.getElementById('adminPasswordInput').value = '';
+        adminPasswordModalInstance.show();
+        setTimeout(() => document.getElementById('adminPasswordInput').focus(), 250);
+
+        return new Promise(resolve => {
+            adminPasswordResolver = resolve;
+        });
+    }
+
+    window.submitAdminPassword = function() {
+        const password = document.getElementById('adminPasswordInput').value;
+        const resolver = adminPasswordResolver;
+        adminPasswordResolver = null;
+        adminPasswordModalInstance.hide();
+        if (resolver) resolver(password || null);
+    };
+
+    async function verifyAdminPassword(title) {
+        const password = await requestAdminPassword(title);
+        if (!password) return false;
+
+        const currentUserName = (localStorage.getItem('userName') || '').trim();
+        const isLoggedInAdmin = localStorage.getItem('userRole') === 'admin';
+
+        try {
+            const response = await fetch('api/login.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: currentUserName,
+                    password
+                })
+            });
+            const result = await response.json();
+            if (result.status === 'success' && result.role === 'admin') return true;
+            if (result.status === 'error') {
+                alert('Yönetici şifresi hatalı. İşlem gerçekleştirilmedi.');
+                return false;
+            }
+        } catch (error) {
+            console.warn('Sunucuya ulaşılamadı, çevrimdışı yönetici doğrulaması deneniyor:', error);
+            try {
+                const cached = JSON.parse(localStorage.getItem('cached_users') || '[]');
+                const matched = cached.find(u => 
+                    (u.username || '').trim().toLocaleLowerCase('tr-TR') === currentUserName.toLocaleLowerCase('tr-TR') &&
+                    String(u.password).trim() === password.trim() &&
+                    u.role === 'admin'
+                );
+                if (matched) return true;
+            } catch(e) {}
+        }
+
+        alert('Yönetici şifresi hatalı. İşlem gerçekleştirilmedi.');
+        return false;
+    }
+
+    async function addGarden() {
+        if (!await verifyAdminPassword('Yeni Bahçe Ekleme Onayı')) return;
+
+        const name = prompt("Bahçe Adı:");
+        if (name && name.trim()) {
+            const id = 'g_' + Date.now();
+            const cleanName = name.trim();
+            gardens.push({ id, name: cleanName, location: '' });
+            await syncGardens();
+            localStorage.setItem('selected_garden_id', id);
+            localStorage.setItem('selected_garden_name', cleanName);
+            window.location.href = 'garden_map.html?setup=1';
+        }
+    }
+
+    async function deleteGarden(id) {
+        const garden = gardens.find(item => item.id === id);
+        if (!garden) return;
+        if (!await verifyAdminPassword('Bahçe Silme Onayı')) return;
+        if (!confirm(`“${garden.name}” bahçesini silmek istediğinizden emin misiniz?`)) return;
+
+        gardens = gardens.filter(item => item.id !== id);
+        await syncGardens();
+
+        if (localStorage.getItem('selected_garden_id') === id) {
+            localStorage.removeItem('selected_garden_id');
+            localStorage.removeItem('selected_garden_name');
+        }
+        renderGardens();
+        alert('Bahçe başarıyla silindi.');
+    }
+
+    function selectGarden(id, name) {
+        localStorage.setItem('selected_garden_id', id);
+        localStorage.setItem('selected_garden_name', name);
+        window.location.href = 'index.html';
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadGardens();
+        renderSeasonsUI();
+    });
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

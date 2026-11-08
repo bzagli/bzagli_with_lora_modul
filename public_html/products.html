@@ -1,0 +1,2565 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ürün Stok Listesi</title>
+    <!-- Modern bir görünüm için Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --stock-green: #198754;
+            --stock-green-dark: #146c43;
+            --stock-surface: #ffffff;
+            --stock-bg: #f4f7f6;
+            --stock-border: #e4ebe7;
+        }
+        body { background-color: var(--stock-bg); }
+        .stock-page-shell {
+            max-width: 1400px;
+            background: var(--stock-surface);
+            font-family: 'Inter', Arial, sans-serif;
+            color: #24312b;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.08);
+            margin-top: 30px;
+            margin-bottom: 50px;
+        }
+        .list-container { max-width: none; margin: 0; }
+        .stock-page-title { letter-spacing: -.02em; }
+        .stock-toolbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+        .stock-toolbar .btn { border-radius: 50rem; font-size: .875rem; font-weight: 600; padding: .45rem .85rem; }
+        .stock-card { border: 0; border-radius: 12px; overflow: visible; box-shadow: 0 4px 14px rgba(24, 65, 45, .08); }
+        .stock-card-header { background: #fff; border-bottom: 1px solid var(--stock-border); padding: 1rem 1.15rem; }
+        .stock-search-box { background: #f6f8f7; border: 1px solid var(--stock-border); border-radius: 10px; overflow: hidden; }
+        .stock-search-box .input-group-text,
+        .stock-search-box .form-control { background: transparent; border: 0; box-shadow: none; }
+        .stock-search-box .input-group-text { color: var(--stock-green); }
+        .stock-search-box:focus-within { border-color: var(--stock-green); box-shadow: 0 0 0 .2rem rgba(25,135,84,.12); }
+        .stock-table { font-size: .84rem; }
+        .stock-table thead th { background: #212529; color: #fff; border-color: #343a40; white-space: nowrap; padding: .6rem .45rem; font-size: .76rem; }
+        .stock-table tbody td { vertical-align: middle; padding: .55rem .45rem; border-color: #edf1ef; }
+        .stock-table .stock-actions-column { position: sticky; right: 0; min-width: 165px; width: 165px; white-space: nowrap; text-align: center; z-index: 2; }
+        .stock-table thead .stock-actions-column { background: #212529; }
+        .stock-table tbody .stock-actions-column { background: #fff; box-shadow: -5px 0 10px rgba(0, 0, 0, .06); }
+        .stock-table tbody tr:hover .stock-actions-column { background: #f1f8f4; }
+        .stock-table .stock-actions-column .btn { margin: .08rem; padding: .25rem .38rem; font-size: .72rem; }
+        .stock-table tbody tr:hover > * { background-color: #f1f8f4; }
+        .modal-content { border: 0; border-radius: 15px; overflow: hidden; box-shadow: 0 1rem 3rem rgba(0,0,0,.2); }
+        .form-control:focus, .form-select:focus { border-color: var(--stock-green); box-shadow: 0 0 0 .2rem rgba(25,135,84,.12); }
+        .site-nav-shell {
+            background: #0b332b;
+            color: #edf8f3;
+            border-radius: 0 0 2px 2px;
+            box-shadow: 0 4px 14px rgba(4, 31, 25, .22);
+            z-index: 1050;
+        }
+        .site-brand-row {
+            min-height: 76px;
+            padding: 0 3.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(210, 236, 226, .14);
+        }
+        .site-brand-mark { display: flex; align-items: center; gap: .85rem; font-size: 1.15rem; font-weight: 800; letter-spacing: .01em; }
+        .site-brand-icon {
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(192, 232, 213, .55);
+            border-radius: 12px;
+            color: #c9eca6;
+            font-size: 1.35rem;
+        }
+        .site-brand-tagline { color: #c9eadf; font-size: 1rem; font-weight: 400; }
+        .site-nav-shell .navbar {
+            min-height: 66px !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: .45rem 2.25rem .7rem !important;
+            background: #0b332b !important;
+            border: 0 !important;
+            box-shadow: none !important;
+        }
+        .site-nav-shell .navbar .container-fluid { padding: 0 !important; }
+        .site-nav-shell .navbar-nav {
+            width: 100%;
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            align-content: center !important;
+            flex-wrap: wrap !important;
+            column-gap: .18rem;
+            row-gap: .25rem;
+        }
+        .site-nav-shell .navbar-nav .nav-link {
+            color: rgba(231, 245, 239, .84) !important;
+            font-size: .94rem !important;
+            font-weight: 650 !important;
+            padding: .65rem .78rem !important;
+            border-radius: 9px !important;
+            letter-spacing: -.015em !important;
+        }
+        .site-nav-shell .navbar-nav .nav-link:hover,
+        .site-nav-shell .navbar-nav .nav-link:focus { color: #fff !important; background: rgba(188, 224, 210, .12) !important; }
+        .site-nav-shell .navbar-nav .nav-link.active { color: #fff !important; background: rgba(170, 211, 195, .24) !important; }
+        .site-nav-shell .navbar-nav .nav-link.text-success { color: #b9dbc9 !important; }
+        .site-nav-shell .navbar-nav .nav-link.text-info { color: #b9dbc9 !important; }
+        .site-nav-shell .navbar-nav .nav-link.text-warning { color: #d8eadf !important; }
+        .site-nav-shell .navbar-nav .nav-link.text-danger { color: #b9dbc9 !important; }
+        .site-nav-shell .navbar-nav .border-start { border-color: rgba(220, 240, 232, .2) !important; }
+        @media (max-width: 991.98px) {
+            .stock-page-shell { margin-top: 15px; padding: 20px; border-radius: 12px; }
+            .stock-heading-row { align-items: flex-start !important; gap: 1rem; }
+            .stock-toolbar { justify-content: flex-start; }
+        }
+        @media (max-width: 1199.98px) {
+            .site-brand-row { min-height: 66px; padding: 0 1rem; }
+            .site-brand-tagline { display: none; }
+            .site-nav-shell .navbar { min-height: 52px !important; padding: .35rem 1rem .6rem !important; }
+            .site-nav-shell .navbar-collapse { margin-top: .4rem !important; padding: .5rem 0 !important; background: transparent !important; border: 0 !important; }
+            .site-nav-shell .navbar-nav { display: block !important; }
+            .site-nav-shell .navbar-nav .nav-link { padding: .65rem .8rem !important; }
+        }
+        @media (max-width: 575.98px) {
+            .stock-page-shell { margin: 10px 8px 30px; padding: 15px; }
+            .stock-heading-row { display: block !important; }
+            .stock-toolbar { margin-top: 1rem; }
+            .stock-toolbar .btn { flex: 1 1 calc(50% - .5rem); }
+        }
+    </style>
+    <style>
+        .expired-row {
+            background-color: #fff3cd !important; /* Turuncu/Sarı uyarı arka planı */
+        }
+        .expired-date {
+            color: #fd7e14; /* Turuncu uyarı metni */
+            font-weight: bold;
+        }
+    </style>
+
+    <style>
+        /* Hızlı Yatay Stok Girişi Tablo Stilleri (Puantaj Benzeri) */
+        .quick-batch-table th {
+            background-color: #198754 !important;
+            color: white !important;
+            font-weight: bold;
+            text-align: center;
+            font-size: 13px;
+            padding: 10px 6px;
+            border: 1px solid #dee2e6;
+        }
+        .quick-batch-table td {
+            padding: 4px;
+            border: 1px solid #dee2e6;
+            vertical-align: middle;
+            background-color: #ffffff;
+        }
+        .quick-batch-table input, .quick-batch-table select {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 13px;
+            text-align: center;
+            padding: 6px;
+            transition: background-color 0.2s, border 0.2s;
+        }
+        .quick-batch-table input:focus, .quick-batch-table select:focus {
+            background-color: #e8f0fe !important;
+            border-radius: 4px;
+        }
+        .quick-batch-table input[readonly] {
+            background-color: #f1f3f5;
+            color: #555;
+            cursor: not-allowed;
+        }
+        .bku-search-wrap { position: relative; }
+        .bku-search-results {
+            position: absolute;
+            z-index: 1080;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #ced4da;
+            border-radius: .5rem;
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.16);
+        }
+        .bku-search-option {
+            display: block;
+            width: 100%;
+            padding: .65rem .8rem;
+            border: 0;
+            border-bottom: 1px solid #edf0f2;
+            background: #fff;
+            color: #212529;
+            text-align: left;
+        }
+        .bku-search-option:last-child { border-bottom: 0; }
+        .bku-search-option:hover, .bku-search-option:focus, .bku-search-option.active {
+            background: #eaf6ef;
+            outline: 0;
+        }
+        .bku-search-option strong { display: block; color: #146c43; }
+        .bku-search-option small { display: block; margin-top: .15rem; color: #6c757d; }
+        .bku-search-status { padding: .75rem; color: #6c757d; font-size: .875rem; }
+        .quick-batch-table .bku-search-results { min-width: 360px; text-align: left; }
+        .quick-batch-table td:nth-last-child(-n+4) .bku-search-results { left: auto; right: 0; }
+    </style>
+    <style>
+        /* ===== Stok sayfası yenilenen düzen ===== */
+        .stock-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stock-stat { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: #fff; border: 2px solid var(--stock-border); border-radius: 12px; cursor: pointer; transition: transform .15s, border-color .15s; }
+        .stock-stat:hover { transform: translateY(-2px); }
+        .stock-stat.active { border-color: var(--stock-green); background: #f1f8f4; }
+        .stat-ic { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+        .stock-stat .sv { font-size: 26px; font-weight: 700; line-height: 1; }
+        .stock-stat .sl { font-size: 12px; color: #78909c; margin-top: 4px; }
+        .stock-sort { width: auto; min-width: 210px; border-radius: 10px; background-color: #f6f8f7; border-color: var(--stock-border); }
+        .cat-chip { border: 1px solid var(--stock-border); background: #fff; border-radius: 50rem; padding: .25rem .8rem; font-size: .8rem; font-weight: 600; cursor: pointer; color: #455a64; transition: all .15s; }
+        .cat-chip:hover { border-color: var(--stock-green); }
+        .cat-chip.active { background: var(--stock-green); border-color: var(--stock-green); color: #fff; }
+        .cat-chip .cnt { opacity: .7; margin-left: .3rem; font-weight: 500; }
+        .stock-table tbody tr.low-row > td { background-color: #fff8f0; }
+        .stock-table .name-cell { min-width: 170px; }
+        .stock-table .name-cell a { color: #146c43; }
+        .qty-pill { display: inline-block; min-width: 28px; text-align: center; padding: .1rem .5rem; border-radius: 50rem; font-weight: 700; background: #e8f5e9; color: #146c43; }
+        .qty-pill.zero { background: #ffebee; color: #c62828; }
+        .exp-badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 50rem; margin-left: .3rem; }
+        .exp-badge.expired { background: #ffebee; color: #c62828; }
+        .exp-badge.soon { background: #fff8e1; color: #b26a00; }
+        .stock-table .stock-actions-column { min-width: 0; width: auto; }
+        .stock-table .stock-actions-column .btn { padding: .3rem .5rem; font-size: .8rem; }
+        @media (max-width: 991.98px) { .stock-stats { grid-template-columns: repeat(2, 1fr); gap: 10px; } .stock-sort { width: 100%; } }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<!-- Ortak Marka ve Navigasyon Menüsü -->
+<header class="site-nav-shell sticky-top mb-4">
+<div class="site-brand-row">
+    <div class="site-brand-mark">
+        <span class="site-brand-icon" aria-hidden="true"><i class="bi bi-flower1"></i></span>
+        <span>BAHÇE YÖNETİMİ</span>
+    </div>
+    <div class="site-brand-tagline">Planlama · Uygulama · Takip</div>
+</div>
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link active" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+</header>
+
+<div class="container stock-page-shell">
+    <div class="list-container">
+        <div class="d-flex justify-content-between align-items-center mb-4 stock-heading-row">
+            <div>
+                <h2 class="text-success fw-bold mb-0 stock-page-title"><i class="bi bi-box-seam-fill me-2"></i>Ürün Stok Listesi</h2>
+                <div id="activeGardenBadge" class="mt-1"></div>
+            </div>
+            <div class="stock-toolbar">
+                <button class="btn btn-outline-danger" onclick="exportProductsPDF()"><i class="bi bi-file-pdf me-1"></i>PDF</button>
+                <button class="btn btn-outline-success" onclick="exportProductsExcel()"><i class="bi bi-file-earmark-excel me-1"></i>Excel</button>
+                <button class="btn btn-outline-secondary" onclick="showReferenceGuide()"><i class="bi bi-book me-1"></i>Ürün Kütüphanesi</button>
+
+                <button id="quickBatchEntryBtn" class="btn btn-outline-success role-editor-only" onclick="toggleQuickBatchEntry()"><i class="bi bi-grid-3x3-gap-fill me-1"></i>Hızlı Toplu Giriş</button>
+                <button class="btn btn-success role-editor-only" onclick="openProductModal()"><i class="bi bi-plus-circle me-1"></i>Yeni Ürün Ekle</button>
+            </div>
+        </div>
+
+        <!-- Hızlı Yatay Stok Giriş Paneli (Puantaj Benzeri) -->
+        <div id="quickBatchEntryCard" class="card stock-card mb-4 border border-success" style="display: none; border-width: 2px !important;">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center p-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2"></i>Hızlı Yatay Stok Girişi (Tablo Görünümü)</h5>
+                <button type="button" class="btn-close btn-close-white" onclick="toggleQuickBatchEntry()"></button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table mb-0 quick-batch-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%;">Tarih</th>
+                                <th style="width: 12%;">Kategori</th>
+                                <th style="width: 22%;">Ürün Adı (Ticari İsim)</th>
+                                <th style="width: 15%;">Aktif Madde</th>
+                                <th style="width: 10%;">Grup (FRAC/IRAC)</th>
+                                <th style="width: 12%;">Doz (100 lt)</th>
+                                <th style="width: 11%;">Ambalaj (Örn: 20 lt)</th>
+                                <th style="width: 5%;">Adet</th>
+                                <th style="width: 3%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="quickBatchTableBody">
+                            <!-- Satırlar JS ile dinamik olarak eklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light d-flex justify-content-between align-items-center p-3">
+                <button type="button" class="btn btn-outline-success fw-bold" onclick="addQuickBatchRow()">
+                    <i class="bi bi-plus-circle-fill me-1"></i> + Yeni Satır Ekle
+                </button>
+                <div>
+                    <button type="button" class="btn btn-secondary me-2" onclick="toggleQuickBatchEntry()">İptal / Kapat</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" onclick="saveQuickBatchEntries()">
+                        <i class="bi bi-check-circle-fill me-1"></i> Tümünü Stok Listesine Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stock-stats">
+            <div class="stock-stat" data-status="all" onclick="setStatusFilter('all')"><i class="bi bi-boxes stat-ic" style="background:#e8f5e9;color:#198754"></i><div><div class="sv" id="stTotal">0</div><div class="sl">Toplam ürün</div></div></div>
+            <div class="stock-stat" data-status="low" onclick="setStatusFilter('low')"><i class="bi bi-inbox stat-ic" style="background:#fff3e0;color:#ef6c00"></i><div><div class="sv" id="stLow">0</div><div class="sl">Stoğu biten</div></div></div>
+            <div class="stock-stat" data-status="soon" onclick="setStatusFilter('soon')"><i class="bi bi-hourglass-split stat-ic" style="background:#fffde7;color:#f9a825"></i><div><div class="sv" id="stSoon">0</div><div class="sl">30 gün içinde dolacak</div></div></div>
+            <div class="stock-stat" data-status="expired" onclick="setStatusFilter('expired')"><i class="bi bi-exclamation-triangle stat-ic" style="background:#ffebee;color:#c62828"></i><div><div class="sv" id="stExpired">0</div><div class="sl">Süresi geçmiş</div></div></div>
+        </div>
+
+        <div class="card stock-card">
+            <div class="card-header stock-card-header">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-check me-2 text-success"></i>Stok Kayıtları <span class="badge bg-light text-secondary border ms-1" id="resultCount">0</span></h5>
+                    <button class="btn btn-sm btn-link text-decoration-none" onclick="resetStockFilters()"><i class="bi bi-x-circle me-1"></i>Filtreleri temizle</button>
+                </div>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <div class="input-group stock-search-box flex-grow-1" style="min-width:240px; width:auto;">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Ürün adı, sınıf veya aktif madde ile ara..." oninput="renderProducts()">
+                    </div>
+                    <select id="sortSelect" class="form-select stock-sort" onchange="renderProducts()">
+                        <option value="date">Sıralama: En yeni</option>
+                        <option value="name">Sıralama: Ürün adı (A-Z)</option>
+                        <option value="qty">Sıralama: Stok (az → çok)</option>
+                        <option value="exp">Sıralama: Son kullanma (yakın → uzak)</option>
+                    </select>
+                </div>
+                <div class="d-flex flex-wrap gap-2" id="categoryChips"></div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 stock-table">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Sınıf</th>
+                                <th>Ürün Adı</th>
+                                <th>Grup</th>
+                                <th>Aktif Madde</th>
+                                <th>Doz (100 lt suya)</th>
+                                <th>Ambalaj</th>
+                                <th>Adet</th>
+                                <th>Toplam Stok</th>
+                                <th>Kayıt Tarihi</th>
+                                <th>Son Kullanma Tarihi</th>
+                                <th>Son İşlem</th>
+                                <th class="stock-actions-column">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productTableBody">
+                            <!-- Veriler buraya dinamik olarak eklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ürün Giriş Modalı (Açılır Pencere) -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="productModalLabel">Ürün Girişi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <form id="pesticideForm">
+                    <div class="mb-3 bku-search-wrap">
+                        <label for="name" class="form-label">Ürün Adı</label>
+                        <input type="text" class="form-control" id="name" name="name" placeholder="BKU listesinden ürün adı ara..." required autocomplete="off" aria-autocomplete="list" aria-controls="bkuNameResults" oninput="searchBkuForProductForm('name')" onkeydown="handleBkuSearchKeydown(event, 'bkuNameResults')">
+                        <div id="bkuNameResults" class="bku-search-results d-none" role="listbox"></div>
+                        <datalist id="masterProductList"></datalist>
+                    </div>
+                    <div class="mb-3 bku-search-wrap">
+                        <label for="active_ingredient" class="form-label">Aktif Madde</label>
+                        <input type="text" class="form-control" id="active_ingredient" name="active_ingredient" placeholder="BKU listesinden aktif madde ara..." autocomplete="off" aria-autocomplete="list" aria-controls="bkuActiveResults" oninput="searchBkuForProductForm('active')" onkeydown="handleBkuSearchKeydown(event, 'bkuActiveResults')">
+                        <div id="bkuActiveResults" class="bku-search-results d-none" role="listbox"></div>
+                        <div class="form-text">Ürün adı veya aktif madde yazın; ruhsatlı BKU kaydını seçtiğinizde diğer bilgiler otomatik doldurulur.</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <label for="bkuCrop" class="form-label">Bitki</label>
+                            <select class="form-select" id="bkuCrop" onchange="renderBkuDoseOptions()">
+                                <option value="">Bitki seçiniz...</option>
+                                <option value="ELMA">Elma</option>
+                                <option value="ARMUT">Armut</option>
+                                <option value="KIRAZ">Kiraz</option>
+                                <option value="KAYISI">Kayısı</option>
+                                <option value="NEKTARIN">Nektarin</option>
+                                <option value="SEFTALI">Şeftali</option>
+                            </select>
+                        </div>
+                        <div class="col-md-7 mb-3">
+                            <label for="bkuDosageSelect" class="form-label">BKÜ Doz Seçimi</label>
+                            <select class="form-select" id="bkuDosageSelect" onchange="applySelectedBkuDose()" disabled>
+                                <option value="">Önce ürün ve bitki seçiniz...</option>
+                            </select>
+                            <div class="form-text">Seçilen meyveye ait ruhsatlı uygun dozu seçebilirsiniz.</div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="group" class="form-label">Grup (FRAC / IRAC)</label>
+                        <input type="text" class="form-control" id="group" name="group" placeholder="Örn: 3, 1B, M3 vb.">
+                    </div>
+                    <div class="mb-3">
+                        <label for="dosage" class="form-label">Doz (100 lt Suya)</label>
+                        <input type="text" class="form-control" id="dosage" name="dosage" placeholder="Örn: 50 ml, 100 gr (Otomatik doldurulabilir)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Ürün Sınıfı</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="" selected disabled>Seçiniz...</option>
+                            <option value="Fungisit">Fungisit</option>
+                            <option value="İnsektisit">İnsektisit</option>
+                            <option value="Herbisit">Herbisit</option>
+                            <option value="Akarisit">Akarisit</option>
+                            <option value="Bitki Gelişim Düzenleyici">Bitki Gelişim Düzenleyici (BGD)</option>
+                            <option value="Gübre">Gübre</option>
+                            <option value="Yaprak Gübresi">Yaprak Gübresi</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="entry_date" class="form-label">Kayıt Tarihi</label>
+                        <input type="date" class="form-control" id="entry_date" name="entry_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expiration_date" class="form-label">Son Kullanma Tarihi</label>
+                        <input type="date" class="form-control" id="expiration_date" name="expiration_date">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="pkg_info" class="form-label">Ambalaj / Paket İçeriği (Örn: 1 kg, 500 ml)</label>
+                            <input type="text" class="form-control" id="pkg_info" name="pkg_info" placeholder="1 kg, 250 gr vb." required oninput="calculateTotal()">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="quantity" class="form-label">Adet</label>
+                            <input type="number" step="any" min="0" class="form-control" id="quantity" name="quantity" placeholder="0" required oninput="calculateTotal()">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="total_amount" class="form-label">Toplam Stok</label>
+                            <input type="text" class="form-control bg-light" id="total_amount" name="total_amount" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block fw-bold text-success">
+                            <i class="bi bi-camera me-1"></i>Ürün Görseli <span class="text-muted fw-normal" style="font-size: 0.85rem;">(Opsiyonel)</span>
+                        </label>
+                        <input type="file" id="productImageInput" accept="image/*" class="d-none">
+                        <input type="hidden" id="productImageBase64" name="image">
+                        
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-outline-success btn-sm" id="triggerImageUploadBtn">
+                                <i class="bi bi-upload"></i> Fotoğraf Seç / Yükle
+                            </button>
+                            <span class="text-muted small" style="font-size: 0.75rem;">Maksimum 5MB, JPEG/PNG</span>
+                        </div>
+                        
+                        <div id="productImagePreviewContainer" class="mt-2 position-relative d-none" style="width: 100px; height: 100px;">
+                            <img id="productImagePreview" src="" class="img-fluid rounded border shadow-sm" style="width: 100%; height: 100%; object-fit: cover;">
+                            <button type="button" id="removeProductImageBtn" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex align-items-center justify-content-center rounded-circle" style="width: 22px; height: 22px; margin-top: -8px; margin-right: -8px;" title="Görseli Kaldır">&times;</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Kaydet</button>
+                </form>
+                <div id="resultMessage" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stok Çıkış Modalı -->
+<div class="modal fade" id="stockExitModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Stok Çıkışı Yap</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="exitProductIndex">
+                <div class="mb-3">
+                    <label class="form-label text-muted">Ürün:</label>
+                    <h5 id="exitProductName" class="text-primary"></h5>
+                </div>
+                <div class="mb-3">
+                    <label for="exitQty" class="form-label">Çıkış Adedi (Mevcut: <span id="exitCurrentQty" class="fw-bold"></span>)</label>
+                    <input type="number" step="any" class="form-control" id="exitQty" required min="0.001">
+                </div>
+                <div class="mb-3">
+                    <label for="exitDate" class="form-label">İşlem Tarihi</label>
+                    <input type="date" class="form-control" id="exitDate" required>
+                </div>
+                <div class="mb-3">
+                    <label for="exitDescription" class="form-label">Açıklama</label>
+                    <textarea class="form-control" id="exitDescription" rows="2" placeholder="Kullanım yeri veya nedeni..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-info text-white" onclick="confirmStockExit()">Çıkışı Onayla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ürün Geçmişi Modalı -->
+<div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title">Ürün Hareket Geçmişi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body">
+                <h6 id="historyProductName" class="fw-bold mb-3 text-primary"></h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tarih</th>
+                                <th>İşlem Türü</th>
+                                <th>Miktar Bilgisi</th>
+                                <th>Açıklama</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Referans Rehberi Modalı (Global Ürün Listesi) -->
+<div class="modal fade" id="referenceGuideModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-dark text-white p-4">
+                <h5 class="modal-title fw-bold mb-0"><i class="bi bi-book me-2"></i>Global Ürün Kütüphanesi</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="input-group mb-3">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" id="refSearch" class="form-control" placeholder="Kütüphanede ara (Ürün, aktif madde, zararlı...)" oninput="renderReferenceTable()">
+                </div>
+                <div id="referenceTableContainer">
+                    <!-- Kütüphane Tablosu Buraya Gelecek -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ürün Fotoğrafı Görüntüleme Modalı -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="imageViewerTitle">Ürün Fotoğrafı</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body text-center p-4 bg-light">
+                <img id="imageViewerImg" src="" alt="Ürün Fotoğrafı" class="img-fluid rounded shadow-sm" style="max-height: 400px; width: auto; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    let editIndex = -1;
+	    let allProducts = []; // Sunucudan çekilen tüm ürünleri tutar
+	    let masterReferences = []; // Global Ürün Listesi
+	    let bkuLiveDatabase = []; // BKÜ Dashboard Veritabanı (5.046 Ruhsatlı Ürün)
+	    let bkuSearchCatalogue = []; // Ürün adı ve aktif madde için tekilleştirilmiş BKÜ arama listesi
+            let selectedBkuDoseOptions = [];
+    let currentProductBaseQuantity = 0; // Global variable to store the base quantity for stock entry/edit calculations
+    let productModal, stockExitModal, historyModal, referenceGuideModal, imageViewerModal;
+
+    // Sayfa yüklendiğinde listeyi tazele
+    document.addEventListener('DOMContentLoaded', () => {
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"edit":true,"delete":true,"hidden":[]}');
+        const userRole = localStorage.getItem('userRole');
+
+        // Yetki Kontrolü: Admin menülerini göster
+        if (userRole === 'admin') {
+            document.getElementById('adminUsers').style.display = 'block';
+            document.getElementById('adminLogs').style.display = 'block';
+        }
+
+        // Menü ve sayfa gizleme kontrolü (Sadece yönetici olmayanlar için)
+        if (userRole !== 'admin') {
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            allHidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) navLink.parentElement.style.display = 'none';
+            });
+            
+            if (allHidden.includes('products.html')) {
+                window.location.href = 'index.html';
+                return;
+            }
+        }
+
+        // Düzeltme veya Silme yetkisi yoksa butonları CSS ile gizle
+        let customStyles = '';
+        if (permissions.edit === false) customStyles += '.product-edit-action, .btn-outline-info, .role-editor-only { display: none !important; } ';
+        if (permissions.delete === false) customStyles += '.product-delete-action { display: none !important; } ';
+        
+        if (customStyles) {
+            const styles = document.createElement('style');
+            styles.innerHTML = customStyles;
+            document.head.appendChild(styles);
+        }
+
+        const gardenName = localStorage.getItem('selected_garden_name');
+        if (gardenName) {
+            document.getElementById('activeGardenBadge').innerHTML = 
+                `<span class="badge bg-dark text-white shadow-sm"><i class="bi bi-pin-map-fill text-success me-1"></i>${gardenName}</span>`;
+        }
+
+        document.getElementById('entry_date').value = new Date().toISOString().split('T')[0];
+        
+        // Modal örneklerini başlat
+        productModal = new bootstrap.Modal(document.getElementById('productModal'));
+        stockExitModal = new bootstrap.Modal(document.getElementById('stockExitModal'));
+        historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+        referenceGuideModal = new bootstrap.Modal(document.getElementById('referenceGuideModal'));
+        imageViewerModal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+
+
+        // Resim Yükleme, Önizleme ve Canvas ile Sıkıştırma Mantığı
+        const triggerBtn = document.getElementById('triggerImageUploadBtn');
+        const fileInput = document.getElementById('productImageInput');
+        const previewContainer = document.getElementById('productImagePreviewContainer');
+        const previewImg = document.getElementById('productImagePreview');
+        const removeBtn = document.getElementById('removeProductImageBtn');
+        const base64Input = document.getElementById('productImageBase64');
+
+        if (triggerBtn && fileInput) {
+            triggerBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 400;
+                            const scaleSize = MAX_WIDTH / img.width;
+                            canvas.width = MAX_WIDTH;
+                            canvas.height = img.height * scaleSize;
+                            
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            
+                            const base64 = canvas.toDataURL('image/jpeg', 0.7);
+                            base64Input.value = base64;
+                            previewImg.src = base64;
+                            previewContainer.classList.remove('d-none');
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', () => {
+                fileInput.value = '';
+                base64Input.value = '';
+                previewImg.src = '';
+                previewContainer.classList.add('d-none');
+            });
+        }
+
+        // Görsel görüntüleyici fonksiyonunu global window nesnesine bağlama
+        window.viewProductImage = function(name, base64) {
+            document.getElementById('imageViewerTitle').textContent = name + ' - Fotoğrafı';
+            document.getElementById('imageViewerImg').src = base64;
+            imageViewerModal.show();
+        };
+
+        loadMasterReferences().then(() => {
+            autoFillAllEmptyProductDetails(false).then(() => {
+                loadProducts();
+            });
+        });
+
+        // Modal kapandığında formu sıfırla
+	        document.getElementById('productModal').addEventListener('hidden.bs.modal', () => {
+	            resetFormMode();
+	        });
+
+	        document.addEventListener('click', (event) => {
+	            if (!event.target.closest('.bku-search-wrap')) closeAllBkuSearchResults();
+	        });
+	    });
+
+    // Global kütüphaneden ve BKÜ Dashboard veri tabanından verileri çek
+    async function loadMasterReferences() {
+        try {
+            const [refRes, bkuRes] = await Promise.allSettled([
+                fetch('api/get_all_products.php'),
+                fetch('api/get_bku_data.php')
+            ]);
+
+            if (refRes.status === 'fulfilled' && refRes.value.ok) {
+                masterReferences = await refRes.value.json();
+            }
+	            if (bkuRes.status === 'fulfilled' && bkuRes.value.ok) {
+	                bkuLiveDatabase = await bkuRes.value.json();
+	            }
+	        } catch (e) { console.warn("Referans ve BKÜ veri kütüphanesi yüklenemedi."); }
+	        buildBkuSearchCatalogue();
+	        updateMasterDatalist();
+	    }
+
+	    function normalizeBkuSearchText(value) {
+	        return String(value || '')
+	            .toLocaleLowerCase('tr-TR')
+	            .normalize('NFD')
+	            .replace(/[\u0300-\u036f]/g, '')
+	            .replace(/ı/g, 'i')
+	            .replace(/[^a-z0-9%+./\s-]/g, ' ')
+	            .replace(/\s+/g, ' ')
+	            .trim();
+	    }
+
+	    function escapeBkuHtml(value) {
+	        return String(value || '').replace(/[&<>"']/g, char => ({
+	            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+	        })[char]);
+	    }
+
+	    function normalizeBkuRecord(record) {
+	        if (!record) return null;
+	        const name = record["Ticari İsim (Ruhsatlı Ürün)"] || record["Ticari Isim (Ruhsatlı Ürün)"] || record["Ticari Isim (Ruhsatli Urun)"] || record.ad || '';
+	        const active = record["Aktif Madde"] || record.aktif || '';
+	        if (!name || !active) return null;
+	        return {
+	            name: cleanProductName(name),
+	            active_ingredient: active,
+	            category: record["Ruhsat Grubu"] || record.grup || '',
+	            group: record["FRAC / IRAC Grubu"] || record["Grup"] || '',
+	            dosage: record["Doz"] || record.dozText || '',
+                crop: record["Bitki"] || record.bitki || '',
+	            target: record["Zararlı Organizma / Hastalık"] || record.hedef || '',
+	            status: record["Durum"] || ''
+	        };
+	    }
+
+    function normalizeBkuCrop(value) {
+        return normalizeBkuSearchText(value).toUpperCase();
+    }
+
+    function formatDefaultBkuDosage(record) {
+        if (record.dozText) return record.dozText;
+        if (!record.dozDeger || !record.dozBirim) return '';
+        if (record.dozTip === 'su' && record.dozHacim === 100) {
+            return `${record.dozDeger} ${record.dozBirim}/100 lt su`;
+        }
+        return `${record.dozDeger} ${record.dozBirim}${record.dozHacim ? `/${record.dozHacim} lt` : ''}`;
+    }
+
+    function getBkuDoseRecords() {
+        const records = [];
+        const addRecord = raw => {
+            const name = raw?.["Ticari İsim (Ruhsatlı Ürün)"] || raw?.["Ticari Isim (Ruhsatli Urun)"] || raw?.ad || '';
+            const active = raw?.["Aktif Madde"] || raw?.aktif || '';
+            const dosage = raw?.["Doz"] || raw?.dozText || formatDefaultBkuDosage(raw);
+            const crop = raw?.["Bitki"] || raw?.bitki || '';
+            if (name && active && crop && dosage) {
+                records.push({
+                    name: cleanProductName(name),
+                    active_ingredient: active,
+                    category: raw?.["Ruhsat Grubu"] || raw?.grup || '',
+                    group: raw?.["FRAC / IRAC Grubu"] || raw?.["Grup"] || '',
+                    dosage,
+                    crop,
+                    target: raw?.["Zararlı Organizma / Hastalık"] || raw?.hedef || ''
+                });
+            }
+        };
+        (Array.isArray(bkuLiveDatabase) ? bkuLiveDatabase : []).forEach(addRecord);
+        (typeof DEFAULT_BKU_DATABASE !== 'undefined' && Array.isArray(DEFAULT_BKU_DATABASE) ? DEFAULT_BKU_DATABASE : []).forEach(addRecord);
+        return records;
+    }
+
+    function renderBkuDoseOptions() {
+        const select = document.getElementById('bkuDosageSelect');
+        if (!select) return;
+        const crop = normalizeBkuCrop(document.getElementById('bkuCrop').value);
+        const name = normalizeBkuSearchText(document.getElementById('name').value);
+        selectedBkuDoseOptions = getBkuDoseRecords().filter(item => {
+            const sameCrop = normalizeBkuCrop(item.crop) === crop;
+            const itemName = normalizeBkuSearchText(item.name);
+            return sameCrop && (itemName === name || itemName.includes(name) || name.includes(itemName));
+        });
+        const unique = new Map();
+        selectedBkuDoseOptions.forEach(item => {
+            const key = [item.dosage, item.target, item.active_ingredient].map(normalizeBkuSearchText).join('|');
+            if (!unique.has(key)) unique.set(key, item);
+        });
+        selectedBkuDoseOptions = Array.from(unique.values());
+        select.innerHTML = selectedBkuDoseOptions.length
+            ? '<option value="">BKÜ dozunu seçiniz...</option>' + selectedBkuDoseOptions.map((item, index) =>
+                `<option value="${index}">${escapeBkuHtml(item.dosage)}${item.target ? ` - ${escapeBkuHtml(item.target)}` : ''}</option>`).join('')
+            : '<option value="">Bu ürün için seçilen bitkide doz bulunamadı</option>';
+        select.disabled = selectedBkuDoseOptions.length === 0;
+    }
+
+    function applySelectedBkuDose() {
+        const selected = selectedBkuDoseOptions[Number(document.getElementById('bkuDosageSelect').value)];
+        if (!selected) return;
+        document.getElementById('dosage').value = selected.dosage;
+        document.getElementById('active_ingredient').value = selected.active_ingredient;
+        document.getElementById('group').value = selected.group || '';
+        setBkuCategory('category', selected.category);
+    }
+
+    function setBkuCrop(crop) {
+        const select = document.getElementById('bkuCrop');
+        if (!select) return;
+        const normalized = normalizeBkuCrop(crop);
+        select.value = ['ELMA', 'ARMUT', 'KIRAZ', 'KAYISI', 'NEKTARIN', 'SEFTALI'].includes(normalized) ? normalized : '';
+        renderBkuDoseOptions();
+    }
+
+	    function buildBkuSearchCatalogue() {
+	        const unique = new Map();
+	        if (Array.isArray(bkuLiveDatabase)) {
+	            bkuLiveDatabase.forEach(raw => {
+	                const item = normalizeBkuRecord(raw);
+	                if (!item || (item.status && normalizeBkuSearchText(item.status) !== 'ruhsatli')) return;
+	                const key = [item.name, item.active_ingredient, item.category, item.dosage]
+	                    .map(normalizeBkuSearchText).join('|');
+	                if (!unique.has(key)) unique.set(key, item);
+	            });
+	        }
+	        bkuSearchCatalogue = Array.from(unique.values()).map((item, index) => ({ ...item, searchIndex: index }));
+	    }
+
+	    function findBkuSearchMatches(query, mode) {
+	        const term = normalizeBkuSearchText(query);
+	        if (term.length < 2) return [];
+	        return bkuSearchCatalogue
+	            .map(item => {
+	                const primary = normalizeBkuSearchText(mode === 'active' ? item.active_ingredient : item.name);
+	                const secondary = normalizeBkuSearchText(mode === 'active' ? item.name : item.active_ingredient);
+	                let rank = 99;
+	                if (primary === term) rank = 0;
+	                else if (primary.startsWith(term)) rank = 1;
+	                else if (primary.includes(term)) rank = 2;
+	                else if (secondary.startsWith(term)) rank = 3;
+	                else if (secondary.includes(term)) rank = 4;
+	                return { item, rank };
+	            })
+	            .filter(result => result.rank < 99)
+	            .sort((a, b) => a.rank - b.rank || a.item.name.localeCompare(b.item.name, 'tr'))
+	            .slice(0, 10)
+	            .map(result => result.item);
+	    }
+
+	    function renderBkuSearchResults(containerId, query, mode, context, rowIndex = null) {
+	        const container = document.getElementById(containerId);
+	        if (!container) return;
+	        const normalized = normalizeBkuSearchText(query);
+	        if (normalized.length < 2) {
+	            container.classList.add('d-none');
+	            container.innerHTML = '';
+	            return;
+	        }
+
+	        const matches = findBkuSearchMatches(query, mode);
+	        container.innerHTML = matches.length ? matches.map(item => `
+	            <button type="button" class="bku-search-option" role="option"
+	                onclick="selectBkuSearchResult(${item.searchIndex}, '${context}', ${rowIndex === null ? 'null' : rowIndex})">
+	                <strong>${escapeBkuHtml(item.name)}</strong>
+	                <small>${escapeBkuHtml(item.active_ingredient)} · ${escapeBkuHtml(item.category || 'Sınıf belirtilmemiş')}${item.dosage ? ` · ${escapeBkuHtml(item.dosage)}` : ''}</small>
+	            </button>`).join('')
+	            : '<div class="bku-search-status">BKU Dashboard listesinde eşleşen ruhsatlı ürün bulunamadı.</div>';
+	        container.classList.remove('d-none');
+	    }
+
+	    function searchBkuForProductForm(mode) {
+	        const input = document.getElementById(mode === 'active' ? 'active_ingredient' : 'name');
+	        const containerId = mode === 'active' ? 'bkuActiveResults' : 'bkuNameResults';
+	        renderBkuSearchResults(containerId, input.value, mode, 'form');
+	    }
+
+	    function searchBkuForQuickRow(index, mode) {
+	        const input = document.getElementById(`${mode === 'active' ? 'quickActive' : 'quickName'}_${index}`);
+	        renderBkuSearchResults(`quickBkuResults_${index}_${mode}`, input.value, mode, 'quick', index);
+	    }
+
+	    function setBkuCategory(selectId, category) {
+	        if (!category) return;
+	        const select = document.getElementById(selectId);
+	        if (!select) return;
+	        const normalizedCategory = normalizeBkuSearchText(category);
+	        let option = Array.from(select.options).find(item => normalizeBkuSearchText(item.value) === normalizedCategory);
+	        if (!option) {
+	            option = new Option(category, category);
+	            select.add(option);
+	        }
+	        select.value = option.value;
+	    }
+
+	    function selectBkuSearchResult(searchIndex, context, rowIndex = null) {
+	        const item = bkuSearchCatalogue[searchIndex];
+	        if (!item) return;
+	        if (context === 'quick' && rowIndex !== null) {
+	            document.getElementById(`quickName_${rowIndex}`).value = item.name;
+	            document.getElementById(`quickActive_${rowIndex}`).value = item.active_ingredient;
+	            document.getElementById(`quickGroup_${rowIndex}`).value = item.group || '';
+	            document.getElementById(`quickDosage_${rowIndex}`).value = item.dosage || '';
+	            setBkuCategory(`quickCategory_${rowIndex}`, item.category);
+	        } else {
+	            document.getElementById('name').value = item.name;
+	            document.getElementById('active_ingredient').value = item.active_ingredient;
+	            document.getElementById('group').value = item.group || '';
+	            document.getElementById('dosage').value = item.dosage || '';
+                setBkuCrop(item.crop);
+	            setBkuCategory('category', item.category);
+	        }
+	        closeAllBkuSearchResults();
+	    }
+
+	    function closeAllBkuSearchResults() {
+	        document.querySelectorAll('.bku-search-results').forEach(container => container.classList.add('d-none'));
+	    }
+
+	    function handleBkuSearchKeydown(event, containerId) {
+	        const container = document.getElementById(containerId);
+	        if (!container || container.classList.contains('d-none')) return;
+	        const options = Array.from(container.querySelectorAll('.bku-search-option'));
+	        if (event.key === 'Escape') {
+	            closeAllBkuSearchResults();
+	            return;
+	        }
+	        if (!options.length || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+	        event.preventDefault();
+	        const current = options.indexOf(document.activeElement);
+	        if (event.key === 'Enter') {
+	            (current >= 0 ? options[current] : options[0]).click();
+	            return;
+	        }
+	        const next = event.key === 'ArrowDown'
+	            ? (current + 1) % options.length
+	            : (current <= 0 ? options.length - 1 : current - 1);
+	        options[next].focus();
+	    }
+
+    function updateMasterDatalist() {
+        const datalist = document.getElementById('masterProductList');
+        if (!datalist) return;
+        const userRole = localStorage.getItem('userRole');
+
+        const namesMap = new Map();
+
+        if (Array.isArray(masterReferences)) {
+            masterReferences.filter(r => userRole === 'admin' || !r.hidden).forEach(r => {
+                if (r.name) {
+                    const clean = cleanProductName(r.name);
+                    const key = clean.toLowerCase().trim();
+                    if (!namesMap.has(key)) {
+                        namesMap.set(key, {
+                            name: clean,
+                            sub: (r.active_ingredient || '') + (r.target ? ` (${r.target})` : '')
+                        });
+                    }
+                }
+            });
+        }
+
+        if (Array.isArray(bkuLiveDatabase)) {
+            bkuLiveDatabase.forEach(b => {
+                const brand = b["Ticari İsim (Ruhsatlı Ürün)"] || b["Ticari Isim (Ruhsatli Urun)"] || b["ad"];
+                const active = b["Aktif Madde"] || b["aktif"];
+                if (brand) {
+                    const clean = cleanProductName(brand);
+                    const key = clean.toLowerCase().trim();
+                    if (!namesMap.has(key)) {
+                        namesMap.set(key, {
+                            name: clean,
+                            sub: active || (b["Ruhsat Grubu"] || '')
+                        });
+                    }
+                }
+            });
+        }
+
+        datalist.innerHTML = Array.from(namesMap.values())
+            .map(item => `<option value="${item.name}">${item.sub || ''}</option>`)
+            .join('');
+    }
+
+    // Ürün adı seçildiğinde aktif madde, kategori ve grubu otomatik doldur
+    function cleanProductName(name) {
+        if (!name) return '';
+        return name.toString()
+            .replace(/\(İMAL\)/gi, '')
+            .replace(/\(İTHAL\)/gi, '')
+            .replace(/\(IMAL\)/gi, '')
+            .replace(/\(ITHAL\)/gi, '')
+            .trim();
+    }
+
+    function findProductDetailsInHistoricalData(productName, productCategory = null, exactOnly = false) {
+        if (!productName) return null;
+        const cleanName = cleanProductName(productName).toLowerCase().trim();
+        if (cleanName.length < 2) return null;
+
+        let candidates = [];
+
+        // Eşleşme sağlanamayan popüler/eski/kayıt dışı ürünler için akıllı sözlük (Yapay Zeka Fallback)
+        const fallbackCandidates = [
+            {
+                name: "Poligor",
+                active_ingredient: "400 g/l Dimethoate",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Dursban",
+                active_ingredient: "480 g/l Chlorpyrifos-ethyl",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Dursban-4",
+                active_ingredient: "480 g/l Chlorpyrifos-ethyl",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Dursban 4",
+                active_ingredient: "480 g/l Chlorpyrifos-ethyl",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Bustop",
+                active_ingredient: "200 g/l Diquat dibromide",
+                group: "HRAC 22",
+                category: "Herbisit"
+            },
+            {
+                name: "Busstop",
+                active_ingredient: "200 g/l Diquat dibromide",
+                group: "HRAC 22",
+                category: "Herbisit"
+            },
+            {
+                name: "15-30-15",
+                active_ingredient: "15-30-15 NPK Gübre",
+                group: "-",
+                category: "Gübre"
+            },
+            {
+                name: "DDVP",
+                active_ingredient: "550 g/l Dichlorvos",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Marshall",
+                active_ingredient: "250 g/l Carbosulfan",
+                group: "IRAC 1A",
+                category: "İnsektisit"
+            },
+            {
+                name: "Lannate",
+                active_ingredient: "200 g/l Methomyl",
+                group: "IRAC 1A",
+                category: "İnsektisit"
+            },
+            {
+                name: "Supracide",
+                active_ingredient: "400 g/l Methidathion",
+                group: "IRAC 1B",
+                category: "İnsektisit"
+            },
+            {
+                name: "Laser",
+                active_ingredient: "480 g/l Spinosad",
+                group: "IRAC 5",
+                category: "İnsektisit"
+            }
+        ];
+        fallbackCandidates.forEach(c => candidates.push(c));
+
+        // A. Mevcut stok listesindeki diğer girişler
+        if (typeof allProducts !== 'undefined' && Array.isArray(allProducts)) {
+            allProducts.forEach(p => {
+                if (p && p.name && p.active_ingredient) {
+                    candidates.push({
+                        name: p.name,
+                        active_ingredient: p.active_ingredient,
+                        group: p.group || '',
+                        category: p.category || '',
+                        dosage: p.dosage || ''
+                    });
+                }
+            });
+        }
+
+        // B. Diğer bahçelerin stok kayıtları
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('garden_') && key.endsWith('_products')) {
+                    const list = JSON.parse(localStorage.getItem(key) || '[]');
+                    if (Array.isArray(list)) {
+                        list.forEach(p => {
+                            if (p && p.name && p.active_ingredient) {
+                                candidates.push({
+                                    name: p.name,
+                                    active_ingredient: p.active_ingredient,
+                                    group: p.group || '',
+                                    category: p.category || '',
+                                    dosage: p.dosage || ''
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+        } catch (e) { console.warn(e); }
+
+        // C. masterReferences kütüphanesi
+        if (typeof masterReferences !== 'undefined' && Array.isArray(masterReferences)) {
+            masterReferences.forEach(r => {
+                if (r && r.name && r.active_ingredient) {
+                    candidates.push({
+                        name: r.name,
+                        active_ingredient: r.active_ingredient,
+                        group: r.group || '',
+                        category: r.category || '',
+                        dosage: r.dosage || ''
+                    });
+                }
+            });
+        }
+
+        // D. Kapsamlı Zirai BKÜ Veritabanı (bku_database.js)
+        if (typeof DEFAULT_BKU_DATABASE !== 'undefined' && Array.isArray(DEFAULT_BKU_DATABASE)) {
+            DEFAULT_BKU_DATABASE.forEach(b => {
+                if (b && b.ad && b.aktif) {
+                    let extractedGroup = '';
+                    if (b.uyari) {
+                        const match = b.uyari.match(/Grup:\s*([A-Za-z0-9\s,\/\+]+)/i);
+                        if (match) {
+                            extractedGroup = match[1].split('.')[0].trim();
+                        }
+                    }
+                    let dosageStr = '';
+                    if (b.dozTip === 'su') {
+                        if (b.dozHacim === 100) {
+                            dosageStr = b.dozDeger + ' ' + b.dozBirim;
+                        } else if (b.dozHacim === 1) {
+                            dosageStr = (b.dozDeger * 100) + ' ' + b.dozBirim;
+                        } else {
+                            dosageStr = b.dozText || (b.dozDeger + ' ' + b.dozBirim + '/' + b.dozHacim + ' lt');
+                        }
+                    } else {
+                        dosageStr = b.dozText || (b.dozDeger + ' ' + b.dozBirim + '/da');
+                    }
+                    candidates.push({
+                        name: b.ad,
+                        active_ingredient: b.aktif,
+                        group: extractedGroup,
+                        category: b.grup || '',
+                        dosage: dosageStr
+                    });
+                }
+            });
+        }
+
+        // E. BKÜ Canlı Veritabanı (bkuLiveDatabase - 5.046 Ruhsatlı Kayıt)
+        if (typeof bkuLiveDatabase !== 'undefined' && Array.isArray(bkuLiveDatabase)) {
+            bkuLiveDatabase.forEach(b => {
+                const brand = b["Ticari İsim (Ruhsatlı Ürün)"] || b["Ticari Isim (Ruhsatli Urun)"] || b["ad"];
+                const active = b["Aktif Madde"] || b["aktif"];
+                if (brand && active) {
+                    let group = b["FRAC / IRAC Grubu"] || b["Grup"] || "";
+                    if (!group && b["uyari"]) {
+                        const match = b["uyari"].match(/Grup:\s*([A-Za-z0-9\s,\/\+]+)/i);
+                        if (match) group = match[1].split('.')[0].trim();
+                    }
+                    candidates.push({
+                        name: brand,
+                        active_ingredient: active,
+                        group: group,
+                        category: b["Ruhsat Grubu"] || b["grup"] || "",
+                        dosage: b["Doz"] || ""
+                    });
+                }
+            });
+        }
+
+        // Kategoriye göre aday filtreleme (Örn: İnsektisit, Fungisit, Herbisit vb. sınıflara sadık kalınması için)
+        if (productCategory && ['Fungisit', 'İnsektisit', 'Herbisit', 'Akarisit', 'Bitki Gelişim Düzenleyici'].includes(productCategory)) {
+            const filtered = candidates.filter(c => c.category === productCategory);
+            if (filtered.length > 0) {
+                candidates = filtered;
+            }
+        }
+
+        // Arama 1: Birebir Eşleşme
+        let exactMatch = candidates.find(c => cleanProductName(c.name).toLowerCase() === cleanName && c.dosage);
+        if (!exactMatch) exactMatch = candidates.find(c => cleanProductName(c.name).toLowerCase() === cleanName);
+        if (exactMatch) return exactMatch;
+
+        // Eğer sadece birebir (exact) eşleşme aranıyorsa (yazma esnasında erken kilitlenmeyi önlemek için), burada dur
+        if (exactOnly) return null;
+
+        // Arama 2: Başlangıç/Substring Eşleşmesi
+        let startsWithMatch = candidates.find(c => {
+            const cClean = cleanProductName(c.name).toLowerCase();
+            return (cClean.startsWith(cleanName) || cleanName.startsWith(cClean) || cClean.includes(cleanName) || cleanName.includes(cClean)) && c.dosage;
+        });
+        if (!startsWithMatch) {
+            startsWithMatch = candidates.find(c => {
+                const cClean = cleanProductName(c.name).toLowerCase();
+                return cClean.startsWith(cleanName) || cleanName.startsWith(cClean) || cClean.includes(cleanName) || cleanName.includes(cClean);
+            });
+        }
+        if (startsWithMatch) return startsWithMatch;
+
+        // Arama 3: Fuzzy Bigram Benzerliği (Similarity > 0.5)
+        let bestMatch = null;
+        let bestScore = 0;
+        candidates.forEach(c => {
+            const cClean = cleanProductName(c.name).toLowerCase();
+            const score = typeof getSimilarity === 'function' ? getSimilarity(cleanName, cClean) : 0;
+            if (score > bestScore && score > 0.5) {
+                bestScore = score;
+                bestMatch = c;
+            }
+        });
+        if (bestMatch) return bestMatch;
+
+        return null;
+    }
+
+    function autoFillFromMaster(exactOnly = false) {
+        const val = document.getElementById('name').value.trim();
+        const category = document.getElementById('category').value;
+        const ref = findProductDetailsInHistoricalData(val, category, exactOnly);
+        if (ref) {
+            document.getElementById('active_ingredient').value = ref.active_ingredient || '';
+            document.getElementById('group').value = ref.group || '';
+            document.getElementById('dosage').value = ref.dosage || '';
+            if (ref.category) {
+                document.getElementById('category').value = ref.category;
+            }
+        }
+    }
+
+    async function autoFillAllEmptyProductDetails(showNotification = false) {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        let localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        let updatedCount = 0;
+        let updatedProducts = [];
+
+        localData.forEach(p => {
+            if (p && p.name) {
+                let ref = findProductDetailsInHistoricalData(p.name, p.category);
+                if (ref) {
+                    let pUpdated = false;
+                    const hasEmptyActive = !p.active_ingredient || p.active_ingredient === '-' || p.active_ingredient.trim() === '';
+                    const hasEmptyGroup = !p.group || p.group === '-' || p.group.trim() === '';
+                    const hasEmptyDosage = !p.dosage || p.dosage === '-' || p.dosage.trim() === '';
+                    
+                    if (hasEmptyActive && ref.active_ingredient) {
+                        p.active_ingredient = ref.active_ingredient;
+                        pUpdated = true;
+                        
+                        // Also correct category to match the chemical database category!
+                        if (ref.category && p.category !== ref.category) {
+                            p.category = ref.category;
+                        }
+                    }
+                    if (hasEmptyGroup && ref.group && ref.group !== '-') {
+                        p.group = ref.group;
+                        pUpdated = true;
+                    }
+                    if (hasEmptyDosage && ref.dosage) {
+                        p.dosage = ref.dosage;
+                        pUpdated = true;
+                    }
+                    if (!p.category && ref.category) {
+                        p.category = ref.category;
+                        pUpdated = true;
+                    }
+                    if (pUpdated) {
+                        updatedCount++;
+                        if (!updatedProducts.includes(p.name)) {
+                            updatedProducts.push(p.name);
+                        }
+                    }
+                }
+            }
+        });
+
+        if (updatedCount > 0) {
+            localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(localData));
+            const success = await syncWithServer(localData);
+            if (success) {
+                await logOperation('Otomatik Tamamlama', `${updatedCount} adet boş ürün bilgisi (aktif madde/grup) sistem tarafından otomatik tamamlandı.`);
+                await loadProducts();
+                if (showNotification) {
+                    const messageDiv = document.getElementById('resultMessage');
+                    if (messageDiv) {
+                        messageDiv.innerHTML = `<div class="alert alert-info border-info shadow-sm"><i class="bi bi-cpu-fill me-2 text-success"></i><strong>Yapay Zeka Taraması:</strong> ${updatedProducts.join(', ')} ürünlerine ait boş bırakılan aktif madde ve grup kodları veritabanı taranarak otomatik olarak tamamlandı!</div>`;
+                    }
+                }
+            }
+        }
+    }
+
+
+    // Helper function to get badge class based on group type
+    function getGroupBadgeClass(groupString) {
+        if (!groupString) return 'bg-secondary';
+        const lowerGroup = String(groupString).toLowerCase(); // Ensure it's a string
+        if (lowerGroup.includes('frac')) {
+            return 'bg-success'; // Fungicides
+        }
+        if (lowerGroup.includes('irac')) {
+            return 'bg-danger'; // Insecticides/Acaricides
+        }
+        return 'bg-info'; // Other or mixed
+    }
+
+    function showReferenceGuide() {
+        renderReferenceTable();
+        referenceGuideModal.show();
+    }
+
+    function renderReferenceTable() {
+        const search = (document.getElementById('refSearch').value || "").toLowerCase();
+        const container = document.getElementById('referenceTableContainer');
+        const userRole = localStorage.getItem('userRole');
+        
+        const filtered = masterReferences.filter(r => 
+            ((r.name || "").toLowerCase().includes(search) || 
+            (r.active_ingredient || "").toLowerCase().includes(search) ||
+            (r.target || "").toLowerCase().includes(search)) &&
+            (userRole === 'admin' || !r.hidden)
+        );
+
+        container.innerHTML = `
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-dark"><tr><th>Ürün</th><th>Grup</th><th>Aktif Madde</th><th>Hedef</th><th class="text-end">İşlem</th></tr></thead>
+                    <tbody>
+                        ${filtered.map(r => `
+                            <tr class="${r.hidden ? 'table-light opacity-75' : ''}">
+                                <td>
+                                    <strong>${r.name}</strong>
+                                    ${r.hidden ? '<span class="badge bg-danger ms-1" style="font-size:0.65rem">Gizli</span>' : ''}
+                                </td>
+                                <td><span class="badge ${getGroupBadgeClass(r.group)}">${String(r.group || '-').replace(/(FRAC|IRAC)\s*/gi, '').trim()}</span></td>
+                                <td>${r.active_ingredient}</td>
+                                <td>${r.target}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-success" onclick="selectFromLibrary('${r.name}')">Seç</button>
+                                        ${userRole === 'admin' ? `
+                                            <button class="btn btn-outline-secondary" onclick="toggleReferenceVisibility('${r.name.replace(/'/g, "\\'")}', '${r.target.replace(/'/g, "\\'")}')" title="${r.hidden ? 'Göster' : 'Gizle'}">
+                                                <i class="bi bi-eye${r.hidden ? '-slash' : ''}"></i>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
+    async function toggleReferenceVisibility(name, target) {
+        const ref = masterReferences.find(r => r.name === name && r.target === target);
+        if (ref) {
+            ref.hidden = !ref.hidden;
+            if (await syncReferenceWithServer()) {
+                updateMasterDatalist();
+                renderReferenceTable();
+            }
+        }
+    }
+
+    async function syncReferenceWithServer() {
+        try {
+            const res = await fetch('api/save_reference.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(masterReferences)
+            });
+            const result = await res.json();
+            return result.status === 'success';
+        } catch (e) { alert("Sunucu bağlantı hatası!"); return false; }
+    }
+
+    function selectFromLibrary(name) {
+        referenceGuideModal.hide();
+        openProductModal();
+        document.getElementById('name').value = name;
+        autoFillFromMaster();
+    }
+
+    function openProductModal() {
+        resetFormMode();
+        productModal.show();
+    }
+
+    function stockEntry(index) {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const item = localData[index];
+        if (!item) return;
+
+        resetFormMode(); // Reset form and modal state first
+        
+        // Set base quantity for calculation in calculateTotal()
+        currentProductBaseQuantity = item.quantity;
+
+        // Populate form fields from existing product
+        document.getElementById('category').value = item.category;
+        document.getElementById('name').value = item.name;
+        document.getElementById('entry_date').value = new Date().toISOString().split('T')[0]; // Set current date for stock entry
+        document.getElementById('active_ingredient').value = item.active_ingredient;
+        document.getElementById('group').value = item.group || '';
+        document.getElementById('dosage').value = item.dosage || '';
+        setBkuCrop(item.crop);
+        document.getElementById('expiration_date').value = item.expiration_date || '';
+        document.getElementById('pkg_info').value = item.pkg_info;
+        document.getElementById('quantity').value = 0; // User enters additional quantity
+
+        // Update modal title and button text/style for stock entry
+        document.getElementById('productModalLabel').textContent = 'Stok Girişi';
+        const submitBtn = document.querySelector('#pesticideForm button[type="submit"]');
+        submitBtn.textContent = 'Stok Ekle';
+        submitBtn.classList.remove('btn-success', 'btn-warning'); // Remove other classes
+        submitBtn.classList.add('btn-info'); // Use info for stock entry
+
+        calculateTotal(); // Calculate total based on existing + 0 (initially)
+        productModal.show();
+    }
+
+    // Ambalaj bilgisi ve adet ile toplam miktarı hesaplayan yardımcı fonksiyon
+    function calculateTotalValue(pkgInfo, qty) {
+        const match = (pkgInfo || "").match(/^([\d,.]+)\s*(.*)$/);
+        if (match) {
+            // Ensure size is parsed correctly, handling comma as decimal separator
+            let sizeStr = match[1].replace(',', '.');
+            let size = parseFloat(sizeStr) || 0;
+            let unit = (match[2] || '').trim();
+
+            // Birim dönüşümü: gr -> kg, ml -> L
+            if (unit.toLowerCase() === 'gr') {
+                size = size / 1000;
+                unit = 'kg';
+            } else if (unit.toLowerCase() === 'ml') {
+                size = size / 1000;
+                unit = 'lt';
+            }
+
+            return (size * (Number(qty) || 0)).toFixed(2) + ' ' + unit;
+        }
+        return '';
+    }
+
+    function calculateTotal() {
+        const pkgInfo = document.getElementById('pkg_info').value.trim();
+        const enteredQty = Number(document.getElementById('quantity').value) || 0;
+        // If in stock entry mode, add to currentProductBaseQuantity, otherwise just use enteredQty
+        const totalQtyForCalculation = currentProductBaseQuantity + enteredQty;
+        document.getElementById('total_amount').value = calculateTotalValue(pkgInfo, totalQtyForCalculation);
+    }
+
+    async function logOperation(action, details) {
+        const user = localStorage.getItem('userName') || 'Bilinmeyen';
+        const garden = localStorage.getItem('selected_garden_name') || 'Genel';
+        try {
+            await fetch('api/log_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user, garden, action, details })
+            });
+        } catch (e) { console.error("Log hatası:", e); }
+    }
+
+    async function loadProducts() {
+        const gardenId = localStorage.getItem('selected_garden_id');
+        const tbody = document.getElementById('productTableBody');
+
+        if (!gardenId) {
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-5">
+                <div class="alert alert-warning d-inline-block">
+                    <i class="bi bi-exclamation-triangle me-2 fs-4"></i><br>
+                    Stok listesini görüntülemek için lütfen bir bahçe seçiniz.
+                    <br><br><a href="gardens.html" class="btn btn-warning btn-sm">Bahçe Seçimine Git</a>
+                </div>
+            </td></tr>`;
+            return;
+        }
+
+        // İlk olarak yerel önbellekteki veriyi göster (hızlı yükleme)
+        allProducts = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        
+        // Yerel olarak yüklenen ürünler için grupları doldur
+        allProducts.forEach(product => {
+            if (product && !product.group) { // Only try to fill if group is missing
+                let matchingRef = null;
+
+                // 1. Try exact match on name and active_ingredient
+                matchingRef = masterReferences.find(ref =>
+                    (ref.name || '').toLowerCase() === (product.name || '').toLowerCase() &&
+                    (ref.active_ingredient || '').toLowerCase() === (product.active_ingredient || '').toLowerCase()
+                );
+
+                // 2. If no exact match, try matching just active_ingredient (partial match)
+                if (!matchingRef) {
+                    const productActiveLower = (product.active_ingredient || '').toLowerCase();
+                    matchingRef = masterReferences.find(ref => {
+                        const refActiveLower = (ref.active_ingredient || '').toLowerCase();
+                        // Ensure both active ingredients are non-empty to avoid matching everything to empty string
+                        return productActiveLower && refActiveLower && (productActiveLower.includes(refActiveLower) || refActiveLower.includes(productActiveLower));
+                    });
+                }
+
+                if (matchingRef && matchingRef.group) {
+                    product.group = matchingRef.group;
+                }
+            }
+        });
+        renderProducts();
+
+        try {
+            // Sunucudan taze veriyi çek (Cache busting için timestamp eklendi)
+            const response = await fetch(`api/get_products.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (response.ok) {
+                const serverData = await response.json();
+                if (Array.isArray(serverData)) {
+                    allProducts = serverData;
+                    localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(serverData));
+                    renderProducts();
+                }
+            }
+        } catch (error) {
+            console.warn("Sunucu verisi güncellenemedi:", error);
+        }
+    }
+
+    function getCategoryBadgeClass(cat) {
+        const category = (cat || "").toLowerCase();
+        if (category.includes('fungisit')) return 'bg-success';
+        if (category.includes('insektisit')) return 'bg-warning text-dark'; // İnsektisit sarı olarak ayarlandı
+        if (category.includes('herbisit')) return 'bg-danger';
+        if (category.includes('akarisit')) return 'bg-info text-dark';
+        if (category.includes('gübre')) return 'bg-primary';
+        if (category.includes('gelişim')) return 'bg-dark';
+        return 'bg-secondary';
+    }
+
+    let stockStatusFilter = 'all';
+    let stockCategoryFilter = '';
+
+    function setStatusFilter(v) {
+        stockStatusFilter = (stockStatusFilter === v) ? 'all' : v;
+        renderProducts();
+    }
+
+    function setCategoryFilter(v) {
+        stockCategoryFilter = (stockCategoryFilter === v) ? '' : v;
+        renderProducts();
+    }
+
+    function resetStockFilters() {
+        stockStatusFilter = 'all';
+        stockCategoryFilter = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('sortSelect').value = 'date';
+        renderProducts();
+    }
+
+    function escHtml(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function getStockState(item) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        let exp = null;
+        if (item.expiration_date) {
+            const d = new Date(item.expiration_date);
+            if (!Number.isNaN(d.getTime())) exp = Math.round((d - today) / 86400000);
+        }
+        const qty = parseFloat(item.quantity);
+        return {
+            daysLeft: exp,
+            expired: exp !== null && exp < 0,
+            soon: exp !== null && exp >= 0 && exp <= 30,
+            low: !Number.isNaN(qty) && qty <= 0
+        };
+    }
+
+    function renderProducts() {
+        const tbody = document.getElementById('productTableBody');
+        const searchTerm = (document.getElementById('searchInput').value || "").toLowerCase();
+        const sortMode = document.getElementById('sortSelect').value;
+
+        const indexed = allProducts.map((item, index) => item ? ({ ...item, originalIndex: index, _s: getStockState(item) }) : null).filter(Boolean);
+
+        // Özet kartları (arama/filtreden bağımsız toplamlar)
+        document.getElementById('stTotal').textContent = indexed.length;
+        document.getElementById('stLow').textContent = indexed.filter(i => i._s.low).length;
+        document.getElementById('stSoon').textContent = indexed.filter(i => i._s.soon).length;
+        document.getElementById('stExpired').textContent = indexed.filter(i => i._s.expired).length;
+        document.querySelectorAll('.stock-stat').forEach(el => el.classList.toggle('active', el.dataset.status === stockStatusFilter));
+
+        const searchMatches = item => {
+            const name = (item.name || "").toString().toLowerCase();
+            const cat = (item.category || "").toString().toLowerCase();
+            const active = (item.active_ingredient || "").toString().toLowerCase();
+            return name.includes(searchTerm) || cat.includes(searchTerm) || active.includes(searchTerm);
+        };
+        const statusMatches = item => stockStatusFilter === 'all'
+            || (stockStatusFilter === 'low' && item._s.low)
+            || (stockStatusFilter === 'soon' && item._s.soon)
+            || (stockStatusFilter === 'expired' && item._s.expired);
+
+        // Kategori çipleri (arama + durum filtresine göre sayılar)
+        const catCounts = {};
+        indexed.filter(i => searchMatches(i) && statusMatches(i)).forEach(i => {
+            const c = i.category || 'Diğer';
+            catCounts[c] = (catCounts[c] || 0) + 1;
+        });
+        if (stockCategoryFilter && !(stockCategoryFilter in catCounts)) catCounts[stockCategoryFilter] = 0;
+        document.getElementById('categoryChips').innerHTML = Object.keys(catCounts).sort((a, b) => a.localeCompare(b, 'tr')).map(c =>
+            `<span class="cat-chip ${stockCategoryFilter === c ? 'active' : ''}" data-cat="${escHtml(c)}">${escHtml(c)}<span class="cnt">${catCounts[c]}</span></span>`
+        ).join('');
+        document.querySelectorAll('#categoryChips .cat-chip').forEach(el => el.onclick = () => setCategoryFilter(el.dataset.cat));
+
+        const filteredData = indexed.filter(item => searchMatches(item) && statusMatches(item)
+            && (!stockCategoryFilter || (item.category || 'Diğer') === stockCategoryFilter));
+
+        document.getElementById('resultCount').textContent = filteredData.length;
+
+        const hasFilter = searchTerm || stockStatusFilter !== 'all' || stockCategoryFilter;
+        tbody.innerHTML = filteredData.length === 0
+            ? `<tr><td colspan="12" class="text-center text-muted py-4">${hasFilter ? 'Sonuç bulunamadı.' : 'Henüz kayıtlı ürün yok.'}</td></tr>`
+            : '';
+
+        const getSortDateValue = (item) => {
+            const rawDate = item.entry_date || item.timestamp || item.date || item.last_updated || null;
+            const time = rawDate ? new Date(rawDate).getTime() : 0;
+            return Number.isNaN(time) ? 0 : time;
+        };
+
+        filteredData.sort((a, b) => {
+            if (sortMode === 'name') return (a.name || '').localeCompare(b.name || '', 'tr');
+            if (sortMode === 'qty') return (parseFloat(a.quantity) || 0) - (parseFloat(b.quantity) || 0);
+            if (sortMode === 'exp') {
+                const ea = a._s.daysLeft === null ? Infinity : a._s.daysLeft;
+                const eb = b._s.daysLeft === null ? Infinity : b._s.daysLeft;
+                if (ea !== eb) return ea === Infinity ? 1 : (eb === Infinity ? -1 : ea - eb);
+            }
+            const dateA = getSortDateValue(a);
+            const dateB = getSortDateValue(b);
+            if (dateA !== dateB) return dateB - dateA;
+            const catCompare = (a.category || "").toString().localeCompare((b.category || "").toString(), 'tr');
+            if (catCompare !== 0) return catCompare;
+            return (a.active_ingredient || "").toString().localeCompare((b.active_ingredient || "").toString(), 'tr');
+        });
+
+        const rows = filteredData.map((item) => {
+            const originalIndex = item.originalIndex;
+            const st = item._s;
+            const rowClass = st.expired ? 'expired-row' : (st.low ? 'low-row' : '');
+            const dateClass = st.expired ? 'expired-date' : '';
+            let expBadge = '';
+            if (st.expired) expBadge = `<span class="exp-badge expired">${-st.daysLeft} gün geçti</span>`;
+            else if (st.soon) expBadge = `<span class="exp-badge soon">${st.daysLeft} gün kaldı</span>`;
+
+            const safeName = (item.name || '').replace(/'/g, "\\'");
+            const imgHtml = item.image ? `
+                <span class="ms-1" style="cursor:pointer;" onclick="viewProductImage('${safeName}', '${item.image}')" title="Ürün Fotoğrafını Gör">
+                    <img src="${item.image}" alt="Fotoğraf" class="rounded" style="width: 28px; height: 28px; object-fit: cover; border: 1px solid rgba(0,0,0,0.08);">
+                </span>
+            ` : '';
+
+            const entryDate = item.entry_date || item.timestamp;
+            return `<tr class="${rowClass}">
+                <td><span class="badge ${getCategoryBadgeClass(item.category)}">${item.category || '-'}</span></td>
+                <td class="name-cell">
+                    <a href="javascript:void(0)" class="text-decoration-none fw-bold" onclick="showHistory(${originalIndex})">${item.name}</a>
+                    ${imgHtml}
+                </td>
+                <td><span class="badge ${getGroupBadgeClass(item.group)}">${String(item.group || '-').replace(/(FRAC|IRAC)\s*/gi, '').trim()}</span></td>
+                <td>${item.active_ingredient || '-'}</td>
+                <td>${item.dosage || '-'}</td>
+                <td>${item.pkg_info || '-'}</td>
+                <td><span class="qty-pill ${st.low ? 'zero' : ''}">${item.quantity || '0'}</span></td>
+                <td><strong>${item.total_amount || '-'}</strong></td>
+                <td>${entryDate ? new Date(entryDate).toLocaleDateString('tr-TR') : '-'}</td>
+                <td class="${dateClass}">
+                    ${item.expiration_date ? new Date(item.expiration_date).toLocaleDateString('tr-TR') : '-'}${expBadge}
+                </td>
+                <td>
+                    <span class="badge ${item.transaction_type === 'Stok Çıkışı' ? 'bg-info' : 'bg-light text-dark'}">
+                        ${item.transaction_type || 'Yeni Giriş'}
+                    </span>
+                    ${item.exit_description ? `<br><small class="text-muted">${item.exit_description}</small>` : ''}
+                </td>
+                <td class="stock-actions-column">
+                    <button class="btn btn-sm btn-outline-info" onclick="stockExit(${originalIndex})" title="Stok çıkışı"><i class="bi bi-box-arrow-up"></i></button>
+                    <button class="btn btn-sm btn-outline-success" onclick="stockEntry(${originalIndex})" title="Stok girişi"><i class="bi bi-box-arrow-in-down"></i></button>
+                    <button class="btn btn-sm btn-outline-warning product-edit-action" onclick="editProduct(${originalIndex})" title="Ürün bilgilerini düzelt"><i class="bi bi-pencil-square"></i></button>
+                    <button class="btn btn-sm btn-outline-danger product-delete-action" onclick="deleteProduct(${originalIndex})" title="Ürünü stok listesinden sil"><i class="bi bi-trash3"></i></button>
+                </td>
+            </tr>`;
+        });
+        if (rows.length) tbody.innerHTML = rows.join('');
+    }
+
+    function showHistory(index) {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const item = localData[index];
+        const history = item.history || [];
+        
+        document.getElementById('historyProductName').textContent = `${item.name} (${item.category})`;
+        const tbody = document.getElementById('historyTableBody');
+        
+        tbody.innerHTML = history.length === 0 
+            ? '<tr><td colspan="4" class="text-center text-muted">Bu ürüne ait işlem geçmişi bulunamadı.</td></tr>' 
+            : '';
+
+        [...history].reverse().forEach(log => {
+            tbody.innerHTML += `<tr>
+                <td>${new Date(log.date).toLocaleString('tr-TR')}</td>
+                <td><span class="badge ${log.type === 'Stok Çıkışı' ? 'bg-info' : 'bg-secondary'}">${log.type}</span></td>
+                <td>${log.qty || '-'}</td>
+                <td><small>${log.desc || '-'}</small></td>
+            </tr>`;
+        });
+
+        historyModal.show();
+    }
+
+    function stockExit(index) {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const item = localData[index];
+        
+        document.getElementById('exitProductIndex').value = index;
+        document.getElementById('exitProductName').textContent = item.name;
+        document.getElementById('exitCurrentQty').textContent = item.quantity;
+        document.getElementById('exitQty').value = 1;
+        document.getElementById('exitDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('exitDescription').value = '';
+
+        stockExitModal.show();
+    }
+
+    async function confirmStockExit() {
+        const index = document.getElementById('exitProductIndex').value;
+        const exitQty = parseFloat(document.getElementById('exitQty').value);
+        const exitDate = document.getElementById('exitDate').value;
+        const exitDescription = document.getElementById('exitDescription').value;
+
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const item = localData[index];
+
+        if (isNaN(exitQty) || exitQty <= 0) {
+            alert("Lütfen geçerli bir adet giriniz.");
+            return;
+        }
+
+        if (exitQty > item.quantity) {
+            alert("Hata: Stokta yeterli adet bulunmuyor!");
+            return;
+        }
+
+        // Stok güncelleme
+        item.quantity = parseFloat(item.quantity) - exitQty;
+        
+        // Toplam stoğu yeniden hesapla
+        item.total_amount = calculateTotalValue(item.pkg_info, item.quantity);
+
+        item.timestamp = new Date().toISOString();
+        item.transaction_type = 'Stok Çıkışı';
+        item.exit_description = exitDescription;
+        item.last_exit_qty = exitQty;
+
+        // Geçmişe ekle
+        if (!item.history) item.history = [];
+        item.history.push({
+            date: item.timestamp,
+            type: 'Stok Çıkışı',
+            qty: `-${exitQty} Adet`,
+            desc: exitDescription
+        });
+
+        localData[index] = item;
+        localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(localData));
+        
+        // Tüm listeyi sunucuya gönder
+        await syncWithServer(localData);
+        await logOperation('Stok Çıkışı', `${item.name} ürününden ${exitQty} adet düşüldü.`);
+        
+        stockExitModal.hide();
+        loadProducts();
+    }
+
+    async function deleteProduct(index) {
+        if(confirm('Bu ürünü listeden silmek istediğinize emin misiniz?')) {
+            const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+            let localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+            localData.splice(index, 1);
+            localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(localData));
+            
+            // Silme işleminden sonra sunucuyla senkronize et
+            await syncWithServer(localData);
+            await logOperation('Silme', 'Stok listesinden bir ürün silindi.');
+            loadProducts();
+        }
+    }
+
+    function editProduct(index) {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const item = localData[index];
+        if (!item) return;
+        
+        // Formu doldur
+        resetFormMode(); // Reset form and modal state first
+        document.getElementById('category').value = item.category;
+        document.getElementById('name').value = item.name;
+        document.getElementById('entry_date').value = item.entry_date || item.timestamp.split('T')[0];
+        document.getElementById('active_ingredient').value = item.active_ingredient;
+        document.getElementById('group').value = item.group || '';
+        document.getElementById('dosage').value = item.dosage || '';
+        setBkuCrop(item.crop);
+        document.getElementById('expiration_date').value = item.expiration_date || '';
+        document.getElementById('pkg_info').value = item.pkg_info;
+        document.getElementById('quantity').value = item.quantity;
+        
+        // For editing, the quantity input represents the total quantity of this specific entry
+        currentProductBaseQuantity = 0; // Reset base quantity for edit mode
+
+        calculateTotal(); // Toplamı hesapla
+        
+        // Ürün görselini geri yükleme (varsa)
+        const imgBase64 = document.getElementById('productImageBase64');
+        const imgPreview = document.getElementById('productImagePreview');
+        const imgContainer = document.getElementById('productImagePreviewContainer');
+        const imgInput = document.getElementById('productImageInput');
+
+        if (imgBase64 && imgPreview && imgContainer && imgInput) {
+            if (item.image) {
+                imgBase64.value = item.image;
+                imgPreview.src = item.image;
+                imgContainer.classList.remove('d-none');
+            } else {
+                imgInput.value = '';
+                imgBase64.value = '';
+                imgPreview.src = '';
+                imgContainer.classList.add('d-none');
+            }
+        }
+        
+        editIndex = index;
+        document.getElementById('productModalLabel').textContent = 'Ürün Düzenle';
+        const submitBtn = document.querySelector('#pesticideForm button[type="submit"]');
+        submitBtn.textContent = 'Değişiklikleri Kaydet';
+        submitBtn.classList.remove('btn-success', 'btn-info'); // Remove other classes
+        submitBtn.classList.add('btn-warning'); // Add warning class for edit
+
+        productModal.show();
+    }
+
+	    function resetFormMode() {
+	        closeAllBkuSearchResults();
+	        document.getElementById('pesticideForm').reset();
+        editIndex = -1;
+        currentProductBaseQuantity = 0; // Reset base quantity
+        const submitBtn = document.querySelector('#pesticideForm button[type="submit"]');
+        submitBtn.textContent = 'Kaydet';
+        submitBtn.classList.remove('btn-warning', 'btn-info'); // Remove other classes
+        submitBtn.classList.add('btn-success'); // Add default success class
+        document.getElementById('entry_date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('total_amount').value = '';
+        document.getElementById('group').value = '';
+        document.getElementById('dosage').value = '';
+        document.getElementById('bkuCrop').value = '';
+        const bkuDosageSelect = document.getElementById('bkuDosageSelect');
+        bkuDosageSelect.innerHTML = '<option value="">Önce ürün ve bitki seçiniz...</option>';
+        bkuDosageSelect.disabled = true;
+        selectedBkuDoseOptions = [];
+        document.getElementById('expiration_date').value = '';
+        document.getElementById('resultMessage').innerHTML = ''; // Mesajları temizle
+
+        // Resim alanlarını temizle
+        const fileInput = document.getElementById('productImageInput');
+        const base64Input = document.getElementById('productImageBase64');
+        const previewImg = document.getElementById('productImagePreview');
+        const previewContainer = document.getElementById('productImagePreviewContainer');
+        if (fileInput) fileInput.value = '';
+        if (base64Input) base64Input.value = '';
+        if (previewImg) previewImg.src = '';
+        if (previewContainer) previewContainer.classList.add('d-none');
+    }
+
+    document.getElementById('pesticideForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const messageDiv = document.getElementById('resultMessage');
+        let formData = {
+            category: document.getElementById('category').value,
+            name: document.getElementById('name').value,
+            entry_date: document.getElementById('entry_date').value,
+            active_ingredient: document.getElementById('active_ingredient').value,
+            group: document.getElementById('group').value,
+            dosage: document.getElementById('dosage').value,
+            crop: document.getElementById('bkuCrop').value,
+            expiration_date: document.getElementById('expiration_date').value, // Add expiration date
+            pkg_info: document.getElementById('pkg_info').value, 
+            quantity: document.getElementById('quantity').value,
+            total_amount: document.getElementById('total_amount').value,
+            image: document.getElementById('productImageBase64') ? document.getElementById('productImageBase64').value : ''
+        };
+
+        // Yasaklı Aktif Madde / Ürün Kontrolü ve Uyarısı
+        if (typeof getBannedProductDetails !== 'undefined') {
+            const banned = getBannedProductDetails(formData.active_ingredient) || getBannedProductDetails(formData.name);
+            if (banned) {
+                const proceed = confirm(`⚠️ DİKKAT: Eklemeye/güncellemeye çalıştığınız aktif madde veya ürün ("${banned.aktif_madde}") T.C. Tarım ve Orman Bakanlığı tarafından YASAKLANMIŞTIR!\n\nKullanım Sonlandırma: ${banned.kullanim_sonlandirma || 'Yasaklandı'}\nİthalat/İmalat Sonlandırma: ${banned.ithalat_sonlandirma || '-'}\n\nYine de bu ürünü stoğa kaydetmek istediğinize emin misiniz?`);
+                if (!proceed) return;
+            }
+        }
+
+        // 1. LocalStorage Kaydı ve Veri Hazırlama
+        try {
+            let localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+            formData.transaction_type = editIndex > -1 ? 'Güncelleme' : 'Yeni Giriş';
+            const now = new Date().toISOString();
+            
+            if (editIndex > -1) {
+                // Geçmişi koru ve güncelleme logu ekle
+                formData.history = localData[editIndex].history || [];
+                formData.history.push({
+                    date: formData.entry_date + "T" + new Date().toTimeString().split(' ')[0],
+                    type: 'Güncelleme',
+                    qty: formData.quantity + ' Adet',
+                    desc: 'Ürün bilgileri güncellendi'
+                });
+                localData[editIndex] = { ...formData, timestamp: now };
+                messageDiv.innerHTML = `<div class="alert alert-success">${formData.name} ürün bilgileri başarıyla güncellendi.</div>`;
+                await logOperation('Güncelleme', `${formData.name} ürün bilgileri güncellendi.`);
+            } else {
+                // Aynı ürün var mı kontrol et (Ad, Kategori ve Aktif Madde eşleşmesi)
+                const existingIndex = localData.findIndex(p => 
+                    p && p.name && p.name.trim().toLowerCase() === formData.name.trim().toLowerCase() && 
+                    p.category === formData.category &&
+                    (p.active_ingredient || "").trim().toLowerCase() === (formData.active_ingredient || "").trim().toLowerCase()
+                );
+
+                if (existingIndex > -1) {
+                    // Ürün zaten var, stok üzerine ekle (Birleştirme)
+                    let existing = localData[existingIndex];
+                    const addedQty = Number(formData.quantity) || 0;
+                    const currentQty = Number(existing.quantity) || 0;
+                    
+                    existing.quantity = currentQty + addedQty;
+                    
+                    // Toplam stoğu yeniden hesapla
+                    existing.total_amount = calculateTotalValue(existing.pkg_info, existing.quantity);
+
+                    existing.entry_date = formData.entry_date; // Son giriş tarihini güncelle
+                    existing.timestamp = now;
+                    existing.transaction_type = 'Ek Giriş';
+
+                    // Mevcut ürünün grubu yoksa, yeni form verisinden grubu ekle
+                    if (!existing.group && formData.group) {
+                        existing.group = formData.group;
+                    }
+                    if (!existing.dosage && formData.dosage) {
+                        existing.dosage = formData.dosage;
+                    }
+
+                    if (!existing.history) existing.history = [];
+                    existing.history.push({
+                        date: formData.entry_date + "T" + new Date().toTimeString().split(' ')[0],
+                        type: 'Ek Giriş',
+                        qty: `+${addedQty} Adet`,
+                        desc: 'Aynı üründen stok eklemesi yapıldı'
+                    });
+
+                    localData[existingIndex] = existing;
+                    formData = existing; // Sunucuya güncel (birleşmiş) veriyi gönder
+                    messageDiv.innerHTML = `<div class="alert alert-success">${formData.name} ürününe stok eklendi. Yeni toplam: ${formData.quantity} adet.</div>`;
+                    await logOperation('Ek Giriş', `${formData.name} ürününe stok eklemesi yapıldı.`);
+                } else {
+                    // Yeni kayıt logu oluştur
+                    formData.history = [{
+                        date: formData.entry_date + "T" + new Date().toTimeString().split(' ')[0],
+                        type: 'Yeni Giriş',
+                        qty: formData.quantity + ' Adet',
+                        desc: 'İlk kayıt oluşturuldu'
+                    }];
+                    localData.push({ ...formData, timestamp: now });
+                    messageDiv.innerHTML = `<div class="alert alert-success">${formData.name} ürünü stok listesine başarıyla eklendi.</div>`;
+                    await logOperation('Yeni Ürün', `${formData.name} ürünü stok listesine eklendi.`);
+                }
+            }
+            
+            localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(localData));
+            
+            // 2. Sunucuya Tüm Listeyi Gönder ve Arayüzü Güncelle
+            const success = await syncWithServer(localData);
+            if (success) {
+                await loadProducts();
+                await autoFillAllEmptyProductDetails(true);
+            } 
+        } catch (e) {
+            messageDiv.innerHTML = `<div class="alert alert-danger">Bir hata oluştu: ${e.message || e}</div>`;
+        }
+    });
+
+    async function syncWithServer(fullDataArray) {
+        const messageDiv = document.getElementById('resultMessage');
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        try {
+            const response = await fetch(`api/save.php?garden_id=${gardenId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(fullDataArray)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                // messageDiv.innerHTML zaten yukarıda ayarlandığı için burada tekrar genel bir mesaj göstermeye gerek yok.
+                setTimeout(() => {
+                    productModal.hide();
+                }, 800); // 0.8 saniye sonra pencereyi kapat
+                return true;
+            } else {
+                messageDiv.innerHTML = `<div class="alert alert-danger">${result.message}</div>`;
+                return false;
+            }
+        } catch (error) {
+            messageDiv.innerHTML = `<div class="alert alert-danger">Bir hata oluştu: Sunucuya erişilemiyor veya yanıt geçersiz. Detay: ${error.message || error}</div>`;
+            return false;
+        }
+    }
+
+    function trChars(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+            .replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function exportProductsExcel() {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const ws = XLSX.utils.json_to_sheet(localData.map(item => ({
+            'Kategori': item.category,
+            'Ürün Adı': item.name,
+            'Grup': item.group || "",
+            'Aktif Madde': item.active_ingredient,
+            'Doz (100 lt)': item.dosage || "",
+            'Ambalaj': item.pkg_info,
+            'Adet': item.quantity,
+            'Toplam Stok': item.total_amount, // Ensure this is correct after the change
+            'Son Kullanma Tarihi': item.expiration_date,
+            'Kayıt Tarihi': item.entry_date
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Ürün Stok Listesi");
+        XLSX.writeFile(wb, "Urun_Stok_Listesi.xlsx");
+    }
+
+    function exportProductsPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const allProductsData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        const searchTerm = (document.getElementById('searchInput').value || "").toLowerCase();
+
+        const filteredData = allProductsData.filter(item => {
+            if (!item) return false;
+            const name = (item.name || "").toString().toLowerCase();
+            const cat = (item.category || "").toString().toLowerCase();
+            const active = (item.active_ingredient || "").toString().toLowerCase();
+            return name.includes(searchTerm) || 
+                   cat.includes(searchTerm) ||
+                   active.includes(searchTerm);
+        });
+
+        
+        doc.text(trChars("Urun Stok Listesi"), 14, 15);
+        const rows = filteredData.map(item => [
+            trChars(item.category || ""),
+            trChars(item.name || ""),
+            trChars(item.group || "-"),
+            trChars(item.active_ingredient || ""),
+            trChars(item.dosage || "-"),
+            trChars(item.quantity || "0"),
+            trChars(item.total_amount || ""),
+            item.entry_date || "",
+            item.expiration_date || ""
+        ]);
+        
+        doc.autoTable({ // Sütun başlıklarını güncelledim
+            head: [[trChars('Kategori'), trChars('Urun'), trChars('Grup'), trChars('Aktif Madde'), trChars('Doz (100 lt)'), trChars('Adet'), trChars('Toplam Stok'), trChars('Kayıt Tarihi'), trChars('Son Kullanma Tarihi')]],
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8 }
+        });
+        doc.save("Urun_Stok_Listesi.pdf");
+    }
+
+
+
+    // ========================================================
+    // HIZLI YATAY STOK GİRİŞİ KONTROLLERİ (PUANTAJ BENZERİ)
+    // ========================================================
+    let quickBatchRowCounter = 0;
+
+    window.toggleQuickBatchEntry = function() {
+        const card = document.getElementById('quickBatchEntryCard');
+        if (card.style.display === 'none') {
+            document.getElementById('quickBatchTableBody').innerHTML = '';
+            quickBatchRowCounter = 0;
+            // İlk açılışta pratik olması için 3 boş satır ekleyelim
+            addQuickBatchRow();
+            addQuickBatchRow();
+            addQuickBatchRow();
+            card.style.display = 'block';
+            card.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            card.style.display = 'none';
+        }
+    };
+
+    window.addQuickBatchRow = function() {
+        const tbody = document.getElementById('quickBatchTableBody');
+        const index = quickBatchRowCounter++;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const rowHtml = `
+            <tr id="quickRow_${index}">
+                <td><input type="date" class="form-control form-control-sm" id="quickDate_${index}" value="${today}"></td>
+                <td>
+                    <select class="form-select form-select-sm" id="quickCategory_${index}">
+                        <option value="Gübre">Gübre</option>
+                        <option value="Yaprak Gübresi">Yaprak Gübresi</option>
+                        <option value="Fungisit">Fungisit</option>
+                        <option value="İnsektisit">İnsektisit</option>
+                        <option value="Herbisit">Herbisit</option>
+                        <option value="Akarisit">Akarisit</option>
+                        <option value="Bitki Gelişim Düzenleyici">Bitki Gelişim Düzenleyici (BGD)</option>
+                    </select>
+                </td>
+	                <td class="bku-search-wrap">
+	                    <input type="text" class="form-control form-control-sm fw-bold text-success" id="quickName_${index}" placeholder="BKU ürün adı ara..." autocomplete="off" oninput="searchBkuForQuickRow(${index}, 'name')" onkeydown="handleBkuSearchKeydown(event, 'quickBkuResults_${index}_name')">
+	                    <div id="quickBkuResults_${index}_name" class="bku-search-results d-none" role="listbox"></div>
+	                </td>
+	                <td class="bku-search-wrap">
+	                    <input type="text" class="form-control form-control-sm" id="quickActive_${index}" placeholder="BKU aktif madde ara..." autocomplete="off" oninput="searchBkuForQuickRow(${index}, 'active')" onkeydown="handleBkuSearchKeydown(event, 'quickBkuResults_${index}_active')">
+	                    <div id="quickBkuResults_${index}_active" class="bku-search-results d-none" role="listbox"></div>
+	                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" id="quickGroup_${index}" placeholder="Otomatik dolacak">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" id="quickDosage_${index}" placeholder="Otomatik/Elle">
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" id="quickPkg_${index}" placeholder="Örn: 20 lt, 1 kg">
+                </td>
+                <td>
+                    <input type="number" step="any" class="form-control form-control-sm text-center fw-bold" id="quickQty_${index}" value="1" min="0.001">
+                </td>
+                <td>
+                    <button type="button" class="btn btn-outline-danger btn-sm p-1 rounded-circle d-flex align-items-center justify-content-center mx-auto" style="width: 26px; height: 26px;" onclick="removeQuickBatchRow(${index})" title="Satırı Sil">&times;</button>
+                </td>
+            </tr>
+        `;
+        tbody.insertAdjacentHTML('beforeend', rowHtml);
+    };
+
+    window.removeQuickBatchRow = function(index) {
+        const row = document.getElementById(`quickRow_${index}`);
+        if (row) row.remove();
+        
+        // Eğer hiç satır kalmadıysa en az 1 tane boş satır ekleyelim
+        const tbody = document.getElementById('quickBatchTableBody');
+        if (tbody.querySelectorAll('tr').length === 0) {
+            addQuickBatchRow();
+        }
+    };
+
+    window.autoFillQuickRow = function(index, exactOnly = false) {
+        const val = document.getElementById(`quickName_${index}`).value.trim();
+        const category = document.getElementById(`quickCategory_${index}`).value;
+        const ref = findProductDetailsInHistoricalData(val, category, exactOnly);
+        
+        const activeInput = document.getElementById(`quickActive_${index}`);
+        const groupInput = document.getElementById(`quickGroup_${index}`);
+        const dosageInput = document.getElementById(`quickDosage_${index}`);
+        const categorySelect = document.getElementById(`quickCategory_${index}`);
+        
+        if (ref) {
+            // Aktif Madde ve Grubu otomatik doldur ve readonly yap (Kullanıcı talebi doğrultusunda)
+            activeInput.value = ref.active_ingredient || '';
+            activeInput.readOnly = true;
+            activeInput.classList.add('bg-light');
+            
+            groupInput.value = ref.group || '';
+            groupInput.readOnly = true;
+            groupInput.classList.add('bg-light');
+            
+            dosageInput.value = ref.dosage || '';
+            dosageInput.readOnly = true;
+            dosageInput.classList.add('bg-light');
+            
+            if (ref.category) {
+                categorySelect.value = ref.category;
+            }
+        } else if (!exactOnly) {
+            // Sadece blur durumunda ve kütüphanede bulunamadıysa girişleri serbest bırak (elle yazılabilsin)
+            activeInput.value = '';
+            activeInput.readOnly = false;
+            activeInput.classList.remove('bg-light');
+            
+            groupInput.value = '';
+            groupInput.readOnly = false;
+            groupInput.classList.remove('bg-light');
+            
+            dosageInput.value = '';
+            dosageInput.readOnly = false;
+            dosageInput.classList.remove('bg-light');
+        }
+    };
+
+    window.saveQuickBatchEntries = async function() {
+        const tbody = document.getElementById('quickBatchTableBody');
+        const rows = tbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            alert('Kaydedilecek ürün satırı bulunamadı.');
+            return;
+        }
+
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        const now = new Date().toISOString();
+        let localData = JSON.parse(localStorage.getItem(`garden_${gardenId}_products`) || '[]');
+        let savedCount = 0;
+
+        for (let row of rows) {
+            const index = row.id.split('_')[1];
+            const name = document.getElementById(`quickName_${index}`).value.trim();
+            const category = document.getElementById(`quickCategory_${index}`).value;
+            const entryDate = document.getElementById(`quickDate_${index}`).value;
+            const activeIngredient = document.getElementById(`quickActive_${index}`).value.trim();
+            const group = document.getElementById(`quickGroup_${index}`).value.trim();
+            const dosage = document.getElementById(`quickDosage_${index}`).value.trim();
+            const pkgInfo = document.getElementById(`quickPkg_${index}`).value.trim();
+            const quantity = parseFloat(document.getElementById(`quickQty_${index}`).value) || 0;
+
+            // Eğer ürün adı girilmemişse bu satırı es geç
+            if (!name) {
+                continue;
+            }
+
+            // Ürün adı girilmiş ama ambalaj girilmemişse uyar
+            if (!pkgInfo) {
+                alert(`Lütfen "${name}" ürünü için ambalaj bilgisini giriniz (Örn: 20 lt, 1 kg).`);
+                return;
+            }
+
+            // Adet 0 veya geçersizse uyar
+            if (quantity <= 0) {
+                alert(`Lütfen "${name}" ürünü için geçerli bir adet giriniz.`);
+                return;
+            }
+
+            // Yasaklı Aktif Madde / Ürün Kontrolü
+            if (typeof getBannedProductDetails !== 'undefined') {
+                const banned = getBannedProductDetails(activeIngredient) || getBannedProductDetails(name);
+                if (banned) {
+                    const proceed = confirm(`⚠️ DİKKAT: Toplu girişteki "${name}" (${banned.aktif_madde}) T.C. Tarım ve Orman Bakanlığı tarafından YASAKLANMIŞTIR!\n\nKullanım Sonlandırma: ${banned.kullanim_sonlandirma || 'Yasaklandı'}\n\nYine de bu ürünü stoğa eklemek istiyor musunuz?`);
+                    if (!proceed) return;
+                }
+            }
+
+            const totalAmount = calculateTotalValue(pkgInfo, quantity);
+
+            const existingIndex = localData.findIndex(p => 
+                p && p.name && p.name.trim().toLowerCase() === name.trim().toLowerCase() && 
+                p.category === category
+            );
+
+            if (existingIndex > -1) {
+                // Ürün zaten var, stok birleştirme yap
+                let existing = localData[existingIndex];
+                const addedQty = Number(quantity);
+                const currentQty = Number(existing.quantity) || 0;
+                
+                existing.quantity = currentQty + addedQty;
+                existing.total_amount = calculateTotalValue(existing.pkg_info, existing.quantity);
+                existing.entry_date = entryDate;
+                existing.timestamp = now;
+                existing.transaction_type = 'Ek Giriş';
+                
+                // Eksik aktif madde veya grup bilgilerini doldur
+                if (!existing.active_ingredient && activeIngredient) {
+                    existing.active_ingredient = activeIngredient;
+                }
+                if (!existing.group && group) {
+                    existing.group = group;
+                }
+                if (!existing.dosage && dosage) {
+                    existing.dosage = dosage;
+                }
+
+                if (!existing.history) existing.history = [];
+                existing.history.push({
+                    date: entryDate + "T" + new Date().toTimeString().split(' ')[0],
+                    type: 'Ek Giriş',
+                    qty: `+${addedQty} Adet`,
+                    desc: 'Hızlı toplu girişten otomatik stok eklendi'
+                });
+
+                localData[existingIndex] = existing;
+            } else {
+                // Yeni ürün girişi
+                let newProd = {
+                    category: category,
+                    name: name,
+                    entry_date: entryDate,
+                    active_ingredient: activeIngredient,
+                    group: group,
+                    dosage: dosage,
+                    expiration_date: '',
+                    pkg_info: pkgInfo,
+                    quantity: quantity,
+                    total_amount: totalAmount,
+                    image: '',
+                    timestamp: now,
+                    transaction_type: 'Yeni Giriş',
+                    history: [{
+                        date: entryDate + "T" + new Date().toTimeString().split(' ')[0],
+                        type: 'Yeni Giriş',
+                        qty: quantity + ' Adet',
+                        desc: 'Hızlı toplu girişten oluşturuldu'
+                    }]
+                };
+                localData.push(newProd);
+            }
+            savedCount++;
+        }
+
+        if (savedCount === 0) {
+            alert('Lütfen en az bir ürün adı yazın.');
+            return;
+        }
+
+        try {
+            localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(localData));
+            const success = await syncWithServer(localData);
+            if (success) {
+                await logOperation('Hızlı Giriş', `${savedCount} adet ürün hızlı toplu giriş ile kaydedildi.`);
+                await loadProducts();
+                document.getElementById('quickBatchEntryCard').style.display = 'none';
+                alert(`${savedCount} adet ürün başarıyla stok listesine kaydedildi ve senkronize edildi!`);
+                await autoFillAllEmptyProductDetails(true);
+            } else {
+                alert('Ürünler yerel olarak eklendi fakat sunucuya senkronize edilemedi. Bağlantınızı kontrol edin.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Hata: ' + e.message);
+        }
+    };
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+
+<!-- Dış Kütüphaneler -->
+<script src="assets/js/bku_database.js"></script>
+<script src="assets/js/banned_ingredients.js"></script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<!-- Bootstrap JS (Opsiyonel) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

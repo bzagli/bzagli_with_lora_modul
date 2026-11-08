@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bahçe Yönetim Sistemi</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Özel Pastel Tasarım Sistemi -->
+    <link rel="stylesheet" href="assets/css/pastel_theme.css?v=1">
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body class="pastel-theme">
+
+<!-- Navigasyon Menüsü -->
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link active" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="fertilization.html"><i class="bi bi-flower1 me-1 text-success"></i>Gübreleme Yönetimi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                        <span class="badge rounded-pill bg-danger ms-1 d-none" id="navUnreadBadge" title="Okunmamış öneri ve mesajlar"></span>
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<header class="pastel-hero text-center">
+    <div class="container pastel-hero-content">
+        <h1 class="display-5 fw-bold mb-3" id="welcomeText">Hoş Geldiniz</h1>
+        <p class="lead mb-0" id="gardenSubText">
+            <span class="hero-badge">
+                <i class="bi bi-pin-map-fill"></i> Aktif Bahçe Paneli
+            </span>
+        </p>
+    </div>
+</header>
+
+<main class="container mb-5">
+    <div class="pt-5">
+        <!-- Okunmamış Yeni Öneri & Mesaj Uyarısı -->
+        <div id="unreadHomeAlert" class="alert alert-primary border-2 border-primary shadow-sm rounded-4 p-3 mb-4 d-none align-items-center justify-content-between flex-wrap gap-2" role="status">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm flex-shrink-0" style="width: 42px; height: 42px;">
+                    <i class="bi bi-bell-fill fs-5"></i>
+                </div>
+                <div class="fw-bold text-dark" id="unreadHomeAlertText"></div>
+            </div>
+            <a href="recommendations.html" class="btn btn-primary btn-sm rounded-pill px-3 fw-bold">
+                <i class="bi bi-chat-heart-fill me-1"></i>Görüntüle
+            </a>
+        </div>
+
+        <!-- Hızlı Arama Kutusu -->
+        <div class="pastel-search-box">
+            <i class="bi bi-search pastel-search-icon"></i>
+            <input type="text" id="moduleSearchInput" class="pastel-search-input" placeholder="Modül, rehber veya işlem ara... (örn: sulama, stok, karaleke)">
+        </div>
+
+        <!-- Pastel Kategori Filtre Hapları -->
+        <div class="pastel-filter-bar">
+            <button type="button" class="pastel-filter-pill active" data-filter="all">
+                <i class="bi bi-grid-fill"></i> Tümü
+            </button>
+            <button type="button" class="pastel-filter-pill" data-filter="zirai">
+                <i class="bi bi-flower1"></i> Zirai & Koruma
+            </button>
+            <button type="button" class="pastel-filter-pill" data-filter="sulama">
+                <i class="bi bi-droplet-half"></i> Sulama & İklim
+            </button>
+            <button type="button" class="pastel-filter-pill" data-filter="yonetim">
+                <i class="bi bi-bar-chart-line-fill"></i> Yönetim & Maliyet
+            </button>
+            <button type="button" class="pastel-filter-pill" data-filter="rehber">
+                <i class="bi bi-journal-bookmark-fill"></i> Rehberler & Analiz
+            </button>
+        </div>
+
+        <div class="row g-4 justify-content-center" id="moduleCardsContainer">
+            <!-- Bahçe İletişim & Tavsiye Portalı Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="yonetim zirai" data-keywords="iletişim tavsiye danışmanlık istişare öneri masası">
+                <div class="card nav-card pastel-card pastel-card-lavender">
+                    <span class="pastel-card-category">Danışmanlık & İstişare</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-chat-heart-fill"></i>
+                    </div>
+                    <h3 class="pastel-card-title">İletişim & Tavsiye Masası</h3>
+                    <p class="pastel-card-text">Bahçeler için zirai tavsiyeler, koruma & besleme önerileri ve interaktif danışmanlık istişaresi.</p>
+                    <a href="recommendations.html" class="btn btn-pastel btn-pastel-lavender">
+                        <span>Tavsiye Masasına Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Stok Yönetimi Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="yonetim" data-keywords="ürün stok zirai ilaç gübre envanter depo">
+                <div class="card nav-card pastel-card pastel-card-amber">
+                    <span class="pastel-card-category">Envanter & Girdi</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Ürün ve Stok</h3>
+                    <p class="pastel-card-text">Zirai ilaçlar, gübreler, stok hareketleri ve ambar envanterini anlık takip edin.</p>
+                    <a href="products.html" class="btn btn-pastel btn-pastel-amber">
+                        <span>Stoka Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Ajanda Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="yonetim" data-keywords="ajanda not takvim plan işler görevler">
+                <div class="card nav-card pastel-card pastel-card-terracotta">
+                    <span class="pastel-card-category">İş & Planlama</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-calendar3"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Ajanda Notları</h3>
+                    <p class="pastel-card-text">Bahçede planlanan sezonluk işleri, hatırlatıcıları ve takvim notlarını organize edin.</p>
+                    <a href="agenda.html" class="btn btn-pastel btn-pastel-terracotta">
+                        <span>Ajandaya Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Puantaj Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="yonetim" data-keywords="puantaj işçilik işçi yevmiye personel servis">
+                <div class="card nav-card pastel-card pastel-card-lavender">
+                    <span class="pastel-card-category">İşgücü & Servis</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-person-lines-fill"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Puantaj Takibi</h3>
+                    <p class="pastel-card-text">Günlük işçi mevcudu, çavuş takibi, servis masrafları ve işçilik giderlerini yönetin.</p>
+                    <a href="puantaj.html" class="btn btn-pastel btn-pastel-lavender">
+                        <span>Puantaja Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Cari & Maliyet Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="yonetim" data-keywords="cari maliyet hesap harcama gelir dekar gider bütçe">
+                <div class="card nav-card pastel-card pastel-card-terracotta">
+                    <span class="pastel-card-category">Finans & Maliyet</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-calculator"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Cari & Maliyet Hesabı</h3>
+                    <p class="pastel-card-text">Harcamalar, gelirler, tedarikçi carileri ve dekar bazlı detaylı maliyet analizi.</p>
+                    <a href="cari.html" class="btn btn-pastel btn-pastel-terracotta">
+                        <span>Hesaplamalara Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sulama ve Gübreleme Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="sulama" data-keywords="sulama gübreleme damlama vana saat kayıt">
+                <div class="card nav-card pastel-card pastel-card-slate">
+                    <span class="pastel-card-category">Besleme & Su</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-water"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Sulama & Gübreleme</h3>
+                    <p class="pastel-card-text">Damlama gübre reçeteleri, kuyu vanaları ve su tüketim kayıtlarını yönetin.</p>
+                    <a href="irrigation_fertilization_records.html" class="btn btn-pastel btn-pastel-slate">
+                        <span>Kayda Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Gübreleme Yönetimi Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="sulama" data-keywords="gübreleme bitki besleme fertigasyon damlama taban yaprak gübre dozaj">
+                <div class="card nav-card pastel-card pastel-card-emerald">
+                    <span class="pastel-card-category">Bitki Besleme</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-flower1"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Gübreleme Yönetimi</h3>
+                    <p class="pastel-card-text">Damlama, taban ve yapraktan besleme kayıtları, gübre stokları ve dozaj hesaplayıcı.</p>
+                    <a href="fertilization.html" class="btn btn-pastel btn-pastel-emerald">
+                        <span>Gübrelemeye Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sulama Programı Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="sulama" data-keywords="sulama programı shift vardiya parsel vana planlama">
+                <div class="card nav-card pastel-card pastel-card-slate">
+                    <span class="pastel-card-category">Planlama & Parsel</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-calendar-week"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Sulama Programı</h3>
+                    <p class="pastel-card-text">Haritadaki shiftlerin hangi gün kaç saat sulanacağını haftalık ve aylık planlayın.</p>
+                    <a href="irrigation_schedule.html" class="btn btn-pastel btn-pastel-slate">
+                        <span>Programlama Portalı</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- İlaçlama Kayıtları Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="zirai" data-keywords="ilaçlama kayıtları zirai uygulama geçmiş doz holder">
+                <div class="card nav-card pastel-card pastel-card-sage">
+                    <span class="pastel-card-category">Uygulama Geçmişi</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <h3 class="pastel-card-title">İlaçlama Kayıtları</h3>
+                    <p class="pastel-card-text">Parsel bazında gerçekleştirilen tüm pestisit ve koruma uygulama geçmişini görüntüleyin.</p>
+                    <a href="treatments.html" class="btn btn-pastel btn-pastel-sage">
+                        <span>Kayıtlara Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- İnteraktif Harita Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="sulama zirai" data-keywords="interaktif harita parsel çeşit blok topoğrafik uydu">
+                <div class="card nav-card pastel-card pastel-card-sage">
+                    <span class="pastel-card-category">CBS & Parsel Takibi</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-map"></i>
+                    </div>
+                    <h3 class="pastel-card-title">İnteraktif Harita</h3>
+                    <p class="pastel-card-text">Sulama parsellerini, çeşit bloklarını ve topoğrafik katmanları haritada interaktif yönetin.</p>
+                    <a href="garden_map.html" class="btn btn-pastel btn-pastel-sage">
+                        <span>Haritaya Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Meteoroloji İstasyonu Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="sulama" data-keywords="meteoroloji istasyon hava durumu don sıcaklık nem telemetri kutören bor">
+                <div class="card nav-card pastel-card pastel-card-slate">
+                    <span class="pastel-card-category">Canlı Telemetri</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-cloud-sun"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Meteoroloji İstasyonu</h3>
+                    <p class="pastel-card-text">Kutören ve Bor istasyonları canlı telemetri, 15 dk arşiv ve don riski takip sistemi.</p>
+                    <a href="meteo.html" class="btn btn-pastel btn-pastel-slate">
+                        <span>Meteorolojiye Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Analiz Yorumlama Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="rehber" data-keywords="analiz yorumlama toprak su yaprak laboratuvar besin">
+                <div class="card nav-card pastel-card pastel-card-amber">
+                    <span class="pastel-card-category">Toprak, Yaprak & Su</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-flask"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Analiz Yorumlama</h3>
+                    <p class="pastel-card-text">Laboratuvar analiz sonuçlarını sisteme girin, bilimsel besleme değerlendirmelerini alın.</p>
+                    <a href="analiz.html" class="btn btn-pastel btn-pastel-amber">
+                        <span>Analize Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Karaleke Rehberi Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="rehber zirai" data-keywords="karaleke elma venturia mantar hastalık rehber">
+                <div class="card nav-card pastel-card pastel-card-rose">
+                    <span class="pastel-card-category">Mantari Hastalık</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-shield-exclamation"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Karaleke</h3>
+                    <p class="pastel-card-text">Elma karaleke fenolojik risk modeli ve koruyucu/tedavi edici fungisit rehberi.</p>
+                    <a href="apple_scab_guide.html" class="btn btn-pastel btn-pastel-rose">
+                        <span>Rehbere Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- İç Kurdu Rehberi Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="rehber zirai" data-keywords="iç kurdu cydia elma zararlı böcek feromon tuzak gün derece">
+                <div class="card nav-card pastel-card pastel-card-rose">
+                    <span class="pastel-card-category">Zararlı Mücadelesi</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-bug"></i>
+                    </div>
+                    <h3 class="pastel-card-title">İç Kurdu</h3>
+                    <p class="pastel-card-text">Elma iç kurdu biyolojik mücadele, gün-derece tahmini ve insektisit zamanlaması.</p>
+                    <a href="codling_moth_guide.html" class="btn btn-pastel btn-pastel-rose">
+                        <span>Rehbere Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Şeftali Rehberi Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="rehber zirai" data-keywords="şeftali programı monilya filiz güvesi doğu meyve güvesi nektarin">
+                <div class="card nav-card pastel-card pastel-card-terracotta">
+                    <span class="pastel-card-category">Meyve Rehberi</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-tree"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Şeftali Programı</h3>
+                    <p class="pastel-card-text">Filiz ve doğu meyve güvesi, külleme ve monilya için fenolojik mücadele rehberi.</p>
+                    <a href="peach_management_guide.html" class="btn btn-pastel btn-pastel-terracotta">
+                        <span>Rehbere Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Kayısı BKÜ Programı Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="rehber zirai" data-keywords="kayısı bkü programı monilya çil yaprak delen frac irac rotasyon">
+                <div class="card nav-card pastel-card pastel-card-rose">
+                    <span class="pastel-card-category">Direnç & Rotasyon</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-shield-shaded"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Kayısı BKÜ Programı</h3>
+                    <p class="pastel-card-text">BBCH fenoloji, monilya, çil ve güve için FRAC/IRAC direnç rotasyon rehberi.</p>
+                    <a href="apricot_management_guide.html" class="btn btn-pastel btn-pastel-rose">
+                        <span>Rehbere Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- BKÜ Dashboard Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="zirai rehber" data-keywords="bkü dashboard aktif madde zirai ilaç ruhsat arama danışman">
+                <div class="card nav-card pastel-card pastel-card-slate">
+                    <span class="pastel-card-category">Dijital Asistan</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <h3 class="pastel-card-title">BKÜ Dashboard</h3>
+                    <p class="pastel-card-text">Meyve koruma, aktif madde takibi, canlı BKU veritabanı taraması ve tavsiye oluşturucu.</p>
+                    <a href="bku_dashboard.html" class="btn btn-pastel btn-pastel-slate">
+                        <span>Dashboard'a Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Karışım ve Nozul Asistanı Kartı -->
+            <div class="col-12 col-md-6 col-lg-4 module-item" data-category="zirai" data-keywords="karışım nozul asistanı holder tank sıra kalibrasyon meme">
+                <div class="card nav-card pastel-card pastel-card-slate">
+                    <span class="pastel-card-category">Holder & Kalibrasyon</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-droplet-half"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Karışım & Nozul Asistanı</h3>
+                    <p class="pastel-card-text">Holder tank karışım sırasını ve traktör hız/basınç nozul debisini hassas hesaplayın.</p>
+                    <a href="spray.html" class="btn btn-pastel btn-pastel-slate">
+                        <span>Asistana Git</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Zirai Takvimler Kartı -->
+            <div class="col-12 col-md-12 col-lg-8 module-item" data-category="zirai" data-keywords="yapraktan besleme koruma takvimleri elma kiraz kayısı şeftali foliar fenoloji">
+                <div class="card nav-card pastel-card pastel-card-sage">
+                    <span class="pastel-card-category">Fenolojik Programlar</span>
+                    <div class="pastel-icon-wrapper">
+                        <i class="bi bi-calendar3-range"></i>
+                    </div>
+                    <h3 class="pastel-card-title">Yapraktan Besleme & Koruma Takvimleri</h3>
+                    <p class="pastel-card-text mb-4">Elma, kiraz, kayısı ve şeftali için tomurcuk patlamasından hasat sonuna kadar bilimsel zirai takvimler.</p>
+                    <div class="row g-2 justify-content-center">
+                        <div class="col-6 col-md-3">
+                            <a href="apple.html" class="fruit-pill-btn fruit-pill-apple w-100">
+                                🍏 Elma Programı
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="cherry.html" class="fruit-pill-btn fruit-pill-cherry w-100">
+                                🍒 Kiraz Programı
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="apricot.html" class="fruit-pill-btn fruit-pill-apricot w-100">
+                                🍊 Kayısı Programı
+                            </a>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <a href="peach.html" class="fruit-pill-btn fruit-pill-peach w-100">
+                                🍑 Şeftali Programı
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const gardenName = localStorage.getItem('selected_garden_name');
+        const userRole = localStorage.getItem('userRole');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        // Sayfa gizleme kontrolü (Menü ve Kartlar) - Sadece Yönetici Olmayanlar İçin
+        if (userRole !== 'admin') {
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            allHidden.forEach(page => {
+                // Navigasyon linklerini bul ve gizle
+                const navLinks = document.querySelectorAll(`nav a[href*="${page}"], .navbar a[href*="${page}"]`);
+                navLinks.forEach(navLink => {
+                    const li = navLink.closest('li') || navLink.closest('.dropdown-item') || navLink;
+                    if (li) li.style.setProperty('display', 'none', 'important');
+                });
+                // Ana sayfadaki kartı bul ve gizle
+                const cardLinks = document.querySelectorAll(`main a[href*="${page}"]`);
+                cardLinks.forEach(cardLink => {
+                    const subCol = cardLink.closest('[class*="col-"]') || cardLink.closest('.card') || cardLink.parentElement;
+                    if (subCol) subCol.style.setProperty('display', 'none', 'important');
+                });
+            });
+
+            // Eğer tüm meyve takvimleri gizlendiyse zirai takvimler kartının kendisini de gizle
+            const fruitButtons = document.querySelectorAll('main a[href="apple.html"], main a[href="cherry.html"], main a[href="apricot.html"], main a[href="peach.html"]');
+            let anyFruitVisible = false;
+            fruitButtons.forEach(btn => {
+                const subCol = btn.closest('.col-6');
+                if (subCol && subCol.style.display !== 'none') {
+                    anyFruitVisible = true;
+                }
+            });
+            if (!anyFruitVisible && fruitButtons.length > 0) {
+                const calendarCard = fruitButtons[0].closest('.col-12');
+                if (calendarCard) calendarCard.style.display = 'none';
+            }
+        }
+
+        // Yetki kontrolü
+        if (userRole === 'admin') {
+            document.getElementById('adminUsers').style.display = 'block';
+            document.getElementById('adminLogs').style.display = 'block';
+        }
+
+        if (gardenName) {
+            const navBrandEl = document.getElementById('navbarGardenNameText');
+            if (navBrandEl) navBrandEl.innerText = gardenName;
+            document.getElementById('welcomeText').innerText = gardenName;
+            document.getElementById('gardenSubText').innerHTML = 
+                `<span class="hero-badge"><i class="bi bi-pin-map-fill"></i> ${gardenName} &bull; Aktif Bahçe Paneli</span>`;
+        }
+
+        // Filtreleme ve Arama Etkileşimleri
+        const filterPills = document.querySelectorAll('.pastel-filter-pill');
+        const searchInput = document.getElementById('moduleSearchInput');
+        const moduleItems = document.querySelectorAll('.module-item');
+
+        function applyFilters() {
+            const activePill = document.querySelector('.pastel-filter-pill.active');
+            const activeCategory = activePill ? activePill.dataset.filter : 'all';
+            const searchTerm = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+            moduleItems.forEach(item => {
+                // Eğer sistem tarafından gizlenmişse (yetki vs.) dokunma
+                if (item.style.display === 'none' && item.dataset.sysHidden === 'true') return;
+
+                const itemCategory = item.dataset.category || '';
+                const itemKeywords = (item.dataset.keywords || '') + ' ' + (item.innerText || '').toLowerCase();
+
+                const categoryMatch = (activeCategory === 'all') || itemCategory.includes(activeCategory);
+                const searchMatch = !searchTerm || itemKeywords.includes(searchTerm);
+
+                if (categoryMatch && searchMatch) {
+                    item.style.display = '';
+                    item.classList.remove('d-none');
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        filterPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                applyFilters();
+            });
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', applyFilters);
+        }
+    });
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+<script src="assets/js/unread_notifier.js?v=1"></script>
+<script>
+    // Okunmamış yeni öneri ve mesaj uyarısı
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (!window.BzUnread || window.location.protocol === 'file:') return;
+        try {
+            const res = await fetch('api/get_recommendations.php?t=' + Date.now());
+            if (!res.ok) return;
+            const recs = await res.json();
+            const result = BzUnread.compute(Array.isArray(recs) ? recs : []);
+            if (result.total === 0) return;
+
+            document.getElementById('unreadHomeAlertText').textContent = `Okunmamış ${BzUnread.summaryText(result)} sizi bekliyor.`;
+            const alertBox = document.getElementById('unreadHomeAlert');
+            alertBox.classList.remove('d-none');
+            alertBox.classList.add('d-flex');
+
+            const navBadge = document.getElementById('navUnreadBadge');
+            if (navBadge) {
+                navBadge.textContent = result.total;
+                navBadge.classList.remove('d-none');
+            }
+        } catch (e) { }
+    });
+</script>
+</body>
+</html>

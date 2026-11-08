@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elma İç Kurdu Mücadele Rehberi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .hero-guide { background: linear-gradient(135deg, #dc3545 0%, #a52834 100%); color: white; padding: 50px 0; border-radius: 0 0 40px 40px; }
+        .stage-card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: transform 0.3s ease; height: 100%; border-top: 5px solid #dc3545; }
+        .stage-card:hover { transform: translateY(-10px); }
+        .irac-badge { font-weight: bold; padding: 5px 10px; border-radius: 8px; font-size: 0.85rem; }
+        .note-box { border-left: 5px solid #ffc107; background: #fff9e6; padding: 15px; border-radius: 10px; margin-top: 20px; height: 100%; }
+        .recommendation-box { border-left: 5px solid #6c757d; background: #e9ecef; padding: 15px; border-radius: 10px; margin-top: 20px; }
+        .navbar { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item active" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<header class="hero-guide text-center mb-5 shadow">
+    <div class="container">
+        <h1 class="display-5 fw-bold">Elma İç Kurdu (Cydia pomonella)</h1>
+        <p class="lead opacity-75">Biyolojik Döngü ve Fenoloji Temelli Zararlı Yönetimi</p>
+        <span class="badge bg-light text-danger px-3 py-2">Expert Program - IRAC Uyumlu</span>
+    </div>
+</header>
+
+<main class="container mb-5">
+    <!-- Gün-Derece Takip Cetveli -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden border-start border-4 border-danger">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-thermometer-half text-danger me-2"></i>Gün-Derece (Degree-Day) Takip Cetveli</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small">İç kurdu gelişimini tahmin etmek için 10°C alt eşik sıcaklığı baz alınarak hesaplanan birikimli gün-derece (DD) değerleridir (Biofix/İlk uçuş sonrası).</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Birikimli Gün-Derece (DD)</th>
+                                    <th>Biyolojik Aşama</th>
+                                    <th>Zararlı Faaliyeti</th>
+                                    <th>Mücadele Stratejisi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">0 DD</td>
+                                    <td><span class="badge bg-secondary">Biofix</span></td>
+                                    <td>Tuzaklarda ilk ergin kelebeklerin görülmesi.</td>
+                                    <td>Gün-derece biriktirmeye başla</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">50 - 75 DD</td>
+                                    <td>Yumurta Bırakma</td>
+                                    <td>Kelebekler yumurta bırakmaya başlar.</td>
+                                    <td>Ovisid (Yumurta etkili) uygulama</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">120 - 150 DD</td>
+                                    <td><strong>Larva Çıkışı</strong></td>
+                                    <td>İlk larvalar yumurtadan çıkar ve meyveye girer.</td>
+                                    <td class="text-danger fw-bold">1. İlaçlama Zamanı</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">250 - 300 DD</td>
+                                    <td>Zirve Çıkış</td>
+                                    <td>Larva çıkışının %50'ye ulaştığı en yoğun dönem.</td>
+                                    <td class="text-danger fw-bold">2. İlaçlama Zamanı</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">550 - 600 DD</td>
+                                    <td>2. Nesil Ergin Uçuşu</td>
+                                    <td>2. Nesil kelebeklerin tuzaklarda görülmeye başlanması.</td>
+                                    <td>2. Nesil için Gün-Derece takibine başla</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">600 - 675 DD</td>
+                                    <td>2. Nesil Yumurta Bırakma</td>
+                                    <td>2. Nesil kelebekler yumurta bırakmaya başlar.</td>
+                                    <td>Ovisid (Yumurta etkili) uygulama</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">670 - 750 DD</td>
+                                    <td><strong>2. Nesil Larva Çıkışı</strong></td>
+                                    <td>2. Nesil larvalar yumurtadan çıkar ve meyveye girer.</td>
+                                    <td class="text-danger fw-bold">3. İlaçlama Zamanı</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">800 - 900 DD</td>
+                                    <td>2. Nesil Zirve Çıkış</td>
+                                    <td>2. Nesil larva çıkışının %50'ye ulaştığı en yoğun dönem.</td>
+                                    <td class="text-danger fw-bold">4. İlaçlama Zamanı</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <!-- 1. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-danger mb-2"><i class="bi bi-1-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">1. Aşama: 1. Döl Başlangıcı</h5>
+                <p class="text-muted small">Taç Yaprak Dökümü / Uzun Süreli Koruma</p>
+                <hr>
+                <span class="badge bg-danger irac-badge mb-2">IRAC 28</span>
+                <p class="mb-2"><strong>Diamid (Temel Taş)</strong></p>
+                <p class="small text-secondary">İlk larvaların meyveye girişini engellemek için uzun süreli koruma sağlar.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage1_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <!-- 2. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-primary mb-2"><i class="bi bi-2-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">2. Aşama: Ara Tampon</h5>
+                <p class="text-muted small">1. Döl Devamı / Yumurta Öldürücü</p>
+                <hr>
+                <span class="badge bg-primary irac-badge mb-2">IRAC 4A</span>
+                <p class="mb-2"><strong>Neonicotinoid (Ovisid)</strong></p>
+                <p class="small text-secondary">1. uygulamadan 10-12 gün sonra. Yumurtaları ve yaprak bitlerini hedefler.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage2_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <!-- 3. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-warning mb-2"><i class="bi bi-3-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">3. Aşama: 2. İlaçlama</h5>
+                <p class="text-muted small">Meyve Büyüme / Güçlü Larvisid</p>
+                <hr>
+                <span class="badge bg-warning text-dark irac-badge mb-2">IRAC 5</span>
+                <p class="mb-2"><strong>Spinosyn</strong></p>
+                <p class="small text-secondary">En güçlü larva öldürücülerden biridir. Mükemmel koruma sağlar.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage3_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <!-- 4. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-info mb-2"><i class="bi bi-4-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">4. Aşama: Direnç Kırıcı</h5>
+                <p class="text-muted small">2. Döl Öncesi / Sinir Sistemi Blokajı</p>
+                <hr>
+                <span class="badge bg-info irac-badge mb-2">IRAC 6</span>
+                <p class="mb-2"><strong>Avermectin</strong></p>
+                <p class="small text-secondary">3. uygulamadan 12-14 gün sonra. Larvayı anında felç eder.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage4_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <!-- 5. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-dark mb-2"><i class="bi bi-5-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">5. Aşama: 3. İlaçlama</h5>
+                <p class="text-muted small">Olgunlaşma / Meyve Giriş Kontrolü</p>
+                <hr>
+                <span class="badge bg-dark irac-badge mb-2">IRAC 22A</span>
+                <p class="mb-2"><strong>Oxadiazine</strong></p>
+                <p class="small text-secondary">Meyve olgunlaşırken girişleri durdurur. Direnç rotasyonu için elzemdir.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage5_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <!-- 6. Evre -->
+        <div class="col-md-4 mb-3">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-2"><i class="bi bi-6-circle-fill fs-3"></i></div>
+                <h5 class="fw-bold">6. Aşama: Final (Hasat Öncesi)</h5>
+                <p class="text-muted small">Son Koruma / Ani Etki</p>
+                <hr>
+                <span class="badge bg-success irac-badge mb-2">IRAC 3A</span>
+                <p class="mb-2"><strong>Pyrethroid</strong></p>
+                <p class="small text-secondary">Hasata 10-15 gün kala. Bekleme süresi kısa (3 gün) ve vurucu etki.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">Önerilen Ürünler:</small></div>
+                <ul id="stage6_new" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stratejik Mücadele Özeti -->
+    <div class="row mt-4 mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-4 overflow-hidden border-start border-4 border-primary">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-list-check text-primary me-2"></i>İç Kurdu "Sıfır Hata" Stratejik Mücadele Özeti</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sıra / Dönem</th>
+                                    <th>Etkili Madde</th>
+                                    <th>Grup (IRAC)</th>
+                                    <th>Önerilen Ürünler (İsim & Doz)</th>
+                                    <th>Neden Ekledik? (Stratejik Açıklama)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>1. Döl Başlangıcı</td><td><strong>Chlorantraniliprole</strong></td><td>28</td><td id="summary_stage1"></td><td>Uzun süre koruma sağlayan temel taş ilaçtır.</td></tr>
+                                <tr><td>Ara Tampon</td><td><strong>Acetamiprid</strong></td><td>4A</td><td id="summary_stage2"></td><td>Hem yaprak bitlerini vurur hem de yumurta/taze larvaları mide yoluyla imha eder.</td></tr>
+                                <tr><td>2. İlaçlama</td><td><strong>Spinetoram</strong></td><td>5</td><td id="summary_stage3"></td><td>Piyasadaki en güçlü ve hızlı sonuç veren larva öldürücülerden biridir.</td></tr>
+                                <tr><td>Direnç Kırıcı</td><td><strong>Emamectin Benzoate</strong></td><td>6</td><td id="summary_stage4"></td><td>Spinetoram sonrası direnci kırmak için mükemmel bir geçiş; sinir sistemini felç eder.</td></tr>
+                                <tr><td>3. İlaçlama</td><td><strong>Indoxacarb</strong></td><td>22A</td><td id="summary_stage5"></td><td>Hasata yaklaşırken meyve kabuğu üzerindeki giriş denemelerini kesin olarak durdurur.</td></tr>
+                                <tr><td>Final / Hasat</td><td><strong>Deltamethrin</strong></td><td>3A</td><td id="summary_stage6"></td><td>Hasat öncesi son uçuşlar için ani etkili (knock-down), ekonomik ve etkili bitiricidir.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3 p-3 bg-light rounded-3">
+                        <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Bu 6 ürünlük zincir, hem yumurta (ovisit) hem larva (larvisit) dönemlerini kapsayarak popülasyonun "kaçma" şansını ortadan kaldırır.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kritik Uygulama Notları -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 rounded-4 shadow-sm bg-dark text-white p-4">
+                <h5 class="fw-bold text-warning mb-3"><i class="bi bi-shield-lock-fill me-2"></i>Kritik Uygulama ve Teknik Notlar</h5>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-info">Kritik Dozajlar (100L Su)</h6>
+                        <ul class="small mb-0 opacity-75">
+                            <li>Acetamiprid: 20-25 g</li>
+                            <li>Emamectin Benzoate: 30-40 g</li>
+                            <li>Deltamethrin: 30-50 ml</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-info">Karışabilirlik Uyarısı</h6>
+                        <p class="small mb-0 opacity-75">Emamectin ve Deltamethrin ürünlerini alkali karakterli (Bordo bulamacı vb.) ilaçlarla kesinlikle karıştırmayınız.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="fw-bold text-info">Sıcaklık Hassasiyeti</h6>
+                        <p class="small mb-0 opacity-75">Deltamethrin 25°C üzeri sıcaklıkta etkisini kaybeder. Mutlaka akşam serinliğinde uygulama yapınız.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prensipler -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h4 class="fw-bold mb-4 text-dark"><i class="bi bi-info-square-fill text-danger me-2"></i>Kritik Uygulama Prensipleri</h4>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="note-box" style="border-left-color: #dc3545; background: #fff5f5;">
+                        <h6><strong>Direnç Kırma (Rotasyon)</strong></h6>
+                        <p class="small mb-0">İç kurdu direnç gelişimine çok müsaittir. Bir nesil içinde kullanılan grubu (Örn: Diamid) bir sonraki nesilde mutlaka farklı bir grupla (Örn: Spinosyn) değiştirin.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="note-box" style="border-left-color: #0dcaf0; background: #eefbff;">
+                        <h6><strong>Zamanlama (Cinsel Çekici Tuzaklar)</strong></h6>
+                        <p class="small mb-0">İlaçlamayı takvime göre değil, feromon tuzaklardaki kelebek sayımı ve etkili sıcaklık toplamları verisine göre yapın.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="note-box" style="border-left-color: #198754; background: #f1fcf6;">
+                        <h6><strong>Kalite ve Bekleme Süresi (PHI)</strong></h6>
+                        <p class="small mb-0">Hasat öncesi uygulamalarda ilacın SİHA (Son İlaçlama ile Hasat Arasındaki Süre) değerine titizlikle uyun.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadGuideProducts);
+
+    async function loadGuideProducts() {
+        const userRole = localStorage.getItem('userRole');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        // Sayfa gizleme kontrolü
+        if (permissions.hidden) {
+            permissions.hidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) navLink.parentElement.style.display = 'none';
+            });
+        }
+
+        if (userRole === 'admin') {
+            document.getElementById('adminUsers').style.display = 'block';
+            document.getElementById('adminLogs').style.display = 'block';
+        }
+        try {
+            const res = await fetch('api/get_reference.php');
+            const references = await res.json();
+            
+            const mapping = {
+                diamid: ['chlorantraniliprole', 'cyantraniliprole', 'flubendiamide'], // Grup 28
+                spinosyn: ['spinetoram'], // Grup 5
+                neonic: ['acetamiprid'], // Grup 4A
+                avermectin: ['emamectin'], // Grup 6
+                oxadiazine: ['indoxacarb'], // Grup 22A
+                pyrethroid: ['lambda cyhalothrin', 'deltamethrin'] // Grup 3A
+            };
+
+            const iracInfo = {
+                'chlorantraniliprole': 'Grup 28',
+                'cyantraniliprole': 'Grup 28',
+                'flubendiamide': 'Grup 28',
+                'spinetoram': 'Grup 5',
+                'acetamiprid': 'Grup 4A',
+                'emamectin': 'Grup 6',
+                'indoxacarb': 'Grup 22A',
+                'lambda cyhalothrin': 'Grup 3A',
+                'deltamethrin': 'Grup 3A',
+                'phosmet': 'Grup 1B'
+            };
+
+            const findProducts = (keys) => {
+                const q = "iç kurdu";
+                return references.filter(r => {
+                    const targetLower = (r.target || "").toLocaleLowerCase('tr-TR');
+                    const ingredientLower = (r.active_ingredient || "").toLowerCase();
+                    return targetLower.includes(q) && 
+                           keys.some(k => ingredientLower.includes(k.toLowerCase()));
+                });
+            };
+
+            const renderSummary = (id, prods) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (prods.length > 0) {
+                        const uniqueMap = new Map();
+                        prods.forEach(p => { 
+                            const prodName = (p.name || "").trim();
+                            if (!uniqueMap.has(prodName)) uniqueMap.set(prodName, p); 
+                        });
+                        
+                        el.innerHTML = Array.from(uniqueMap.values()).map(p => 
+                            `<div class="small fw-bold text-dark">${p.name} <span class="text-danger">(${p.dosage})</span></div>`
+                        ).join('');
+                        } else if (id === 'summary_stage5') {
+                            el.innerHTML = '<div class="small fw-bold text-dark">Megaunt <span class="text-danger">(45 ml)</span></div>';
+                    } else {
+                        el.innerHTML = '<span class="text-muted small">Uygun ürün bulunamadı</span>';
+                    }
+                }
+            };
+
+            const render = (id, prods) => {
+                const el = document.getElementById(id);
+                if (prods.length > 0) {
+                    const uniqueMap = new Map();
+                    // Aynı isimli ürünleri tekilleştiriyoruz
+                    prods.forEach(p => { 
+                        const prodName = (p.name || "").trim();
+                        if (!uniqueMap.has(prodName)) uniqueMap.set(prodName, p); 
+                    });
+                    
+                    el.innerHTML = Array.from(uniqueMap.values()).map(p => {
+                        const group = getGroup(p.active_ingredient);
+                        const groupBadge = group ? `<span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">${group}</span>` : '';
+                        return `
+                        <li class="mb-2">
+                            <i class="bi bi-shield-check text-danger me-1"></i>
+                            <strong class="text-dark">${p.name}</strong> 
+                            ${groupBadge}
+                            <div class="small text-muted ps-4" style="line-height: 1.2;">
+                                <span class="text-danger">Doz: ${p.dosage}</span>
+                            </div>
+                        </li>`;
+                    }).join('');
+                } else if (id === 'stage5_new') {
+                    el.innerHTML = `
+                    <li class="mb-2">
+                        <i class="bi bi-shield-check text-danger me-1"></i>
+                        <strong class="text-dark">Megaunt</strong> 
+                        <span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">Grup 22A</span>
+                        <div class="small text-muted ps-4" style="line-height: 1.2;">
+                            <span class="text-danger">Doz: 45 ml</span>
+                        </div>
+                    </li>`;
+                } else {
+                    el.innerHTML = '<li class="text-muted opacity-50"><i>Uygun ürün bulunamadı</i></li>';
+                }
+            };
+
+            function getGroup(active) {
+                if (!active) return '';
+                const lowerActive = active.toLowerCase();
+                for (const [key, group] of Object.entries(iracInfo)) {
+                    if (lowerActive.includes(key)) return group;
+                }
+                return '';
+            }
+
+            const stage1Prods = findProducts(mapping.diamid);
+            const stage2Prods = findProducts(mapping.neonic);
+            const stage3Prods = findProducts(mapping.spinosyn);
+            const stage4Prods = findProducts(mapping.avermectin);
+            const stage5Prods = findProducts(mapping.oxadiazine);
+            const stage6Prods = findProducts(mapping.pyrethroid);
+
+            render('stage1_new', stage1Prods);
+            render('stage2_new', stage2Prods);
+            render('stage3_new', stage3Prods);
+            render('stage4_new', stage4Prods);
+            render('stage5_new', stage5Prods);
+            render('stage6_new', stage6Prods);
+
+            renderSummary('summary_stage1', stage1Prods);
+            renderSummary('summary_stage2', stage2Prods);
+            renderSummary('summary_stage3', stage3Prods);
+            renderSummary('summary_stage4', stage4Prods);
+            renderSummary('summary_stage5', stage5Prods);
+            renderSummary('summary_stage6', stage6Prods);
+
+        } catch (e) { console.error("Rehber ürünleri yüklenemedi", e); }
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

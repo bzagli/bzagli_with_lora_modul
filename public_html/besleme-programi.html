@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meyve Besleme Programı</title>
+<meta name="description" content="Elma, şeftali, nektarin, kayısı ve kiraz için gelişim dönemi bazında profesyonel besleme programı.">
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --text: #1f2421;
+    --muted: #5c645f;
+    --line: #e2e0d8;
+    --head: #f0efe8;
+    --accent: #2f6b3a;
+    --accent-soft: #e5f1e6;
+    --warn: #8a5a00;
+    --warn-soft: #fbf1dc;
+    --sum: #f4f8f4;
+    --elma: #b8322a;
+    --seftali: #d9772b;
+    --kayisi: #c99a1d;
+    --kiraz: #8c1d3f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151816; --surface: #1e2220; --text: #e6e8e4; --muted: #a2aaa4;
+      --line: #333935; --head: #262b28; --accent: #7cc48a; --accent-soft: #21342590;
+      --warn: #f0c060; --warn-soft: #3a301a; --sum: #1f2a22;
+      --elma: #ec6b62; --seftali: #f0a060; --kayisi: #e6c35a; --kiraz: #e07094;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151816; --surface: #1e2220; --text: #e6e8e4; --muted: #a2aaa4;
+    --line: #333935; --head: #262b28; --accent: #7cc48a; --accent-soft: #21342590;
+    --warn: #f0c060; --warn-soft: #3a301a; --sum: #1f2a22;
+    --elma: #ec6b62; --seftali: #f0a060; --kayisi: #e6c35a; --kiraz: #e07094;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  header.hero {
+    background: var(--accent); color: #fff; padding: 40px 16px 32px;
+  }
+  :root[data-theme="dark"] header.hero { color: #0f1a12; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) header.hero { color: #0f1a12; } }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  header.hero h1 { margin: 0 0 6px; font-size: 30px; line-height: 1.2; }
+  header.hero p { margin: 0; opacity: .92; max-width: 760px; }
+  header.hero .meta { margin-top: 14px; font-size: 13px; opacity: .85; }
+  nav.toc {
+    position: sticky; top: 0; z-index: 10; background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.toc .wrap { display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px; scrollbar-width: thin; }
+  nav.toc a {
+    flex: none; text-decoration: none; color: var(--text); font-size: 14px;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap;
+  }
+  nav.toc a:hover { background: var(--head); }
+  nav.toc a .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  main { padding: 24px 0 48px; }
+  section {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 24px; margin-bottom: 24px;
+  }
+  section.crop { border-top: 5px solid var(--c, var(--accent)); }
+  h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.3; }
+  h3 { margin: 24px 0 8px; font-size: 16px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  p { margin: 8px 0; }
+  .lead { color: var(--muted); max-width: 780px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; margin: 16px 0 4px; }
+  .kpi { background: var(--head); border-radius: 10px; padding: 10px 12px; }
+  .kpi b { display: block; font-size: 22px; line-height: 1.2; color: var(--c, var(--accent)); }
+  .kpi span { font-size: 12px; color: var(--muted); }
+  .table-wrap { overflow-x: auto; margin: 8px 0; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--head); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.dash { color: var(--muted); text-align: right; }
+  tr.sum td { background: var(--sum); font-style: italic; }
+  tr.sum td:first-child { font-weight: 600; }
+  td.tot, th.tot { font-weight: 700; }
+  tr.sep td { border-top: 2px solid var(--line); }
+  .note {
+    background: var(--warn-soft); border-left: 4px solid var(--warn);
+    padding: 10px 14px; border-radius: 6px; margin: 12px 0;
+  }
+  .note.info { background: var(--accent-soft); border-left-color: var(--accent); }
+  ul, ol { padding-left: 22px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) {
+    .grid2 { grid-template-columns: 1fr; }
+    section { padding: 18px 14px; }
+    header.hero h1 { font-size: 24px; }
+  }
+  .toolbar { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .toolbar button {
+    font: inherit; font-size: 13px; cursor: pointer; border-radius: 999px; padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,.6); background: transparent; color: inherit;
+  }
+  .muted { color: var(--muted); font-size: 14px; }
+  .picker { background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 4px 16px 16px; margin: 16px 0; }
+  .picker h3 { margin-top: 12px; color: var(--accent); }
+  .picker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
+  .picker label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+  .picker select {
+    font: inherit; font-size: 14px; font-weight: 400; padding: 7px 8px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  }
+  .picker-actions { margin-top: 12px; }
+  .picker-actions button {
+    font: inherit; font-size: 13px; cursor: pointer; border-radius: 999px; padding: 5px 12px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  }
+  #selNotes .note { margin: 10px 0 0; font-size: 14px; }
+  td small, th small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+  td.over { color: var(--warn); font-weight: 700; }
+  .fert-sel { font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; padding: 0 16px 40px; }
+  @media print {
+    :root { --bg: #fff; --surface: #fff; --text: #000; --head: #eee; --line: #bbb; }
+    body { font-size: 11px; }
+    nav.toc, .toolbar { display: none; }
+    header.hero { background: none; color: #000; padding: 0 0 12px; border-bottom: 2px solid #000; }
+    section { border: 0; border-radius: 0; padding: 12px 0; break-inside: auto; }
+    section.crop { break-before: page; border-top: 4px solid var(--c); }
+    .table-wrap { overflow: visible; }
+    tr { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>Meyve Bahçeleri Besleme Programı</h1>
+    <p>Elma, şeftali, nektarin, kayısı ve kiraz için gelişim dönemi bazında fertigasyon, toprak ve yaprak gübrelemesi programı. Verim çağındaki damla sulamalı bahçeler esas alınmıştır; tüm dozlar <strong>kg/dekar</strong> cinsindendir.</p>
+    <div class="meta">Hazırlanma: Ekim 2026 · Bölge referansı: Orta Anadolu / geçit bölgeleri</div>
+    <div class="toolbar">
+      <button type="button" onclick="window.print()">Yazdır / PDF</button>
+      <button type="button" id="themeBtn">Açık / koyu tema</button>
+    </div>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Bölümler">
+  <div class="wrap">
+    <a href="#genel">Genel ilkeler</a>
+    <a href="#uyarlama">Uyarlama</a>
+    <a href="#elma"><span class="dot" style="background:var(--elma)"></span>Elma</a>
+    <a href="#seftali"><span class="dot" style="background:var(--seftali)"></span>Şeftali / Nektarin</a>
+    <a href="#kayisi"><span class="dot" style="background:var(--kayisi)"></span>Kayısı</a>
+    <a href="#kiraz"><span class="dot" style="background:var(--kiraz)"></span>Kiraz</a>
+    <a href="#analiz">Yaprak analizi</a>
+    <a href="#toprak">Toprak programı</a>
+    <a href="#kurallar">Uygulama kuralları</a>
+    <a href="#takvim">Yıllık takvim</a>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <div class="note">
+    <strong>Önemli:</strong> Bu program ortalama koşullar için bir başlangıç programıdır. Kesin dozları toprak, yaprak ve sulama suyu analizi ile hedef verime göre <a href="#uyarlama">Uyarlama</a> bölümündeki kurallarla düzeltin. Analiz sonucu olmadan yüksek dozlara çıkmayın.
+  </div>
+
+  <!-- 1. GENEL -->
+  <section id="genel">
+    <h2>1. Genel ilkeler</h2>
+    <p class="lead">Her besin, ağacın en çok ihtiyaç duyduğu dönemde verilir. Programın sabit tuttuğu şey gübre miktarı değil, <b>her dönemde verilecek saf besin</b> (N, P₂O₅, K₂O, CaO, MgO) miktarıdır; hangi gübreyle verileceğini aşağıdan seçebilirsiniz.</p>
+
+    <div id="secim" class="picker">
+      <h3>Gübre seçimi</h3>
+      <p class="muted">Seçiminiz dört türün fertigasyon tablolarını otomatik yeniden hesaplar ve bu tarayıcıda hatırlanır.</p>
+      <div class="picker-grid">
+        <label>Fosfor kaynağı
+          <select data-role="P">
+            <option value="MAP">MAP (12-61-0)</option>
+            <option value="MKP">MKP (0-52-34)</option>
+            <option value="PA">Fosforik asit (%85)</option>
+            <option value="UP">Üre fosfat (17-44-0)</option>
+          </select>
+        </label>
+        <label>Azot kaynağı (kalan N)
+          <select data-role="N">
+            <option value="AS">Amonyum sülfat (%21 N)</option>
+            <option value="URE">Üre (%46 N)</option>
+            <option value="AN">Amonyum nitrat (%33 N)</option>
+            <option value="UAN">UAN-32 sıvı (%32 N)</option>
+          </select>
+        </label>
+        <label>Potasyum kaynağı
+          <select data-role="K">
+            <option value="MIX">Potasyum nitrat + potasyum sülfat</option>
+            <option value="SOP">Sadece potasyum sülfat</option>
+            <option value="PN">Sadece potasyum nitrat</option>
+            <option value="KTS">Potasyum tiyosülfat (sıvı)</option>
+          </select>
+        </label>
+        <label>Kalsiyum kaynağı
+          <select data-role="Ca">
+            <option value="CN">Kalsiyum nitrat (granül)</option>
+            <option value="CNL">Sıvı kalsiyum nitrat</option>
+          </select>
+        </label>
+        <label>Magnezyum kaynağı
+          <select data-role="Mg">
+            <option value="MGS">Magnezyum sülfat</option>
+            <option value="MGN">Magnezyum nitrat</option>
+          </select>
+        </label>
+        <label>Gösterim
+          <select data-role="view">
+            <option value="period">Dönem toplamı (kg/da)</option>
+            <option value="week">Haftalık (kg/da/hafta)</option>
+          </select>
+        </label>
+      </div>
+      <div class="picker-actions"><button type="button" id="resetSel">Önerilen seçime dön</button></div>
+      <div id="selNotes"></div>
+    </div>
+
+    <h3>Gübre kataloğu</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Gübre</th><th>İçerik</th><th>Tank</th><th>Ne zaman tercih edilir</th></tr></thead>
+      <tbody id="catalog"></tbody>
+    </table></div>
+    <ul>
+      <li><b>Azot:</b> İlkbaharda sürgün ve meyve tutumu için, hasat sonrasında gelecek yılın çiçek gözleri için verilir. Olgunlaşmada kesilir; aksi hâlde renk, sertlik ve depolama bozulur.</li>
+      <li><b>Fosfor:</b> Ağırlıklı olarak sezon başında verilir.</li>
+      <li><b>Potasyum:</b> Meyve büyümesi ve olgunlaşmada en yüksek seviyeye çıkar.</li>
+      <li><b>Kalsiyum:</b> Meyveye ilk 6–8 haftada (hücre bölünmesi) girer; bu dönem kaçırılırsa telafi edilemez.</li>
+      <li><b>Mikro elementler:</b> Bor ve çinko meyve tutumu için kritiktir; demir, kireçli topraklarda en yaygın eksikliktir.</li>
+      <li><b>Organik madde:</b> 2–3 yılda bir 2–4 ton/da yanmış çiftlik gübresi veya kompost sonbaharda taç izdüşümüne verilir. Kireçli ve organik maddesi düşük topraklarda yılda 2–4 kg/da hümik/fulvik asit fertigasyonu faydalıdır.</li>
+    </ul>
+  </section>
+
+  <!-- 2. UYARLAMA -->
+  <section id="uyarlama">
+    <h2>2. Programı bahçenize uyarlama</h2>
+    <p class="lead">Kesin dozlar her bahçe için analiz sonuçları, hedef verim ve anaca göre aşağıdaki kurallarla düzeltilir.</p>
+
+    <h3>Analizler</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Analiz</th><th>Zaman</th><th>Yöntem</th></tr></thead>
+      <tbody>
+        <tr><td><b>Toprak</b></td><td>2–3 yılda bir, hasat sonrası / kış</td><td>Taç izdüşümünden 0–30 cm ve 30–60 cm ayrı ayrı; 15–20 noktadan karışık örnek</td></tr>
+        <tr><td><b>Yaprak</b></td><td>Her yıl, Temmuz ortası – Ağustos ortası</td><td>Her yönden, o yılın sürgünlerinin orta kısmından, sapıyla 50–100 yaprak</td></tr>
+        <tr><td><b>Sulama suyu</b></td><td>Yılda bir</td><td>EC, pH, bikarbonat, Ca, Mg, Na, Cl, B</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Düzeltme kuralları</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Durum</th><th>Düzeltme</th></tr></thead>
+      <tbody>
+        <tr><td>Hedef verim tablodakinden farklı</td><td>Her ±1 ton/da fark için N ve K₂O'yu ±%10–15 değiştirin</td></tr>
+        <tr><td>Yaprak N'si referansın üstünde / ağaç çok kuvvetli</td><td>Yıllık N'yi %20–30 azaltın, ilkbahar payından kesin</td></tr>
+        <tr><td>Yaprak N'si referansın altında / zayıf sürgün</td><td>Yıllık N'yi %15–20 artırın</td></tr>
+        <tr><td>Toprakta yarayışlı P yüksek (Olsen &gt; 25 ppm)</td><td>MAP'ı yarıya indirin veya 1 yıl kesin</td></tr>
+        <tr><td>Toprakta yarayışlı K yüksek (&gt; 300 ppm)</td><td>SOP'u %30–50 azaltın</td></tr>
+        <tr><td>Kumlu / hafif toprak</td><td>Toplam doz aynı; haftalık uygulamayı 2–3'e bölün</td></tr>
+        <tr><td>Kireçli toprak (CaCO₃ &gt; %10, pH &gt; 7,8)</td><td>AS'yi koruyun, suyu asitlendirin, demir şelatı uygulayın</td></tr>
+        <tr><td>Kuvvetli anaç (MM111, çöğür, Mahaleb, Colt vb.)</td><td>N'yi %15–20 azaltın</td></tr>
+        <tr><td>Dolu, don vb. nedeniyle ürün kaybı</td><td>O yılın N ve K'sını %30–40 azaltın, hasat sonrası N'yi koruyun</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Genç bahçeler</h3>
+    <p>Olgun bahçe dozunun aşağıdaki oranı uygulanır; sürgünlerin odunlaşarak kışa girmesi için azot Haziran sonunda kesilir.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Bahçe yaşı</th><th class="n">1. yıl</th><th class="n">2. yıl</th><th class="n">3. yıl</th><th class="n">4. yıl</th><th class="n">5. yıl +</th></tr></thead>
+      <tbody><tr><td>Olgun bahçe dozunun oranı</td><td class="n">%20–25</td><td class="n">%35–40</td><td class="n">%55–60</td><td class="n">%75–80</td><td class="n">%100</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <!-- 3. ELMA -->
+  <section id="elma" class="crop" style="--c: var(--elma)">
+    <h2>3. Elma</h2>
+    <p class="lead">Verim çağında, yarı bodur / bodur anaçlı (M9, MM106) bahçe, <b>hedef verim 5 ton/da</b>.</p>
+    <div class="kpis">
+      <div class="kpi"><b>12</b><span>N kg/da</span></div>
+      <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+      <div class="kpi"><b>18</b><span>K₂O kg/da</span></div>
+      <div class="kpi"><b>8</b><span>CaO kg/da</span></div>
+      <div class="kpi"><b>3</b><span>MgO kg/da</span></div>
+    </div>
+
+    <h3>Dönemler</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık tarih</th><th>Süre</th></tr></thead>
+      <tbody>
+        <tr><td><b>D1</b></td><td>Uyanma – pembe tomurcuk</td><td>Mart sonu – Nisan başı</td><td>2 hafta</td></tr>
+        <tr><td><b>D2</b></td><td>Çiçeklenme – meyve tutumu</td><td>Nisan</td><td>3 hafta</td></tr>
+        <tr><td><b>D3</b></td><td>Hücre bölünmesi (meyve 10–40 mm)</td><td>Mayıs – Haziran ortası</td><td>6 hafta</td></tr>
+        <tr><td><b>D4</b></td><td>Hızlı meyve büyümesi</td><td>Haziran ortası – Ağustos başı</td><td>7 hafta</td></tr>
+        <tr><td><b>D5</b></td><td>Olgunlaşma – hasat</td><td>Ağustos – Eylül</td><td>4–5 hafta</td></tr>
+        <tr><td><b>D6</b></td><td>Hasat sonrası (yaprak dökümüne kadar)</td><td>Eylül sonu – Ekim</td><td>4 hafta</td></tr>
+      </tbody>
+    </table></div>
+    <p>Sıcak bölgelerde tarihleri 2–3 hafta öne, yüksek rakımda geriye kaydırın. Takvimi değil, fenolojiyi takip edin.</p>
+
+    <h3 class="fert-title">Fertigasyon programı</h3>
+    <div class="fert" data-crop="elma"></div>
+    <p>Her dönemin dozunu hafta sayısına bölüp haftada 1–2 kez verin; haftalık miktarlar için üstteki <a href="#secim">gösterim</a> seçeneğini “Haftalık” yapın.</p>
+    <div class="note">Kırmızı çeşitlerde (Red Delicious, Gala, Fuji) D4'teki kalsiyum nitratı yarıya indirip eksik kalsiyumu yapraktan tamamlayın; geç azot renklenmeyi bozar.</div>
+
+    <h3>Yaprak gübrelemesi</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L suya)</th><th>Amaç</th></tr></thead>
+      <tbody>
+        <tr><td>Göz kabarması (dormant)</td><td>Çinko sülfat (%22 Zn)</td><td>1–1,5 kg</td><td>Çinko eksikliği; sadece dormant dönemde</td></tr>
+        <tr><td>Pembe tomurcuk</td><td>Bor (sodyum oktaborat, %20,5 B)</td><td>100–150 g</td><td>Polen çimlenmesi, meyve tutumu</td></tr>
+        <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100–150 g + 150–200 ml</td><td>Meyve tutumu, yaprak gelişimi</td></tr>
+        <tr><td>Taç yaprak dökümünden itibaren 10–14 gün arayla 6–8 kez</td><td>Kalsiyum klorür (%77–80)</td><td>İlk 2 uygulama 250 g, sonra 400–500 g</td><td>Acı benek, sertlik, depolama ömrü</td></tr>
+        <tr><td>Haziran – Temmuz (gerekirse)</td><td>Magnezyum sülfat</td><td>1–1,5 kg</td><td>Mg eksikliği görülürse 2–3 kez</td></tr>
+        <tr><td>Hasattan 4–6 hafta önce</td><td>Kalsiyum klorür</td><td>500 g</td><td>Depolama kalitesi (2 kez)</td></tr>
+        <tr><td>Hasat sonrası, yapraklar yeşilken</td><td>Üre (düşük biüretli) + bor</td><td>3–4 kg + 150–200 g</td><td>Çiçek gözü beslenmesi; karaleke inokulumunu azaltır</td></tr>
+        <tr><td>Yaprak dökümünün %50'si</td><td>Çinko sülfat</td><td>0,5–1 kg</td><td>Gelecek yıl için çinko depolanması</td></tr>
+      </tbody>
+    </table></div>
+    <p>Kireçli topraklarda demir eksikliği için uyanma ile Mayıs arasında 2 kez <b>Fe-EDDHA (%6, orto-orto en az %4), 0,5–1 kg/da</b> fertigasyonla verilir.</p>
+
+    <h3>Kritik noktalar</h3>
+    <ul>
+      <li>Acı benek riski yüksek çeşitlerde (Golden, Granny Smith, Braeburn, Jonagold) kalsiyum klorürü 8–10 kez uygulayın, seyreltmeyi aşırı yapmayın.</li>
+      <li>Meyvede fazla potasyum acı beneği artırır; yaprakta K &gt; %1,8 ise potasyum sülfatı azaltın.</li>
+      <li>Aşırı ürün yükünde yaprak N ve K hızla düşer; yaprak analizini mutlaka yapın.</li>
+    </ul>
+  </section>
+
+  <!-- 4. ŞEFTALİ -->
+  <section id="seftali" class="crop" style="--c: var(--seftali)">
+    <h2>4. Şeftali ve nektarin</h2>
+    <p class="lead">Verim çağında, orta mevsim çeşitli (hasat Temmuz – Ağustos) bahçe, <b>hedef verim 3,5 ton/da</b>. Nektarin aynı programı alır; kabuğu çatlamaya ve ezilmeye daha hassas olduğundan kalsiyuma daha fazla dikkat edilir.</p>
+    <div class="kpis">
+      <div class="kpi"><b>13</b><span>N kg/da</span></div>
+      <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+      <div class="kpi"><b>18</b><span>K₂O kg/da</span></div>
+      <div class="kpi"><b>6</b><span>CaO kg/da</span></div>
+      <div class="kpi"><b>3</b><span>MgO kg/da</span></div>
+    </div>
+
+    <h3>Dönemler</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık tarih</th><th>Süre</th></tr></thead>
+      <tbody>
+        <tr><td><b>D1</b></td><td>Uyanma – çiçeklenme</td><td>Mart</td><td>3 hafta</td></tr>
+        <tr><td><b>D2</b></td><td>Meyve tutumu – hücre bölünmesi</td><td>Nisan – Mayıs başı</td><td>4 hafta</td></tr>
+        <tr><td><b>D3</b></td><td>Çekirdek sertleşmesi</td><td>Mayıs – Haziran başı</td><td>4 hafta</td></tr>
+        <tr><td><b>D4</b></td><td>Son hızlı meyve büyümesi – hasat</td><td>Haziran – Temmuz/Ağustos</td><td>5–6 hafta</td></tr>
+        <tr><td><b>D5</b></td><td>Hasat sonrası</td><td>Ağustos – Ekim</td><td>6–8 hafta</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="fert-title">Fertigasyon programı</h3>
+    <div class="fert" data-crop="seftali"></div>
+    <div class="note info">
+      <b>Erkenci çeşitler</b> (hasat Mayıs sonu – Haziran): D2–D4 tek bir 6–7 haftalık döneme sıkışır. Hasat öncesi N'yi %10 azaltın; hasat sonrası N payını %30'a, K payını %20'ye çıkarın.<br>
+      <b>Geççi çeşitler</b> (hasat Eylül): D4'ü 8–9 haftaya yayın, potasyum sülfatı 4 kg artırın.
+    </div>
+
+    <h3>Yaprak gübrelemesi</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L suya)</th><th>Amaç</th></tr></thead>
+      <tbody>
+        <tr><td>Pembe tomurcuk</td><td>Bor (%20,5 B)</td><td>100 g</td><td>Meyve tutumu</td></tr>
+        <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100 g + 150–200 ml</td><td>Meyve tutumu, sürgün gelişimi</td></tr>
+        <tr><td>Meyve tutumundan sonra 10–14 gün arayla 3–4 kez</td><td>Kalsiyum klorür veya kalsiyum şelatı</td><td>250–400 g / etikete göre</td><td>Sertlik; nektarinde çatlama ve yara</td></tr>
+        <tr><td>Hasattan 3–4 hafta önce</td><td>Potasyum nitrat veya potasyum sülfat</td><td>1 kg</td><td>Renk, şeker (2 kez)</td></tr>
+        <tr><td>Hasat sonrası</td><td>Üre + bor + çinko şelatı</td><td>2–3 kg + 150 g + 100 g</td><td>Çiçek gözü beslenmesi</td></tr>
+        <tr><td>Yaprak dökümünün %25–50'si</td><td>Çinko sülfat</td><td>0,5 kg</td><td>Çinko depolanması</td></tr>
+      </tbody>
+    </table></div>
+    <p>Şeftali kireçli topraklarda kloroza çok hassastır: uyanmadan itibaren 3–4 hafta arayla 2–3 kez <b>Fe-EDDHA %6, 0,7–1,5 kg/da</b> verin; şiddetli klorozda yapraktan Fe-DTPA ile destekleyin.</p>
+
+    <h3>Kritik noktalar</h3>
+    <ul>
+      <li>Fazla azot aşırı sürgün, gölgelenme, renk kaybı, monilya ve yaprak kıvırcıklığı hassasiyeti getirir. Yaz budaması ihtiyacı artıyorsa N fazladır.</li>
+      <li>Çekirdek sertleşmesinde (D3) düzensiz veya aşırı sulama çekirdek çatlamasına yol açabilir.</li>
+      <li>Hasattan sonra sulama ve beslemeyi kesmeyin; gelecek yılın verimi bu dönemde belirlenir.</li>
+    </ul>
+  </section>
+
+  <!-- 5. KAYISI -->
+  <section id="kayisi" class="crop" style="--c: var(--kayisi)">
+    <h2>5. Kayısı</h2>
+    <p class="lead">Verim çağında, <b>hedef verim 2,5 ton/da</b> (hasat Haziran – Temmuz). Kuru kayısı amaçlı (Hacıhaliloğlu vb.) bahçelerde K ve Ca kurutma kalitesi için önemlidir.</p>
+    <div class="kpis">
+      <div class="kpi"><b>10</b><span>N kg/da</span></div>
+      <div class="kpi"><b>5</b><span>P₂O₅ kg/da</span></div>
+      <div class="kpi"><b>15</b><span>K₂O kg/da</span></div>
+      <div class="kpi"><b>5</b><span>CaO kg/da</span></div>
+      <div class="kpi"><b>2,5</b><span>MgO kg/da</span></div>
+    </div>
+
+    <h3>Dönemler</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık tarih</th><th>Süre</th></tr></thead>
+      <tbody>
+        <tr><td><b>D1</b></td><td>Uyanma – çiçeklenme</td><td>Şubat sonu – Mart</td><td>3 hafta</td></tr>
+        <tr><td><b>D2</b></td><td>Meyve tutumu – hücre bölünmesi</td><td>Nisan</td><td>4 hafta</td></tr>
+        <tr><td><b>D3</b></td><td>Çekirdek sertleşmesi</td><td>Mayıs</td><td>3–4 hafta</td></tr>
+        <tr><td><b>D4</b></td><td>Son meyve büyümesi – hasat</td><td>Mayıs sonu – Haziran/Temmuz</td><td>4–5 hafta</td></tr>
+        <tr><td><b>D5</b></td><td>Hasat sonrası</td><td>Temmuz – Eylül</td><td>6–8 hafta</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="fert-title">Fertigasyon programı</h3>
+    <div class="fert" data-crop="kayisi"></div>
+    <div class="note">Kayısı çok erken çiçeklendiğinden D1 azotunu don riski geçene kadar yarı dozla başlatın. Don nedeniyle ürün kaybı olursa D2–D4'teki N ve K'yı %40 azaltın, D5'i aynen uygulayın.</div>
+
+    <h3>Yaprak gübrelemesi</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L suya)</th><th>Amaç</th></tr></thead>
+      <tbody>
+        <tr><td>Beyaz / pembe tomurcuk</td><td>Bor (%20,5 B)</td><td>100 g</td><td>Meyve tutumu</td></tr>
+        <tr><td>Taç yaprak dökümü</td><td>Çinko şelatı + amino asit</td><td>100 g + 150 ml</td><td>Meyve tutumu</td></tr>
+        <tr><td>Meyve tutumundan sonra 2–3 kez</td><td>Kalsiyum şelatı veya kalsiyum klorür</td><td>Etikete göre / 250–300 g</td><td>Sertlik, raf ömrü</td></tr>
+        <tr><td>Hasattan 2–3 hafta önce</td><td>Potasyum sülfat</td><td>1 kg</td><td>Renk, kuru madde</td></tr>
+        <tr><td>Hasat sonrası</td><td>Üre + çinko şelatı</td><td>2 kg + 100 g</td><td>Çiçek gözü beslenmesi</td></tr>
+        <tr><td>Sonbahar, yapraklar yeşilken</td><td>Bor (%20,5 B)</td><td>150–200 g</td><td>Gelecek yılın çiçek kalitesi; kayısıda en etkili bor uygulaması</td></tr>
+      </tbody>
+    </table></div>
+    <p>Demir eksikliğinde şeftalideki gibi <b>Fe-EDDHA, 0,5–1 kg/da, 2 kez</b> verilir.</p>
+
+    <h3>Kritik noktalar</h3>
+    <ul>
+      <li>Kayısı fazla azota çok duyarlıdır: zamklanma, dal kurusu, monilya ve bakteriyel kanser riski artar. Yaprak N'si üst sınıra yakınsa N'yi hemen azaltın.</li>
+      <li>Temmuz sonrası N vermeyin; odunlaşmamış sürgünlerde kış zararı artar.</li>
+      <li>Malatya gibi kuru tarım veya salma sulama yapılan bölgelerde <a href="#toprak">toprak programını</a> uygulayın.</li>
+    </ul>
+  </section>
+
+  <!-- 6. KİRAZ -->
+  <section id="kiraz" class="crop" style="--c: var(--kiraz)">
+    <h2>6. Kiraz</h2>
+    <p class="lead">Verim çağında (0900 Ziraat vb.), <b>hedef verim 1,2 ton/da</b> (hasat Mayıs sonu – Haziran). Meyve gelişimi yaklaşık 60 gün sürdüğünden beslemenin önemli kısmı sezon başında ve hasat sonrasında yapılır.</p>
+    <div class="kpis">
+      <div class="kpi"><b>8</b><span>N kg/da</span></div>
+      <div class="kpi"><b>4</b><span>P₂O₅ kg/da</span></div>
+      <div class="kpi"><b>12</b><span>K₂O kg/da</span></div>
+      <div class="kpi"><b>5</b><span>CaO kg/da</span></div>
+      <div class="kpi"><b>2</b><span>MgO kg/da</span></div>
+    </div>
+
+    <h3>Dönemler</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Dönem</th><th>Fenoloji</th><th>Yaklaşık tarih</th><th>Süre</th></tr></thead>
+      <tbody>
+        <tr><td><b>D1</b></td><td>Uyanma – çiçeklenme</td><td>Mart – Nisan başı</td><td>3 hafta</td></tr>
+        <tr><td><b>D2</b></td><td>Meyve tutumu – çekirdek sertleşmesi</td><td>Nisan – Mayıs başı</td><td>4 hafta</td></tr>
+        <tr><td><b>D3</b></td><td>Son meyve büyümesi – hasat (saman sarısı → olgunluk)</td><td>Mayıs – Haziran</td><td>4 hafta</td></tr>
+        <tr><td><b>D4</b></td><td>Hasat sonrası (çiçek gözü farklılaşması)</td><td>Haziran sonu – Eylül</td><td>8–10 hafta</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="fert-title">Fertigasyon programı</h3>
+    <div class="fert" data-crop="kiraz"></div>
+    <div class="note info">Azotun %30'u hasat sonrasında verilir: kirazda gelecek yılın çiçek gözleri hasattan hemen sonra oluşur. Bu dönemde beslenmeyen ağaçta ertesi yıl verim ve meyve iriliği düşer.</div>
+
+    <h3>Yaprak gübrelemesi</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Zaman</th><th>Uygulama</th><th>Doz (100 L suya)</th><th>Amaç</th></tr></thead>
+      <tbody>
+        <tr><td>Beyaz tomurcuk</td><td>Bor (%20,5 B) + çinko şelatı</td><td>100–150 g + 100 g</td><td>Meyve tutumu</td></tr>
+        <tr><td>Taç yaprak dökümü</td><td>Amino asit + çinko şelatı</td><td>150–200 ml + 100 g</td><td>Meyve tutumu, iri meyve</td></tr>
+        <tr><td>Saman sarısından hasada 5–7 gün arayla 3–5 kez</td><td>Kalsiyum klorür</td><td>300–500 g</td><td>Meyve çatlamasını azaltma, sertlik, raf ömrü</td></tr>
+        <tr><td>Hasattan 2–3 hafta önce</td><td>Potasyum sülfat</td><td>1 kg</td><td>Renk, şeker (1–2 kez)</td></tr>
+        <tr><td>Hasat sonrası (Temmuz – Ağustos)</td><td>Üre + bor</td><td>2–3 kg + 150 g</td><td>Çiçek gözü kalitesi</td></tr>
+        <tr><td>Sonbahar, yapraklar yeşilken (Eylül – Ekim)</td><td>Bor</td><td>200 g</td><td>Gelecek yıl meyve tutumu</td></tr>
+        <tr><td>Yaprak dökümünün %25–50'si</td><td>Çinko sülfat</td><td>0,5 kg</td><td>Çinko depolanması</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Kritik noktalar</h3>
+    <ul>
+      <li><b>Meyve çatlaması:</b> Kalsiyuma ek olarak hasattan önceki 3 haftada sulamayı düzenli tutun, ani ve fazla sulamadan kaçının. Yağış riski yüksek bölgelerde en etkili çözüm örtü sistemidir.</li>
+      <li>Hasat öncesi fazla azot meyveyi yumuşatır ve raf ömrünü kısaltır; D3'te N'yi tablodakinin üzerine çıkarmayın.</li>
+      <li>Kiraz kökleri su birikmesine ve tuza çok hassastır; fertigasyonda EC'yi 1,5 mS/cm'nin altında tutun.</li>
+    </ul>
+  </section>
+
+  <!-- 7. YAPRAK ANALİZİ -->
+  <section id="analiz">
+    <h2>7. Yaprak analizi referans değerleri</h2>
+    <p class="lead">Örnekler Temmuz ortası – Ağustos ortasında, o yılın sürgünlerinin orta kısmından sapıyla alınır. Değerler kuru madde esasınadır ve laboratuvarın kendi referanslarıyla birlikte yorumlanır.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Element</th><th class="n">Elma</th><th class="n">Şeftali / Nektarin</th><th class="n">Kayısı</th><th class="n">Kiraz</th></tr></thead>
+      <tbody>
+        <tr><td>N (%)</td><td class="n">2,0 – 2,6</td><td class="n">2,8 – 3,5</td><td class="n">2,2 – 2,8</td><td class="n">2,2 – 2,8</td></tr>
+        <tr><td>P (%)</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td><td class="n">0,15 – 0,30</td></tr>
+        <tr><td>K (%)</td><td class="n">1,3 – 1,8</td><td class="n">1,5 – 2,5</td><td class="n">2,0 – 3,5</td><td class="n">1,6 – 2,5</td></tr>
+        <tr><td>Ca (%)</td><td class="n">1,2 – 2,0</td><td class="n">1,5 – 2,5</td><td class="n">1,5 – 3,0</td><td class="n">1,4 – 2,4</td></tr>
+        <tr><td>Mg (%)</td><td class="n">0,25 – 0,40</td><td class="n">0,25 – 0,60</td><td class="n">0,25 – 0,60</td><td class="n">0,30 – 0,70</td></tr>
+        <tr><td>Fe (ppm)</td><td class="n">50 – 250</td><td class="n">60 – 250</td><td class="n">60 – 250</td><td class="n">60 – 250</td></tr>
+        <tr><td>Zn (ppm)</td><td class="n">20 – 50</td><td class="n">20 – 50</td><td class="n">20 – 50</td><td class="n">15 – 50</td></tr>
+        <tr><td>Mn (ppm)</td><td class="n">25 – 150</td><td class="n">20 – 150</td><td class="n">20 – 150</td><td class="n">20 – 150</td></tr>
+        <tr><td>B (ppm)</td><td class="n">25 – 50</td><td class="n">25 – 50</td><td class="n">25 – 60</td><td class="n">25 – 50</td></tr>
+        <tr><td>Cu (ppm)</td><td class="n">6 – 25</td><td class="n">6 – 20</td><td class="n">6 – 20</td><td class="n">6 – 20</td></tr>
+      </tbody>
+    </table></div>
+    <p>Kırmızı ve depolanacak elma çeşitlerinde N için 2,0 – 2,4, yeşil/sarı ve taze satış çeşitlerinde 2,2 – 2,6 hedeflenir. Kireçli topraklarda yaprak Fe normal çıktığı hâlde kloroz görülebilir; görsel belirtiyi esas alın.</p>
+  </section>
+
+  <!-- 8. TOPRAK -->
+  <section id="toprak">
+    <h2>8. Damla sulama olmayan bahçeler için toprak programı</h2>
+    <p class="lead">Salma, yağmurlama veya kuru bahçelerde aynı yıllık besin miktarları granül gübrelerle dört uygulamada verilir. Gübre taç izdüşümüne bant hâlinde serpilir, yüzeysel karıştırılır ve hemen sulanır (veya yağış öncesi verilir).</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Uygulama zamanı</th><th class="n">N</th><th class="n">P₂O₅</th><th class="n">K₂O</th><th>Önerilen gübre</th></tr></thead>
+      <tbody>
+        <tr><td>Kış sonu / uyanmadan 2–3 hafta önce</td><td class="n">%30</td><td class="n">%100</td><td class="n">%40</td><td>Kompoze (15-15-15, 20-20-0 vb.) + potasyum sülfat</td></tr>
+        <tr><td>Çiçek dökümü sonrası</td><td class="n">%30</td><td class="dash">–</td><td class="dash">–</td><td>Kalsiyum amonyum nitrat (%26 N) veya amonyum sülfat</td></tr>
+        <tr><td>Meyve büyümesi (Haziran)</td><td class="n">%15</td><td class="dash">–</td><td class="n">%60</td><td>Potasyum sülfat + az miktarda amonyum nitrat</td></tr>
+        <tr><td>Hasat sonrası</td><td class="n">%25</td><td class="dash">–</td><td class="dash">–</td><td>Amonyum sülfat</td></tr>
+      </tbody>
+    </table></div>
+    <p>Kirazda hasat sonrası N payı %30–35, elmada %15–20 alınır; elmada aradaki fark ilkbahar uygulamalarına eklenir.</p>
+    <div class="grid2">
+      <div>
+        <h3>Örnek — elma, 5 ton/da</h3>
+        <ol>
+          <li>Şubat sonu: 15-15-15 → 33 kg/da + potasyum sülfat → 4 kg/da</li>
+          <li>Çiçek dökümü: kalsiyum amonyum nitrat (%26 N) → 12 kg/da</li>
+          <li>Haziran: potasyum sülfat → 22 kg/da + amonyum nitrat (%33 N) → 5 kg/da</li>
+          <li>Hasat sonrası: amonyum sülfat → 10 kg/da</li>
+        </ol>
+        <p>Toplam ≈ 11,8 N – 5 P₂O₅ – 18 K₂O kg/da.</p>
+      </div>
+      <div>
+        <div class="note info" style="margin-top:24px">Granül programda kalsiyum ve mikro elementler her türün <b>yaprak gübrelemesi</b> tablosuyla verilir; bu bahçelerde yaprak gübrelemesi daha da önemlidir.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. KURALLAR -->
+  <section id="kurallar">
+    <h2>9. Uygulama kuralları</h2>
+    <div class="grid2">
+      <div>
+        <h3>Fertigasyon</h3>
+        <ol>
+          <li><b>Sulama sırası:</b> Sürenin ilk 1/4'ü sadece su, ortadaki 1/2'si gübreli su, son 1/4'ü sadece su (hatların yıkanması).</li>
+          <li><b>İki tank zorunludur.</b> A tankı: kalsiyum nitrat (+ potasyum nitrat, demir şelatı). B tankı: fosfatlar (MAP, MKP, fosforik asit), sülfatlar (AS, SOP, MgS), potasyum nitrat. Kalsiyum, fosfat veya sülfatla aynı tankta asla karıştırılmaz.</li>
+          <li><b>EC:</b> Damlatıcıdan çıkan suda 1,0 – 1,8 mS/cm (kiraz ve kayısıda alt sınır). Sulama suyunun EC'si yüksekse dozu daha fazla haftaya bölün.</li>
+          <li><b>pH:</b> Gübreli su 5,5 – 6,5 olmalıdır. Sert sularda nitrik veya fosforik asitle asitlendirin; fosforik asidin P₂O₅'ini MAP'tan düşün.</li>
+          <li><b>Çözündürme:</b> Gübreyi suya yavaş yavaş verin; asidi her zaman suya ekleyin, suyu aside değil.</li>
+          <li><b>Sezon sonu:</b> Hatları asitle yıkayın (pH 2–3, 30–60 dk), ardından bol suyla durulayın.</li>
+        </ol>
+      </div>
+      <div>
+        <h3>Yaprak gübrelemesi</h3>
+        <ul>
+          <li>Sabah erken veya akşamüstü, sıcaklık 25 °C'nin altında, rüzgârsız ve yaprak kuruyken uygulayın. Kalsiyum klorür ve üre 28 °C üzerinde yakıcıdır.</li>
+          <li>Çiçek açıkken bor dışında yaprak gübresi vermeyin.</li>
+          <li>Yeni karışımı önce küçük bir kapta deneyin. Kalsiyumu fosfat, sülfat ve bakırlı ilaçlarla; yaprak gübresini yağ ve kükürtle karıştırmayın.</li>
+          <li>Yeni ürün veya dozu önce birkaç ağaçta deneyip 3–5 gün yanıklık kontrolü yapın.</li>
+          <li>Programdaki dozlar saf tuzlar içindir; ticari üründe etiket dozu esas alınır.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. TAKVİM -->
+  <section id="takvim">
+    <h2>10. Yıllık takvim ve kayıt</h2>
+    <p class="lead">Tarihler Orta Anadolu / geçit bölgesi ortalamasıdır; fenolojiye göre kaydırın.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Ay</th><th>Elma</th><th>Şeftali / Nektarin</th><th>Kayısı</th><th>Kiraz</th></tr></thead>
+      <tbody>
+        <tr><td><b>Ocak – Şubat</b></td><td>Toprak analizi, organik gübre</td><td>Toprak analizi</td><td>Şubat sonu D1 (don riskine dikkat)</td><td>Toprak analizi</td></tr>
+        <tr><td><b>Mart</b></td><td>Dormant çinko; Mart sonu D1</td><td>D1: AS + MAP + MgS, Fe-EDDHA</td><td>D1, çiçeklenme; bor</td><td>D1: AS + MAP + KN, Fe-EDDHA</td></tr>
+        <tr><td><b>Nisan</b></td><td>Pembe tomurcukta bor; D2; kalsiyum yaprak programı başlar</td><td>D2: KN + PN; pembe tomurcukta bor</td><td>D2: KN + PN; çinko</td><td>Beyaz tomurcukta bor; D2</td></tr>
+        <tr><td><b>Mayıs</b></td><td>D3: kalsiyum nitratın en yoğun dönemi</td><td>D3: çekirdek sertleşmesi, dengeli sulama</td><td>D3 → D4</td><td>D3: saman sarısında kalsiyum klorür</td></tr>
+        <tr><td><b>Haziran</b></td><td>D3 → D4: PN + SOP</td><td>D4: SOP ağırlıklı; yapraktan potasyum</td><td>D4: hasat</td><td>Hasat → D4: AS</td></tr>
+        <tr><td><b>Temmuz</b></td><td>D4; <b>yaprak analizi</b></td><td>Hasat; <b>yaprak analizi</b></td><td>D5; <b>yaprak analizi</b></td><td>D4; <b>yaprak analizi</b>; üre + bor</td></tr>
+        <tr><td><b>Ağustos</b></td><td>D5: sadece SOP, N kesilir; hasat öncesi CaCl₂</td><td>D5: AS</td><td>D5</td><td>D4</td></tr>
+        <tr><td><b>Eylül</b></td><td>Hasat; D6 başlar</td><td>D5; üre + bor + çinko</td><td>Sonbahar boru</td><td>Sonbahar boru</td></tr>
+        <tr><td><b>Ekim</b></td><td>D6: AS + üre + bor; yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td><td>Yaprak dökümünde çinko</td></tr>
+        <tr><td><b>Kasım – Aralık</b></td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td><td>Organik gübre, hat bakımı</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Her parsel için kaydedin</h3>
+    <ul>
+      <li>Uygulama tarihi, fenolojik dönem, gübre, miktar (kg/da), uygulama şekli</li>
+      <li>Sulama süresi, EC ve pH ölçümleri</li>
+      <li>Toprak, yaprak ve su analiz sonuçları</li>
+      <li>Verim (ton/da), meyve iriliği, kalite sorunları (acı benek, çatlama, renk, yumuşama)</li>
+      <li>Gözlemler: kloroz, aşırı / zayıf sürgün, don, dolu</li>
+    </ul>
+    <p>Yıl sonunda yaprak analizi, gerçekleşen verim ve kalite sorunları birlikte değerlendirilerek ertesi yılın dozları <a href="#uyarlama">Uyarlama</a> bölümündeki kurallarla güncellenir.</p>
+  </section>
+
+</main>
+
+<footer>
+  Bu program genel bir başvuru belgesidir. Kesin dozları analiz sonuçlarına ve bölgenizdeki ziraat mühendisinin değerlendirmesine göre belirleyin.
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    try { var t = localStorage.getItem('theme'); if (t) root.setAttribute('data-theme', t); } catch (e) {}
+    document.getElementById('themeBtn').addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme') ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var next = cur === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('theme', next); } catch (e) {}
+    });
+  })();
+
+  // Gübre seçimi ve fertigasyon hesaplaması.
+  // Her dönemin saf besin hedefi, önerilen gübre setiyle kurulan programdan türetilir;
+  // seçilen gübrelerle aynı besin miktarını verecek ürün dozları yeniden hesaplanır.
+  (function () {
+    // N, P = P2O5, K = K2O, Ca = CaO, Mg = MgO (oran); d = sıvılar için yoğunluk (kg/L)
+    var F = {
+      AS:  { ad: 'Amonyum sülfat', icerik: '%21 N, %24 S', tank: 'B', N: .21,
+             not: 'Kireçli topraklarda pH düşürücü etki; kükürt de verir.' },
+      URE: { ad: 'Üre', icerik: '%46 N', tank: 'A veya B', N: .46,
+             not: 'En ekonomik azot. Amid formundadır; toprakta nitrata dönüşmesi birkaç gün sürer.' },
+      AN:  { ad: 'Amonyum nitrat', icerik: '%33 N', tank: 'A veya B', N: .33,
+             not: 'Yarısı nitrat, hızlı etki. Satış ve depolama kurallarına uyun.' },
+      UAN: { ad: 'UAN-32 (üre amonyum nitrat çözeltisi)', icerik: '%32 N · 1,32 kg/L', tank: 'A veya B', N: .32, d: 1.32,
+             not: 'Sıvı, çözme gerektirmez; dozaj pompasıyla doğrudan verilebilir.' },
+      MAP: { ad: 'MAP', icerik: '12-61-0', tank: 'B', N: .12, P: .61,
+             not: 'Standart fosfor kaynağı; hafif asidik.' },
+      MKP: { ad: 'MKP', icerik: '0-52-34', tank: 'B', P: .52, K: .34,
+             not: 'Azot istenmeyen dönemler için. Verdiği potasyum, potasyum ihtiyacından düşülür.' },
+      PA:  { ad: 'Fosforik asit (%85)', icerik: '%61,5 P₂O₅ · 1,69 kg/L', tank: 'B veya ayrı asit tankı', P: .615, d: 1.69,
+             not: 'Sert / bikarbonatlı sularda hem fosfor hem asitlendirme sağlar, damlatıcıyı temiz tutar. Aşındırıcıdır; eldiven ve gözlükle çalışın.' },
+      UP:  { ad: 'Üre fosfat', icerik: '17-44-0', tank: 'B', N: .17, P: .44,
+             not: 'Çok asidiktir (çözelti pH ≈ 2). Kireçli toprak ve sert suda tıkanmayı önler, ek asit ihtiyacını azaltır.' },
+      CN:  { ad: 'Kalsiyum nitrat', icerik: '%15,5 N, %26,5 CaO', tank: 'A', N: .155, Ca: .265,
+             not: 'Standart kalsiyum kaynağı.' },
+      CNL: { ad: 'Sıvı kalsiyum nitrat', icerik: '≈ %9 N, %16,5 CaO · ≈ 1,5 kg/L', tank: 'A', N: .09, Ca: .165, d: 1.5,
+             not: 'Çözme gerektirmez. İçerik markaya göre değişir; etiket değeri farklıysa dozu orantılı düzeltin.' },
+      PN:  { ad: 'Potasyum nitrat', icerik: '13-0-46', tank: 'A veya B', N: .13, K: .46,
+             not: 'Meyve büyümesi döneminde potasyum + nitrat azotu.' },
+      SOP: { ad: 'Potasyum sülfat', icerik: '%50 K₂O, %18 S', tank: 'B', K: .50,
+             not: 'Azotsuz potasyum; olgunlaşma dönemi. Çözünürlüğü düşüktür, soğuk suda yavaş çözülür.' },
+      KTS: { ad: 'Potasyum tiyosülfat', icerik: '%25 K₂O, %17 S · 1,46 kg/L', tank: 'B (asitsiz)', K: .25, d: 1.46,
+             not: 'Sıvı, azotsuz. pH 6\'nın altında bozunur: fosforik asit veya üre fosfatla aynı anda vermeyin.' },
+      MGS: { ad: 'Magnezyum sülfat', icerik: '%16 MgO, %13 S', tank: 'B', Mg: .16,
+             not: 'Standart magnezyum kaynağı.' },
+      MGN: { ad: 'Magnezyum nitrat', icerik: '%11 N, %15,7 MgO', tank: 'A veya B', N: .11, Mg: .157,
+             not: 'Sülfat istenmediğinde veya kalsiyumla aynı tanka girecekse.' }
+    };
+    var BESIN = [['N', 'N'], ['P', 'P₂O₅'], ['K', 'K₂O'], ['Ca', 'CaO'], ['Mg', 'MgO']];
+
+    // Önerilen gübre setiyle program (kg/da, dönem toplamı) ve dönem süreleri (hafta)
+    var PLAN = {
+      elma:    { hafta: [2, 3, 6, 7, 4, 4], AS: [8, 6, 0, 0, 0, 8], MAP: [3, 3, 2, 0, 0, 0], CN: [0, 8, 14, 8, 0, 0],
+                 PN: [0, 0, 6, 8, 0, 0], SOP: [0, 0, 4, 8, 10, 2], MGS: [0, 5, 6, 6, 0, 2] },
+      seftali: { hafta: [3, 4, 4, 5, 7], AS: [10, 8, 0, 0, 12], MAP: [4, 3, 1, 0, 0], CN: [0, 8, 8, 6, 0],
+                 PN: [0, 4, 6, 8, 0], SOP: [0, 0, 4, 12, 4], MGS: [4, 5, 5, 3, 2] },
+      kayisi:  { hafta: [3, 4, 3, 4, 7], AS: [8, 4, 0, 0, 8], MAP: [4, 3, 1, 0, 0], CN: [0, 7, 7, 5, 0],
+                 PN: [0, 3, 5, 6, 0], SOP: [0, 0, 3, 10, 4], MGS: [3, 4, 4, 3, 2] },
+      kiraz:   { hafta: [3, 4, 4, 9], AS: [5, 0, 0, 9], MAP: [3, 2, 0, 1.5], CN: [3, 8, 6, 2],
+                 PN: [0, 4, 6, 0], SOP: [0, 0, 9, 6], MGS: [3, 3.5, 3, 3] }
+    };
+    var VARSAYILAN = { P: 'MAP', N: 'AS', K: 'MIX', Ca: 'CN', Mg: 'MGS', view: 'period' };
+
+    function besinVer(urunler, i) {
+      var t = { N: 0, P: 0, K: 0, Ca: 0, Mg: 0 };
+      Object.keys(urunler).forEach(function (u) {
+        BESIN.forEach(function (b) { t[b[0]] += urunler[u][i] * (F[u][b[0]] || 0); });
+      });
+      return t;
+    }
+
+    function hesapla(plan, sec) {
+      var n = plan.hafta.length, urunler = {}, fazlaN = [];
+      var sira = [sec.N, sec.P, sec.Ca, 'PN', 'SOP', 'KTS', sec.Mg];
+      sira.forEach(function (u) { urunler[u] = new Array(n).fill(0); });
+      var onerilen = { AS: plan.AS, MAP: plan.MAP, CN: plan.CN, PN: plan.PN, SOP: plan.SOP, MGS: plan.MGS };
+      for (var i = 0; i < n; i++) {
+        var hedef = besinVer(onerilen, i);
+        urunler[sec.Ca][i] = hedef.Ca / F[sec.Ca].Ca;
+        urunler[sec.Mg][i] = hedef.Mg / F[sec.Mg].Mg;
+        urunler[sec.P][i] = hedef.P / F[sec.P].P;
+        var kalanK = Math.max(0, hedef.K - urunler[sec.P][i] * (F[sec.P].K || 0));
+        if (sec.K === 'MIX') {
+          var pay = hedef.K > 0 ? plan.PN[i] * F.PN.K / hedef.K : 0;
+          urunler.PN[i] = kalanK * pay / F.PN.K;
+          urunler.SOP[i] = kalanK * (1 - pay) / F.SOP.K;
+        } else {
+          urunler[sec.K][i] = kalanK / F[sec.K].K;
+        }
+        var verilenN = 0;
+        sira.forEach(function (u) { if (u !== sec.N) verilenN += urunler[u][i] * (F[u].N || 0); });
+        var kalanN = hedef.N - verilenN;
+        urunler[sec.N][i] = Math.max(0, kalanN) / F[sec.N].N;
+        fazlaN.push(kalanN < -0.05 ? -kalanN : 0);
+      }
+      return { sira: sira, urunler: urunler, fazlaN: fazlaN };
+    }
+
+    function sayi(x) { return x < 0.05 ? '–' : x.toFixed(1).replace('.', ','); }
+
+    function hucre(x, u) {
+      if (x < 0.05) return '<td class="dash">–</td>';
+      var litre = F[u].d ? '<small>≈ ' + sayi(x / F[u].d) + ' L</small>' : '';
+      return '<td class="n">' + sayi(x) + litre + '</td>';
+    }
+
+    function ciz(el, sec) {
+      var plan = PLAN[el.getAttribute('data-crop')];
+      var r = hesapla(plan, sec), n = plan.hafta.length, haftalik = sec.view === 'week';
+      var bas = '<tr><th>Gübre</th>';
+      for (var i = 0; i < n; i++) {
+        bas += '<th class="n">D' + (i + 1) + (haftalik ? '<small>' + plan.hafta[i] + ' hafta</small>' : '') + '</th>';
+      }
+      bas += '<th class="n tot">' + (haftalik ? 'Sezon toplamı' : 'Toplam') + '</th></tr>';
+      var govde = '';
+      r.sira.forEach(function (u) {
+        var satir = r.urunler[u], top = satir.reduce(function (a, b) { return a + b; }, 0);
+        if (top < 0.05) return;
+        govde += '<tr><td>' + F[u].ad + '</td>';
+        satir.forEach(function (x, i) { govde += hucre(haftalik ? x / plan.hafta[i] : x, u); });
+        govde += hucre(top, u).replace('class="n"', 'class="n tot"') + '</tr>';
+      });
+      BESIN.forEach(function (b, j) {
+        var top = 0;
+        govde += '<tr class="sum' + (j === 0 ? ' sep' : '') + '"><td>Saf ' + b[1] + (haftalik ? ' (dönem)' : '') + '</td>';
+        for (var i = 0; i < n; i++) {
+          var v = besinVer(r.urunler, i)[b[0]];
+          top += v;
+          var fazla = b[0] === 'N' && r.fazlaN[i] > 0;
+          govde += v < 0.05 ? '<td class="dash">–</td>'
+            : '<td class="n' + (fazla ? ' over' : '') + '"' + (fazla ? ' title="Hedeften ' + sayi(r.fazlaN[i]) + ' kg fazla"' : '') + '>' + sayi(v) + '</td>';
+        }
+        govde += '<td class="n tot">' + sayi(top) + '</td></tr>';
+      });
+      var uyari = r.fazlaN.some(function (x) { return x > 0; })
+        ? '<div class="note">Turuncu değerler: seçilen gübreler bu dönemde hedeften fazla azot veriyor (' +
+          r.fazlaN.map(function (x, i) { return x > 0 ? 'D' + (i + 1) + ': +' + sayi(x) + ' kg' : null; }).filter(Boolean).join(', ') +
+          '). Bu dönemlerde azotsuz kaynak (potasyum sülfat, magnezyum sülfat, MKP) tercih edin.</div>'
+        : '';
+      el.innerHTML = '<div class="table-wrap"><table><thead>' + bas + '</thead><tbody>' + govde + '</tbody></table></div>' + uyari;
+    }
+
+    function notlar(sec) {
+      var n = [];
+      if ((sec.P === 'PA' || sec.P === 'UP') && sec.K === 'KTS') {
+        n.push('<b>Uyumsuz seçim:</b> Potasyum tiyosülfat asitle bozunur; ' + F[sec.P].ad.toLowerCase() + ' ile aynı sulamada vermeyin. Ayrı günlerde uygulayın veya başka potasyum kaynağı seçin.');
+      }
+      if (sec.P === 'PA') n.push('Fosforik asit hem fosfor hem asit kaynağıdır. Suyu ayrıca asitlendiriyorsanız o asidin verdiği P₂O₅\'i tablodaki miktardan düşün; kalsiyumlu A tankıyla aynı anda enjekte etmeyin.');
+      if (sec.P === 'MKP') n.push('MKP potasyum da verdiği için potasyum gübresi miktarları otomatik azaltıldı.');
+      if (sec.K === 'PN') n.push('Sadece potasyum nitrat kullanıldığında olgunlaşma ve hasat sonrası dönemlerde fazladan azot gider; bu, renk ve depolama kalitesini düşürür.');
+      if (sec.Ca === 'CNL') n.push('Sıvı kalsiyum nitrat hesabı ≈ %9 N ve %16,5 CaO içeriğe göre yapıldı; kullandığınız ürünün etiket değerini kontrol edin.');
+      document.getElementById('selNotes').innerHTML = n.map(function (t) { return '<div class="note">' + t + '</div>'; }).join('');
+    }
+
+    var secimler = document.querySelectorAll('#secim select');
+    function oku() {
+      var s = {};
+      secimler.forEach(function (el) { s[el.getAttribute('data-role')] = el.value; });
+      return s;
+    }
+    function uygula() {
+      var s = oku();
+      document.querySelectorAll('.fert').forEach(function (el) { ciz(el, s); });
+      notlar(s);
+      try { localStorage.setItem('gubreSecimi', JSON.stringify(s)); } catch (e) {}
+    }
+    function yukle(s) {
+      secimler.forEach(function (el) {
+        var v = s[el.getAttribute('data-role')];
+        if (v && el.querySelector('option[value="' + v + '"]')) el.value = v;
+      });
+    }
+
+    document.getElementById('catalog').innerHTML = Object.keys(F).map(function (k) {
+      var f = F[k];
+      return '<tr><td><b>' + f.ad + '</b></td><td>' + f.icerik + '</td><td>' + f.tank + '</td><td>' + f.not + '</td></tr>';
+    }).join('');
+
+    var kayitli = null;
+    try { kayitli = JSON.parse(localStorage.getItem('gubreSecimi')); } catch (e) {}
+    yukle(kayitli || VARSAYILAN);
+    secimler.forEach(function (el) { el.addEventListener('change', uygula); });
+    document.getElementById('resetSel').addEventListener('click', function () { yukle(VARSAYILAN); uygula(); });
+    uygula();
+  })();
+</script>
+</body>
+</html>

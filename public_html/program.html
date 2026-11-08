@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <!-- Authentication Check -->
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (localStorage.getItem('userRole') !== 'admin') {
+            const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            if (allHidden.includes('program.html')) {
+                window.location.href = 'index.html';
+            }
+        }
+    </script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Foliar App - Bitki Koruma ve Yapraktan Besleme Programı Yönetim Arayüzü.">
+    <title>Zirai İlaçlama ve Yapraktan Besleme Programı - Foliar App</title>
+    
+    <!-- Custom Agricultural Design System -->
+    <link rel="stylesheet" href="assets/css/style.css?v=18">
+    <!-- FontAwesome for edit/delete icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* CSS Extensions for Edit Mode and Dynamic Controls */
+        .edit-mode-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 18px;
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            transition: var(--transition-smooth);
+        }
+        
+        .edit-mode-container:hover {
+            border-color: var(--accent-green);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .3s;
+            border-radius: 22px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-secondary);
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: rgba(46, 204, 113, 0.2);
+            border-color: var(--accent-green);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(22px);
+            background-color: var(--accent-neon-green);
+            box-shadow: 0 0 8px var(--accent-neon-green);
+        }
+
+        .edit-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            user-select: none;
+            cursor: pointer;
+        }
+
+        input:checked ~ .edit-label {
+            color: var(--accent-neon-green);
+        }
+
+        /* Card Actions Overlay */
+        .card-actions {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            z-index: 10;
+        }
+
+        .product-card:hover .card-actions,
+        .edit-mode-active .card-actions {
+            opacity: 1;
+        }
+
+        .action-btn {
+            background: rgba(7, 9, 7, 0.85);
+            border: 1px solid var(--glass-border);
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .action-btn.edit-btn:hover {
+            color: var(--accent-gold);
+            border-color: var(--accent-gold);
+        }
+
+        .action-btn.delete-btn:hover {
+            color: #e74c3c;
+            border-color: #e74c3c;
+        }
+
+        /* Add Card Button */
+        .add-card-btn {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px dashed var(--glass-border);
+            border-radius: var(--border-radius-sm);
+            color: var(--text-secondary);
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .edit-mode-active .add-card-btn {
+            display: flex;
+        }
+
+        .add-card-btn:hover {
+            background: rgba(46, 204, 113, 0.05);
+            border-color: var(--accent-green);
+            color: var(--text-primary);
+        }
+
+        /* Stage Header Actions */
+        .stage-actions {
+            display: none;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .edit-mode-active .stage-actions {
+            display: flex;
+            justify-content: center;
+        }
+
+        .stage-action-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stage-action-btn:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+        }
+
+        .stage-action-btn.delete-stage-btn:hover {
+            background: rgba(231, 76, 60, 0.15);
+            color: #e74c3c;
+            border-color: #e74c3c;
+        }
+
+        /* Add Stage Column Placeholder */
+        .add-stage-column {
+            width: 340px;
+            border-right: 1px solid var(--glass-border);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            background: rgba(13, 18, 14, 0.1);
+        }
+
+        .edit-mode-active .add-stage-column {
+            display: flex;
+        }
+
+        .add-stage-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.02);
+            border: 2px dashed var(--glass-border);
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            margin-bottom: 12px;
+        }
+
+        .add-stage-btn:hover {
+            background: rgba(46, 204, 113, 0.05);
+            border-color: var(--accent-green);
+            color: var(--accent-neon-green);
+            transform: scale(1.1);
+        }
+
+        .add-stage-text {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        /* Hero Edit Trigger */
+        .hero-edit-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--glass-border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: none;
+            align-items: center;
+            gap: 6px;
+            margin-top: 15px;
+        }
+
+        .edit-mode-active .hero-edit-btn {
+            display: inline-flex;
+        }
+
+        .hero-edit-btn:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-primary);
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .custom-toast {
+            background: rgba(13, 18, 14, 0.95);
+            border: 1px solid var(--accent-green);
+            border-left: 5px solid var(--accent-green);
+            color: var(--text-primary);
+            padding: 14px 24px;
+            border-radius: var(--border-radius-sm);
+            backdrop-filter: var(--glass-blur);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .custom-toast.show {
+            transform: translateX(0);
+        }
+
+        .custom-toast.error {
+            border-color: #e74c3c;
+            border-left-color: #e74c3c;
+        }
+
+        .custom-toast i {
+            font-size: 1.1rem;
+        }
+
+        /* Program Switcher extensions */
+        .fruit-tab.add-tab {
+            border: 1px dashed var(--glass-border);
+            opacity: 0.7;
+        }
+
+        .fruit-tab.add-tab:hover {
+            border-color: var(--accent-green);
+            color: var(--accent-neon-green);
+            opacity: 1;
+        }
+
+        /* Stage edit overlay */
+        .edit-stage-trigger {
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+        .edit-mode-active .edit-stage-trigger:hover {
+            color: var(--accent-gold);
+            text-decoration: underline dashed;
+        }
+
+        /* Guidelines editor extensions */
+        .guideline-item-container {
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .guideline-actions {
+            display: none;
+            gap: 4px;
+            margin-left: 10px;
+            margin-top: 2px;
+        }
+
+        .edit-mode-active .guideline-actions {
+            display: flex;
+        }
+
+        .btn-add-rule {
+            margin-top: 15px;
+            display: none;
+            background: rgba(255,255,255,0.02);
+            border: 1px dashed var(--glass-border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: var(--transition-fast);
+        }
+
+        .edit-mode-active .btn-add-rule {
+            display: inline-flex;
+        }
+
+        .btn-add-rule:hover {
+            background: rgba(46, 204, 113, 0.05);
+            border-color: var(--accent-green);
+            color: var(--text-primary);
+        }
+
+        .modal-group-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Custom Program Delete Button */
+        .btn-delete-prog {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.2);
+            color: #e74c3c;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .edit-mode-active .btn-delete-prog.custom-only {
+            display: inline-flex;
+        }
+
+        .btn-delete-prog:hover {
+            background: rgba(231, 76, 60, 0.25);
+            color: #ffffff;
+            border-color: #e74c3c;
+        }
+    </style>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Header / Navigation Bar -->
+    <nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+    <!-- Fruit Page Switcher (Populated dynamically via script) -->
+    <div class="fruit-switcher" id="fruitSwitcherContainer"></div>
+
+    <!-- Main Hero Section -->
+    <header class="hero" id="hero">
+        <div class="hero-badge" id="heroBadgeContainer">
+            <span id="heroBadgePulse"></span> <span id="heroBadgeText">Profesyonel Üretici Modülü</span>
+        </div>
+        
+        <h1 class="hero-title gradient-text-white" id="heroTitle">
+            Koruma ve<br><span class="gradient-text">Yapraktan Besleme</span> Programı
+        </h1>
+        
+        <p class="hero-subtitle" id="heroSubtitle">
+            Ağaçlarınızın tomurcuk patlamasından hasat sonuna kadar olan tüm hayati evrelerine göre optimize edilmiş koruma ve besleme programı.
+        </p>
+
+        <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; align-items: center;">
+            <button class="hero-edit-btn" id="btnEditHero">
+                <i class="fa-solid fa-pen-to-square"></i> Program Detaylarını Düzenle
+            </button>
+            <button class="btn-delete-prog custom-only" id="btnDeleteProgram">
+                <i class="fa-solid fa-trash-can"></i> Bu Programı Sil
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Program and Table Section -->
+    <main class="program-section" id="program">
+        
+        <!-- Interactive Tank Calculator Panel -->
+        <section class="glass-panel calculator-card" id="calculator-section">
+            <div class="calculator-info">
+                <h3>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Hızlı İlaçlama Tankı Hesaplayıcısı
+                </h3>
+                <p>İlaçlama tankınızın kapasitesini girin, tablodaki tüm ürünlerin deponuz için gereken tam miktarları anında hesaplansın!</p>
+            </div>
+            <div class="calculator-inputs">
+                <label for="tank-volume">Tank Hacmi:</label>
+                <input type="number" id="tank-volume" value="1000" min="50" max="5000" step="50">
+                <span style="font-weight: 700; color: var(--accent-green); font-size: 1.1rem;">Litre</span>
+            </div>
+        </section>
+
+        <!-- Program Controls Panel -->
+        <div class="program-controls glass-panel">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h3 style="font-size: 1.1rem;">Görünüm Filtreleri</h3>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Tabloda görmek istediğiniz koruma sınıflarını seçin.</p>
+            </div>
+            <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <div class="filter-group" id="filter-controls">
+                    <button class="filter-btn active hastalik" data-filter="hastalik">
+                        <span class="dot"></span> Hastalıklar
+                    </button>
+                    <button class="filter-btn active zararli" data-filter="zararli">
+                        <span class="dot"></span> Zararlılar
+                    </button>
+                    <button class="filter-btn active besleme" data-filter="besleme">
+                        <span class="dot"></span> Bitki Besleme
+                    </button>
+                </div>
+                
+                <!-- Dynamic Edit Mode Switch -->
+                <div class="edit-mode-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="editModeToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="edit-label" id="editLabelText">Düzenleme Modu</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage Quick Access Jumper Menu -->
+        <div class="stage-navigator" id="stage-quick-jumper"></div>
+
+        <!-- The Interactive Horizontal Scrollable Table Wrapper -->
+        <div class="table-outer-wrapper">
+            <!-- Left Overlay Slide Arrow -->
+            <button class="nav-arrow arrow-left" id="btn-slide-left" aria-label="Sola Kaydır" style="display:none;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            </button>
+            
+            <div class="horizontal-table-container" id="table-container">
+                <div class="horizontal-table" id="horizontalTable">
+                    <!-- Loaded dynamically via JS -->
+                </div>
+            </div>
+            
+            <!-- Right Overlay Slide Arrow -->
+            <button class="nav-arrow arrow-right" id="btn-slide-right" aria-label="Sağa Kaydır">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Scroll Indicator Help -->
+        <div class="scroll-indicator">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+            <span>Tabloyu yatayda sürükleyerek veya kaydırarak tüm evreleri inceleyebilirsiniz.</span>
+        </div>
+    </main>
+
+    <!-- Detailed Agricultural Information Section -->
+    <section class="info-section" id="rehber">
+        <div class="glass-panel guideline-card">
+            <h3 id="guidelinesHeader">🌱 Takvim Uygulama Kuralları</h3>
+            <ul class="guideline-list" id="guidelineListContainer">
+                <!-- Loaded dynamically via JS -->
+            </ul>
+            <button class="btn-add-rule" id="btnAddGuideline">
+                <i class="fa-solid fa-plus"></i> Yeni Uygulama Kuralı Ekle
+            </button>
+        </div>
+    </section>
+
+    <!-- Footer Section -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-bottom">
+                <p>&copy; 2026 Foliar App - Modern Tarım ve Bitki Besleme Çözümleri. Tüm hakları saklıdır.</p>
+                <div style="display:flex; gap:20px;">
+                    <a href="#" style="color:var(--text-tertiary); text-decoration:none; transition:var(--transition-fast);">Kullanım Şartları</a>
+                    <a href="#" style="color:var(--text-tertiary); text-decoration:none; transition:var(--transition-fast);">Gizlilik Politikası</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INLINE DIALOGS AND MODALS -->
+    
+    <!-- 1. EDIT HERO MODAL -->
+    <div class="modal-overlay" id="edit-hero-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-to-square me-2"></i> Program Başlığını Düzenle</h3>
+                <button class="modal-close-btn" onclick="closeHeroModal()">&times;</button>
+            </div>
+            <form id="edit-hero-form" onsubmit="saveHeroDetails(event)">
+                <div class="form-group">
+                    <label for="hero-form-badge">Rozet Metni</label>
+                    <input type="text" id="hero-form-badge" required>
+                </div>
+                <div class="form-group">
+                    <label for="hero-form-title">Program Başlığı</label>
+                    <input type="text" id="hero-form-title" required>
+                </div>
+                <div class="form-group">
+                    <label for="hero-form-subtitle">Alt Bilgi / Açıklama</label>
+                    <textarea id="hero-form-subtitle" rows="3" required style="resize: none; font-family: inherit;"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeHeroModal()">İptal</button>
+                    <button type="submit" class="btn-modal-save">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. EDIT CARD MODAL (Includes BKÜ support) -->
+    <div class="modal-overlay" id="edit-card-overlay">
+        <div class="modal-box" style="max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="cardModalTitle"><i class="fa-solid fa-file-pen me-2"></i> Kart Düzenleme Paneli</h3>
+                <button class="modal-close-btn" onclick="closeCardModal()">&times;</button>
+            </div>
+            <form id="edit-product-form" onsubmit="saveCardDetails(event)">
+                <div class="form-group">
+                    <label for="edit-prod-type">Kart Tipi</label>
+                    <select id="edit-prod-type" onchange="toggleCardTypeFields()">
+                        <option value="calc">Hesaplamalı İlaç/Gübre Kartı</option>
+                        <option value="info">Bilgilendirme / Uygulama Yapılmaz Kartı</option>
+                    </select>
+                </div>
+
+                <!-- BKÜ Recommendation Area -->
+                <div class="form-group" id="bku-recommendation-wrapper" style="margin-bottom: 20px;">
+                    <label style="color: var(--accent-gold); display: flex; align-items: center; gap: 6px; font-weight: 700;">
+                        💡 Bakanlık Ruhsatlı İlaç Tavsiyeleri
+                    </label>
+                    <input type="text" id="edit-prod-bku-search" placeholder="🔍 İlaç adı, etken madde veya hedef ara..." style="margin-bottom: 8px; width: 100%; padding: 8px; border-radius: var(--border-radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.05); color: var(--text-primary); font-size: 0.84rem;">
+                    <select id="edit-prod-recommend" style="width: 100%;">
+                        <option value="">-- Ruhsatlı İlaç Seçin (Opsiyonel) --</option>
+                    </select>
+                    <span id="bku-recommend-info" style="font-size: 0.76rem; color: var(--text-secondary); margin-top: 6px; display: block; line-height: 1.4;"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-prod-target">Hedef Hastalık / Zararlı / Amaç</label>
+                    <input type="text" id="edit-prod-target" required placeholder="Örn: Karaleke (Önleyici)">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-prod-tank-group">Uygulama / Tank Sırası</label>
+                    <select id="edit-prod-tank-group" style="width: 100%;">
+                        <option value="1">1. Uygulama (Tank 1)</option>
+                        <option value="2">2. Uygulama (Tank 2)</option>
+                        <option value="3">3. Uygulama (Tank 3)</option>
+                        <option value="4">4. Uygulama (Tank 4)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit-prod-name">Ticari İlaç / Ürün Adı (Opsiyonel)</label>
+                    <input type="text" id="edit-prod-name" placeholder="Örn: Kocide 2000">
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-prod-active">Etken Madde / Konsantrasyon (Opsiyonel)</label>
+                    <input type="text" id="edit-prod-active" placeholder="Örn: Bakır Hidroksit %50">
+                </div>
+                
+                <!-- Calculating Card Specific Fields -->
+                <div id="calc-fields-wrapper">
+                    <div class="form-group">
+                        <label>Uygulama Dozu ve Su Hacmi</label>
+                        <div class="form-row-three">
+                            <input type="number" id="edit-prod-dose" min="0.1" step="any" placeholder="Doz">
+                            <select id="edit-prod-unit">
+                                <option value="g">gram (g)</option>
+                                <option value="ml">mililitre (ml)</option>
+                            </select>
+                            <input type="number" id="edit-prod-per" min="1" placeholder="Su (L)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Card Specific Fields -->
+                <div id="text-fields-wrapper" style="display:none;">
+                    <div class="form-group">
+                        <label for="edit-prod-desc">Bilgilendirme / İlaçlamama Nedeni Notu</label>
+                        <textarea id="edit-prod-desc" rows="3" style="resize:none; font-family:inherit;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-prod-calc-label">Hesaplama Satırı Etiketi (Örn: SIFIR KİMYASAL HEDEFİ)</label>
+                        <input type="text" id="edit-prod-calc-label" placeholder="Varsayılan: UYGULAMA YAPILMAZ">
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeCardModal()">İptal</button>
+                    <button type="submit" class="btn-modal-save">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. ADD NEW PROGRAM MODAL -->
+    <div class="modal-overlay" id="add-program-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-calendar-plus me-2"></i> Yeni Zirai Takvim Oluştur</h3>
+                <button class="modal-close-btn" onclick="closeAddProgramModal()">&times;</button>
+            </div>
+            <form id="add-program-form" onsubmit="createNewProgram(event)">
+                <div class="form-group">
+                    <label for="new-prog-name">Takvim/Meyve Adı (Örn: Armut Programı)</label>
+                    <input type="text" id="new-prog-name" required placeholder="Armut Programı">
+                </div>
+                <div class="modal-group-row">
+                    <div class="form-group">
+                        <label for="new-prog-emoji">Simge / Emoji</label>
+                        <select id="new-prog-emoji">
+                            <option value="🍐">🍐 Armut</option>
+                            <option value="🍎">🍎 Kırmızı Elma</option>
+                            <option value="🍇">🍇 Üzüm</option>
+                            <option value="🍋">🍋 Limon</option>
+                            <option value="🍓">🍓 Çilek</option>
+                            <option value="🌰">🌰 Ceviz</option>
+                            <option value="🍈">🍈 Kavun</option>
+                            <option value="🍅">🍅 Domates</option>
+                            <option value="🌳">🌳 Ağaç/Genel</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-prog-stages-count">Başlangıç Evre Sayısı</label>
+                        <input type="number" id="new-prog-stages-count" value="8" min="1" max="15" required>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeAddProgramModal()">İptal</button>
+                    <button type="submit" class="btn-modal-save">Oluştur</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. EDIT STAGE MODAL -->
+    <div class="modal-overlay" id="edit-stage-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-pen-nib me-2"></i> Evre Detaylarını Düzenle</h3>
+                <button class="modal-close-btn" onclick="closeStageModal()">&times;</button>
+            </div>
+            <form id="edit-stage-form" onsubmit="saveStageDetails(event)">
+                <div class="form-group">
+                    <label for="stage-form-title">Evre Uzun Başlığı</label>
+                    <input type="text" id="stage-form-title" required>
+                </div>
+                <div class="modal-group-row">
+                    <div class="form-group">
+                        <label for="stage-form-short">Navigasyon Kısa Adı</label>
+                        <input type="text" id="stage-form-short" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="stage-form-time">Uygulama Dönemi / Zamanı</label>
+                        <input type="text" id="stage-form-time" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="stage-form-image">Evre Görseli (Görsel Yolu)</label>
+                    <select id="stage-form-image">
+                        <!-- Standard choices or customizable -->
+                        <option value="assets/images/stage_1.jpg">Elma 1 (Göz Kabarması)</option>
+                        <option value="assets/images/stage_2.jpg">Elma 2 (Pembe Tomurcuk)</option>
+                        <option value="assets/images/stage_3.jpg">Elma 3 (Çiçeklenme)</option>
+                        <option value="assets/images/stage_4.jpg">Elma 4 (Çiçek Dökümü)</option>
+                        <option value="assets/images/stage_5.jpg">Elma 5 (Meyve Büyüme)</option>
+                        <option value="assets/images/stage_6.jpg">Elma 6 (Renklenme)</option>
+                        <option value="assets/images/stage_7.jpg">Elma 7 (Olgunlaşma)</option>
+                        <option value="assets/images/stage_8.jpg">Elma 8 (Hasat)</option>
+                        <option value="assets/images/cherry_1.jpg">Kiraz 1 (Göz Patlama)</option>
+                        <option value="assets/images/cherry_2.jpg">Kiraz 2 (Beyaz Tomurcuk)</option>
+                        <option value="assets/images/cherry_3.jpg">Kiraz 3 (Tam Çiçeklenme)</option>
+                        <option value="assets/images/cherry_4.jpg">Kiraz 4 (Kürk Dökümü)</option>
+                        <option value="assets/images/cherry_5.jpg">Kiraz 5 (Yeşil Meyve)</option>
+                        <option value="assets/images/cherry_6.jpg">Kiraz 6 (Saman Sarısı)</option>
+                        <option value="assets/images/cherry_7.jpg">Kiraz 7 (Hasat)</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-modal-cancel" onclick="closeStageModal()">İptal</button>
+                    <button type="submit" class="btn-modal-save">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="assets/js/banned_ingredients.js"></script>
+    <script src="assets/js/bku_database.js"></script>
+    
+    <script>
+        let programs = {};
+        let activeProgramId = 'apple';
+        let isEditMode = false;
+        
+        // Active edit context storage
+        let activeEditCard = null;
+        let activeEditStageId = null;
+        let activeEditCategory = null;
+        let activeEditIndex = null; // null represents adding a new card
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadPrograms();
+            setupDragScroll();
+            setupOverlayArrows();
+
+            // BKU recommendations search input listener
+            const bkuSearchInput = document.getElementById('edit-prod-bku-search');
+            if (bkuSearchInput) {
+                bkuSearchInput.addEventListener('input', (e) => {
+                    const currentTarget = document.getElementById('edit-prod-target')?.value || '';
+                    const currentActive = document.getElementById('edit-prod-active')?.value || '';
+                    populateBkuRecommendations(currentTarget, currentActive, e.target.value);
+                });
+            }
+        });
+
+        // 1. Core API Load/Save Logic
+        function loadPrograms() {
+            fetch('api/get_programs.php')
+                .then(res => res.json())
+                .then(data => {
+                    programs = data;
+                    
+                    // Parse program ID from URL
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const paramId = urlParams.get('id');
+                    if (paramId && programs[paramId]) {
+                        activeProgramId = paramId;
+                    } else {
+                        // Default to first available program
+                        const keys = Object.keys(programs);
+                        if (keys.length > 0) activeProgramId = keys[0];
+                    }
+                    
+                    renderSwitcher();
+                    renderProgram();
+                    
+                    // Trigger initial dose calculations
+                    calculateDoses();
+                })
+                .catch(err => {
+                    console.error("Programları yüklerken hata:", err);
+                    showToast("Programlar yüklenemedi. Çevrimdışı moda geçiliyor.", true);
+                    
+                    // Safe fallback to local empty template if fetch fails
+                    programs = {
+                        apple: { title: "Elma Programı", subtitle: "Varsayılan yüklenemedi.", badge: "Hata", emoji: "🍏", guidelines: [], stages: [] }
+                    };
+                    renderSwitcher();
+                    renderProgram();
+                });
+        }
+
+        function saveProgramsToServer() {
+            fetch('api/save_programs.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(programs)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    showToast("Değişiklikler başarıyla kaydedildi.");
+                } else {
+                    console.error("Sunucu kayıt hatası:", res.message);
+                    showToast("Kaydetme başarısız: " + res.message, true);
+                }
+            })
+            .catch(err => {
+                console.error("Ağ hatası:", err);
+                showToast("Ağ hatası oluştu. Değişiklikler yerel olarak saklanacak.", true);
+            });
+        }
+
+        // Helper to trigger toast notification
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `custom-toast ${isError ? 'error' : ''}`;
+            toast.innerHTML = `
+                <i class="fa-solid ${isError ? 'fa-triangle-exclamation' : 'fa-circle-check'}"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 50);
+            
+            // Remove after 3.5 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            }, 3500);
+        }
+
+        // 2. Render Switcher & Tabs
+        function renderSwitcher() {
+            const container = document.getElementById('fruitSwitcherContainer');
+            container.innerHTML = '';
+            
+            Object.keys(programs).forEach(key => {
+                const prog = programs[key];
+                const activeClass = (key === activeProgramId) ? 'active' : '';
+                
+                const tab = document.createElement('a');
+                tab.href = `program.html?id=${key}`;
+                tab.className = `fruit-tab ${activeClass}`;
+                tab.innerHTML = `<span class="emoji">${prog.emoji}</span> ${prog.title.replace(' Koruma veYapraktan Besleme Programı', '').replace('Takvimi', '').replace('Programı', '').trim()} Takvimi`;
+                
+                // Keep active program id on click
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.history.pushState({}, '', `program.html?id=${key}`);
+                    activeProgramId = key;
+                    renderSwitcher();
+                    renderProgram();
+                    calculateDoses();
+                });
+                
+                container.appendChild(tab);
+            });
+            
+            // Add custom creation tab
+            const addTab = document.createElement('a');
+            addTab.href = '#';
+            addTab.className = 'fruit-tab add-tab';
+            addTab.innerHTML = `<i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Yeni Takvim Ekle`;
+            addTab.addEventListener('click', (e) => {
+                e.preventDefault();
+                openAddProgramModal();
+            });
+            container.appendChild(addTab);
+        }
+
+        // 3. Render Crop Program Details
+        function renderProgram() {
+            const prog = programs[activeProgramId];
+            if (!prog) return;
+            
+            // Render Hero Section
+            document.getElementById('heroBadgeText').textContent = prog.badge || "Profesyonel Üretici Modülü";
+            document.getElementById('heroTitle').innerHTML = prog.title.replace(" ve", "<br>").replace(" & ", "<br>& ").replace("veYapraktan", "ve <span class='gradient-text'>Yapraktan</span>");
+            document.getElementById('heroSubtitle').textContent = prog.subtitle || "";
+            
+            // Toggle Delete Program button display based on if it is a custom program
+            const deleteBtn = document.getElementById('btnDeleteProgram');
+            const isDefault = ['apple', 'cherry', 'apricot', 'peach'].includes(activeProgramId);
+            if (isDefault) {
+                deleteBtn.classList.remove('custom-only');
+                deleteBtn.style.display = 'none';
+            } else {
+                deleteBtn.classList.add('custom-only');
+                if (isEditMode) {
+                    deleteBtn.style.display = 'inline-flex';
+                }
+            }
+            
+            // Render View Filters Menu
+            const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+            if (permissions.hidden) {
+                permissions.hidden.forEach(page => {
+                    // Hide navbar links if necessary
+                    const link = document.querySelector(`.navbar-links a[href="${page}"]`);
+                    if (link) link.parentElement.style.display = 'none';
+                });
+            }
+            
+            // Render Stage Quick Access Jumper Menu
+            const jumper = document.getElementById('stage-quick-jumper');
+            jumper.innerHTML = '';
+            
+            prog.stages.forEach(stage => {
+                const btn = document.createElement('button');
+                btn.className = `stage-nav-item ${stage.id === 1 ? 'active' : ''}`;
+                btn.setAttribute('data-stage', stage.id);
+                btn.innerHTML = `<span class="num">${stage.id}</span> ${stage.shortName}`;
+                
+                btn.addEventListener('click', () => {
+                    const targetCol = document.getElementById(`col-stage-${stage.id}`);
+                    const slider = document.getElementById('table-container');
+                    if (targetCol) {
+                        slider.scrollTo({
+                            left: targetCol.offsetLeft - 10,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+                jumper.appendChild(btn);
+            });
+
+            // Render Horizontal Table Container
+            const table = document.getElementById('horizontalTable');
+            table.innerHTML = '';
+            
+            // Configure columns count
+            const stagesCount = prog.stages.length;
+            table.style.gridTemplateColumns = `repeat(${stagesCount}, 340px) 340px`; // add 340px for Stage addition block placeholder
+            table.style.minWidth = `${(stagesCount + 1) * 340}px`;
+            
+            // Render columns
+            prog.stages.forEach(stage => {
+                const col = document.createElement('div');
+                col.className = 'table-column';
+                col.id = `col-stage-${stage.id}`;
+                
+                col.innerHTML = `
+                    <div class="col-header-image">
+                        <div class="col-image-wrapper" style="position: relative;">
+                            <img src="${stage.image}" alt="${stage.title}" class="col-image">
+                            <!-- Image edit button overlay -->
+                            <div class="card-actions edit-image-overlay" style="top: 8px; right: 8px;">
+                                <button class="action-btn edit-btn" onclick="openStageModal(${stage.id})" title="Görseli/Evreyi Değiştir">
+                                    <i class="fa-solid fa-image"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-header-stage">
+                        <span class="stage-badge edit-stage-trigger" onclick="openStageModal(${stage.id})">${stage.id}. EVRE</span>
+                        <h2 class="stage-title edit-stage-trigger" onclick="openStageModal(${stage.id})">${stage.title}</h2>
+                        <span class="stage-time edit-stage-trigger" onclick="openStageModal(${stage.id})">${stage.time}</span>
+                        <!-- Stage Delete / Edit Actions -->
+                        <div class="stage-actions">
+                            <button class="stage-action-btn edit-stage-btn" onclick="openStageModal(${stage.id})">
+                                <i class="fa-solid fa-pencil"></i> Düzenle
+                            </button>
+                            <button class="stage-action-btn delete-stage-btn" onclick="deleteStage(${stage.id})">
+                                <i class="fa-solid fa-trash-can"></i> Evreyi Sil
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-content">
+                        <!-- Hastalıklar -->
+                        <div class="category-group" data-category="hastalik">
+                            <h4 class="category-title hastalik-title">🛡️ Hastalık Yönetimi</h4>
+                            <div class="cards-list-container" id="stage-${stage.id}-hastalik"></div>
+                            <button class="add-card-btn" onclick="openAddCardModal(${stage.id}, 'hastalik')">
+                                <i class="fa-solid fa-plus"></i> İlaç Ekle
+                            </button>
+                        </div>
+
+                        <!-- Zararlılar -->
+                        <div class="category-group" data-category="zararli">
+                            <h4 class="category-title zararli-title">🐛 Zararlı Yönetimi</h4>
+                            <div class="cards-list-container" id="stage-${stage.id}-zararli"></div>
+                            <button class="add-card-btn" onclick="openAddCardModal(${stage.id}, 'zararli')">
+                                <i class="fa-solid fa-plus"></i> İlaç Ekle
+                            </button>
+                        </div>
+
+                        <!-- Yaprak Besleme -->
+                        <div class="category-group" data-category="besleme">
+                            <h4 class="category-title besleme-title">🌱 Yaprak Besleme</h4>
+                            <div class="cards-list-container" id="stage-${stage.id}-besleme"></div>
+                            <button class="add-card-btn" onclick="openAddCardModal(${stage.id}, 'besleme')">
+                                <i class="fa-solid fa-plus"></i> Gübre Ekle
+                            </button>
+                        </div>
+                    </div>
+                `;
+                table.appendChild(col);
+                
+                // Populate categories
+                populateCategoryCards(stage.id, 'hastalik', stage.hastalik);
+                populateCategoryCards(stage.id, 'zararli', stage.zararli);
+                populateCategoryCards(stage.id, 'besleme', stage.besleme);
+            });
+            
+            // Add stage addition placeholder block column
+            const addStageCol = document.createElement('div');
+            addStageCol.className = 'add-stage-column';
+            addStageCol.innerHTML = `
+                <div class="add-stage-btn" onclick="addNewStagePlaceholder()">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="add-stage-text">Yeni Evre Ekle</div>
+            `;
+            table.appendChild(addStageCol);
+
+            // Render Guidelines
+            renderGuidelines();
+
+            // Toggle Edit mode styles instantly
+            toggleEditModeUI();
+        }
+
+        // Helper to populate card items inside stage category
+        function populateCategoryCards(stageId, category, cardsList) {
+            const container = document.getElementById(`stage-${stageId}-${category}`);
+            container.innerHTML = '';
+            
+            if (!cardsList || cardsList.length === 0) {
+                return;
+            }
+            
+            cardsList.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                
+                const targetVal = card.target || card.name || '';
+                const nameVal = card.target ? (card.name || '') : '';
+                const activeVal = card.active || '';
+                
+                let subtitleText = '';
+                if (nameVal && activeVal) {
+                    subtitleText = `İlaç: ${nameVal} (Etken: ${activeVal})`;
+                } else if (nameVal) {
+                    subtitleText = `İlaç: ${nameVal}`;
+                } else if (activeVal) {
+                    subtitleText = `Etken: ${activeVal}`;
+                }
+                
+                if (card.type === 'calc') {
+                    cardDiv.className = `product-card ${category}-card`;
+                    cardDiv.setAttribute('data-base-dose', card.baseDose);
+                    cardDiv.setAttribute('data-dose-unit', card.doseUnit);
+                    cardDiv.setAttribute('data-dose-per', card.dosePer);
+                    
+                    cardDiv.innerHTML = `
+                        <h5 class="product-name">${targetVal}</h5>
+                        <span class="product-active" style="${subtitleText ? '' : 'display:none;'}">${subtitleText}</span>
+                        <div class="product-dose-wrapper">
+                            <span class="product-dose-label">Doz:</span>
+                            <span class="product-dose-value">${card.baseDose} ${card.doseUnit} / ${card.dosePer} L su</span>
+                        </div>
+                        <div class="calc-result">
+                            <span>Depo için:</span>
+                            <span class="calc-val">0</span> <span class="calc-unit">${card.doseUnit}</span>
+                        </div>
+                        <!-- Actions Overlay for Edit/Delete -->
+                        <div class="card-actions">
+                            <button class="action-btn edit-btn" onclick="event.stopPropagation(); openEditCardModal(${stageId}, '${category}', ${index})" title="Kartı Düzenle">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="event.stopPropagation(); deleteCard(${stageId}, '${category}', ${index})" title="Kartı Sil">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Info card
+                    cardDiv.className = `product-card ${category}-card`;
+                    cardDiv.style.borderColor = category === 'zararli' ? 'rgba(230,126,34,0.3)' : (category === 'hastalik' ? 'rgba(231,76,60,0.3)' : 'rgba(52,152,219,0.3)');
+                    cardDiv.style.opacity = '0.85';
+                    
+                    cardDiv.innerHTML = `
+                        <h5 class="product-name" style="color: var(--text-secondary);">${targetVal}</h5>
+                        <span class="product-active" style="${subtitleText ? '' : 'display:none;'}">${subtitleText}</span>
+                        <p style="font-size: 0.72rem; color: var(--text-tertiary); line-height: 1.3;">${card.description || ''}</p>
+                        <div class="calc-result" style="border-top:none;">
+                            <span style="color:var(--accent-gold); font-weight: 700;">${card.calcLabel || 'UYGULAMA YAPILMAZ'}</span>
+                        </div>
+                        <!-- Actions Overlay for Edit/Delete -->
+                        <div class="card-actions">
+                            <button class="action-btn edit-btn" onclick="event.stopPropagation(); openEditCardModal(${stageId}, '${category}', ${index})" title="Kartı Düzenle">
+                                <i class="fa-solid fa-pencil"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="event.stopPropagation(); deleteCard(${stageId}, '${category}', ${index})" title="Kartı Sil">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                // Clicking the card opens edit modal
+                cardDiv.addEventListener('click', () => {
+                    openEditCardModal(stageId, category, index);
+                });
+                
+                container.appendChild(cardDiv);
+            });
+        }
+
+        // Render Guidelines Section
+        function renderGuidelines() {
+            const prog = programs[activeProgramId];
+            const container = document.getElementById('guidelineListContainer');
+            container.innerHTML = '';
+            
+            if (!prog.guidelines || prog.guidelines.length === 0) {
+                container.innerHTML = '<li style="color: var(--text-light); text-align: center; list-style: none;">Bu program için eklenmiş kural bulunmamaktadır.</li>';
+                return;
+            }
+            
+            prog.guidelines.forEach((rule, index) => {
+                const li = document.createElement('li');
+                
+                li.innerHTML = `
+                    <div class="guideline-item-container">
+                        <div>${rule}</div>
+                        <div class="guideline-actions">
+                            <button class="action-btn edit-btn" onclick="openEditGuidelinePrompt(${index})" title="Kuralı Düzenle" style="background: none; border: none; padding: 0 4px; font-size: 0.8rem; cursor: pointer;">
+                                <i class="fa-solid fa-pencil" style="color: var(--text-secondary);"></i>
+                            </button>
+                            <button class="action-btn delete-btn" onclick="deleteGuideline(${index})" title="Kuralı Sil" style="background: none; border: none; padding: 0 4px; font-size: 0.8rem; cursor: pointer;">
+                                <i class="fa-solid fa-trash-can" style="color: #e74c3c;"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+        }
+
+        // 4. Tank Dose Calculations
+        const calculateDoses = () => {
+            const tankInput = document.getElementById('tank-volume');
+            const tankVal = parseFloat(tankInput.value);
+            if (isNaN(tankVal) || tankVal <= 0) return;
+            
+            const cards = document.querySelectorAll('.product-card[data-base-dose]');
+            
+            cards.forEach(card => {
+                const baseDose = parseFloat(card.getAttribute('data-base-dose'));
+                const unit = card.getAttribute('data-dose-unit');
+                const divisor = parseFloat(card.getAttribute('data-dose-per')) || 100;
+                
+                const resultElement = card.querySelector('.calc-val');
+                const unitElement = card.querySelector('.calc-unit');
+                
+                if (resultElement) {
+                    const finalDose = (baseDose / divisor) * tankVal;
+                    
+                    if (unit === 'ml' && finalDose >= 1000) {
+                        resultElement.textContent = (finalDose / 1000).toFixed(2).replace(/\.00$/, '');
+                        unitElement.textContent = 'L';
+                    } else if (unit === 'g' && finalDose >= 1000) {
+                        resultElement.textContent = (finalDose / 1000).toFixed(2).replace(/\.00$/, '');
+                        unitElement.textContent = 'kg';
+                    } else {
+                        resultElement.textContent = Math.round(finalDose);
+                        unitElement.textContent = unit;
+                    }
+                }
+            });
+        };
+
+        // Listen to tank volume inputs
+        document.getElementById('tank-volume').addEventListener('input', calculateDoses);
+        document.getElementById('tank-volume').addEventListener('change', () => {
+            const tankInput = document.getElementById('tank-volume');
+            if (tankInput.value < 50) tankInput.value = 50;
+            calculateDoses();
+        });
+
+        // 5. Dynamic Filtering Controls
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+                const category = btn.getAttribute('data-filter');
+                const targets = document.querySelectorAll(`.category-group[data-category="${category}"]`);
+                
+                targets.forEach(target => {
+                    if (btn.classList.contains('active')) {
+                        target.style.display = 'flex';
+                        target.style.opacity = '0';
+                        setTimeout(() => {
+                            target.style.opacity = '1';
+                            target.style.transform = 'scale(1)';
+                        }, 50);
+                    } else {
+                        target.style.opacity = '0';
+                        target.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            target.style.display = 'none';
+                        }, 300);
+                    }
+                });
+            });
+        });
+
+        // 6. Horizontal Drag and Scroll Logic
+        function setupDragScroll() {
+            const slider = document.getElementById('table-container');
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            slider.addEventListener('mousedown', (e) => {
+                // Ignore drag if clicking inputs or buttons
+                if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select') || e.target.closest('a')) return;
+                isDown = true;
+                slider.style.cursor = 'grabbing';
+                startX = e.pageX - slider.offsetLeft;
+                scrollLeft = slider.scrollLeft;
+            });
+
+            slider.addEventListener('mouseleave', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+
+            slider.addEventListener('mouseup', () => {
+                isDown = false;
+                slider.style.cursor = 'grab';
+            });
+
+            slider.addEventListener('mousemove', (e) => {
+                if(!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - slider.offsetLeft;
+                const walk = (x - startX) * 1.5;
+                slider.scrollLeft = scrollLeft - walk;
+            });
+        }
+
+        // Overlay Slide Arrows Logic
+        function setupOverlayArrows() {
+            const slider = document.getElementById('table-container');
+            const btnLeft = document.getElementById('btn-slide-left');
+            const btnRight = document.getElementById('btn-slide-right');
+            const columnWidth = 340;
+
+            btnLeft.addEventListener('click', () => {
+                slider.scrollBy({ left: -columnWidth, behavior: 'smooth' });
+            });
+
+            btnRight.addEventListener('click', () => {
+                slider.scrollBy({ left: columnWidth, behavior: 'smooth' });
+            });
+
+            const updateArrows = () => {
+                const maxScroll = slider.scrollWidth - slider.clientWidth;
+                btnLeft.style.display = slider.scrollLeft <= 10 ? 'none' : 'flex';
+                btnRight.style.display = slider.scrollLeft >= maxScroll - 10 ? 'none' : 'flex';
+            };
+
+            slider.addEventListener('scroll', updateArrows);
+            window.addEventListener('resize', updateArrows);
+            setTimeout(updateArrows, 200);
+
+            // Scroll highlighter jumper menu update
+            slider.addEventListener('scroll', () => {
+                const scrollPos = slider.scrollLeft + (slider.clientWidth / 4);
+                let activeStage = 1;
+                const prog = programs[activeProgramId];
+                if (!prog) return;
+                
+                for (let i = 0; i < prog.stages.length; i++) {
+                    const stage = prog.stages[i];
+                    const col = document.getElementById(`col-stage-${stage.id}`);
+                    if (col) {
+                        const colStart = col.offsetLeft - 20;
+                        const colEnd = colStart + columnWidth;
+                        if (scrollPos >= colStart && scrollPos < colEnd) {
+                            activeStage = stage.id;
+                            break;
+                        }
+                    }
+                }
+
+                // Highlight active stage button
+                const stageNavItems = document.querySelectorAll('.stage-nav-item');
+                stageNavItems.forEach(item => {
+                    const stageNum = parseInt(item.getAttribute('data-stage'), 10);
+                    if (stageNum === activeStage) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            });
+        }
+
+        // 7. Edit Mode Toggle Logic
+        document.getElementById('editModeToggle').addEventListener('change', (e) => {
+            isEditMode = e.target.checked;
+            toggleEditModeUI();
+        });
+
+        document.getElementById('editLabelText').addEventListener('click', () => {
+            const toggle = document.getElementById('editModeToggle');
+            toggle.checked = !toggle.checked;
+            isEditMode = toggle.checked;
+            toggleEditModeUI();
+        });
+
+        function toggleEditModeUI() {
+            const container = document.getElementById('program');
+            const deleteBtn = document.getElementById('btnDeleteProgram');
+            const heroEditBtn = document.getElementById('btnEditHero');
+            const isDefault = ['apple', 'cherry', 'apricot', 'peach'].includes(activeProgramId);
+            
+            if (isEditMode) {
+                container.classList.add('edit-mode-active');
+                heroEditBtn.style.display = 'inline-flex';
+                if (!isDefault) {
+                    deleteBtn.style.display = 'inline-flex';
+                }
+            } else {
+                container.classList.remove('edit-mode-active');
+                deleteBtn.style.display = 'none';
+                heroEditBtn.style.display = 'none';
+            }
+        }
+
+        // Edit Hero Dialog Details
+        document.getElementById('btnEditHero').addEventListener('click', () => {
+            const prog = programs[activeProgramId];
+            document.getElementById('hero-form-badge').value = prog.badge || '';
+            document.getElementById('hero-form-title').value = prog.title || '';
+            document.getElementById('hero-form-subtitle').value = prog.subtitle || '';
+            
+            document.getElementById('edit-hero-overlay').classList.add('active');
+        });
+
+        function closeHeroModal() {
+            document.getElementById('edit-hero-overlay').classList.remove('active');
+        }
+
+        function saveHeroDetails(e) {
+            e.preventDefault();
+            const prog = programs[activeProgramId];
+            prog.badge = document.getElementById('hero-form-badge').value.trim();
+            prog.title = document.getElementById('hero-form-title').value.trim();
+            prog.subtitle = document.getElementById('hero-form-subtitle').value.trim();
+            
+            closeHeroModal();
+            renderProgram();
+            saveProgramsToServer();
+        }
+
+        // 8. Card Editor Logic
+        function toggleCardTypeFields() {
+            const type = document.getElementById('edit-prod-type').value;
+            const calcFields = document.getElementById('calc-fields-wrapper');
+            const textFields = document.getElementById('text-fields-wrapper');
+            const bkuWrapper = document.getElementById('bku-recommendation-wrapper');
+            
+            if (type === 'calc') {
+                calcFields.style.display = 'block';
+                textFields.style.display = 'none';
+                bkuWrapper.style.display = 'block';
+            } else {
+                calcFields.style.display = 'none';
+                textFields.style.display = 'block';
+                bkuWrapper.style.display = 'none';
+            }
+        }
+
+        function openEditCardModal(stageId, category, index) {
+            activeEditStageId = stageId;
+            activeEditCategory = category;
+            activeEditIndex = index;
+            
+            const prog = programs[activeProgramId];
+            const stage = prog.stages.find(s => s.id === stageId);
+            const card = stage[category][index];
+            
+            document.getElementById('cardModalTitle').innerHTML = `<i class="fa-solid fa-file-pen me-2"></i> Kart Düzenleme Paneli`;
+            
+            // Fill Form
+            document.getElementById('edit-prod-type').value = card.type || 'calc';
+            document.getElementById('edit-prod-target').value = card.target || card.name || '';
+            document.getElementById('edit-prod-name').value = card.target ? (card.name || '') : '';
+            document.getElementById('edit-prod-active').value = card.active || '';
+            
+            if (card.type === 'calc') {
+                document.getElementById('edit-prod-dose').value = card.baseDose || '';
+                document.getElementById('edit-prod-unit').value = card.doseUnit || 'g';
+                document.getElementById('edit-prod-per').value = card.dosePer || 100;
+            } else {
+                document.getElementById('edit-prod-desc').value = card.description || '';
+                document.getElementById('edit-prod-calc-label').value = card.calcLabel || 'UYGULAMA YAPILMAZ';
+            }
+            
+            // Clear Search Input
+            const searchInput = document.getElementById('edit-prod-bku-search');
+            if (searchInput) searchInput.value = '';
+
+            toggleCardTypeFields();
+            populateBkuRecommendations(card.target || card.name || '', card.active || '');
+            
+            document.getElementById('edit-card-overlay').classList.add('active');
+        }
+
+        function openAddCardModal(stageId, category) {
+            activeEditStageId = stageId;
+            activeEditCategory = category;
+            activeEditIndex = null; // null represents adding a new card
+            
+            document.getElementById('cardModalTitle').innerHTML = `<i class="fa-solid fa-plus me-2"></i> Yeni Kart Ekle`;
+            
+            // Clear Form Defaults
+            document.getElementById('edit-prod-type').value = 'calc';
+            document.getElementById('edit-prod-target').value = '';
+            document.getElementById('edit-prod-name').value = '';
+            document.getElementById('edit-prod-active').value = '';
+            document.getElementById('edit-prod-dose').value = '';
+            document.getElementById('edit-prod-unit').value = 'g';
+            document.getElementById('edit-prod-per').value = 100;
+            document.getElementById('edit-prod-desc').value = '';
+            document.getElementById('edit-prod-calc-label').value = 'UYGULAMA YAPILMAZ';
+            
+            // Clear Search Input
+            const searchInput = document.getElementById('edit-prod-bku-search');
+            if (searchInput) searchInput.value = '';
+
+            toggleCardTypeFields();
+            populateBkuRecommendations('', '');
+            
+            document.getElementById('edit-card-overlay').classList.add('active');
+        }
+
+        function closeCardModal() {
+            document.getElementById('edit-card-overlay').classList.remove('active');
+        }
+
+        // Populate BKÜ Dropdown recommendations
+        function populateBkuRecommendations(cardName, cardActive, query = '') {
+            if (typeof updateBkuDropdown === 'function') {
+                updateBkuDropdown(cardName, cardActive, query);
+            }
+        }
+
+        function saveCardDetails(e) {
+            e.preventDefault();
+            const prog = programs[activeProgramId];
+            const stage = prog.stages.find(s => s.id === activeEditStageId);
+            
+            const cardType = document.getElementById('edit-prod-type').value;
+            const cardTarget = document.getElementById('edit-prod-target').value.trim();
+            const cardName = document.getElementById('edit-prod-name').value.trim();
+            const cardActive = document.getElementById('edit-prod-active').value.trim();
+            
+            let cardData = {
+                target: cardTarget,
+                name: cardName,
+                active: cardActive,
+                type: cardType
+            };
+            
+            if (cardType === 'calc') {
+                cardData.baseDose = parseFloat(document.getElementById('edit-prod-dose').value);
+                cardData.doseUnit = document.getElementById('edit-prod-unit').value;
+                cardData.dosePer = parseFloat(document.getElementById('edit-prod-per').value) || 100;
+            } else {
+                cardData.description = document.getElementById('edit-prod-desc').value.trim();
+                cardData.calcLabel = document.getElementById('edit-prod-calc-label').value.trim() || 'UYGULAMA YAPILMAZ';
+            }
+            
+            if (activeEditIndex === null) {
+                // Add Card operation
+                stage[activeEditCategory].push(cardData);
+            } else {
+                // Edit Card operation
+                stage[activeEditCategory][activeEditIndex] = cardData;
+            }
+            
+            closeCardModal();
+            renderProgram();
+            calculateDoses();
+            saveProgramsToServer();
+        }
+
+        function deleteCard(stageId, category, index) {
+            if (!confirm("Bu ilacı/gübreyi listeden çıkarmak istediğinizden emin misiniz?")) return;
+            
+            const prog = programs[activeProgramId];
+            const stage = prog.stages.find(s => s.id === stageId);
+            stage[category].splice(index, 1);
+            
+            renderProgram();
+            calculateDoses();
+            saveProgramsToServer();
+        }
+
+        // 9. Stage Editing/Adding Details
+        function openStageModal(stageId) {
+            activeEditStageId = stageId;
+            const prog = programs[activeProgramId];
+            const stage = prog.stages.find(s => s.id === stageId);
+            
+            document.getElementById('stage-form-title').value = stage.title || '';
+            document.getElementById('stage-form-short').value = stage.shortName || '';
+            document.getElementById('stage-form-time').value = stage.time || '';
+            document.getElementById('stage-form-image').value = stage.image || 'assets/images/stage_1.jpg';
+            
+            document.getElementById('edit-stage-overlay').classList.add('active');
+        }
+
+        function closeStageModal() {
+            document.getElementById('edit-stage-overlay').classList.remove('active');
+        }
+
+        function saveStageDetails(e) {
+            e.preventDefault();
+            const prog = programs[activeProgramId];
+            const stage = prog.stages.find(s => s.id === activeEditStageId);
+            
+            stage.title = document.getElementById('stage-form-title').value.trim();
+            stage.shortName = document.getElementById('stage-form-short').value.trim();
+            stage.time = document.getElementById('stage-form-time').value.trim();
+            stage.image = document.getElementById('stage-form-image').value;
+            
+            closeStageModal();
+            renderProgram();
+            saveProgramsToServer();
+        }
+
+        function addNewStagePlaceholder() {
+            const prog = programs[activeProgramId];
+            const newId = prog.stages.length + 1;
+            
+            const newStage = {
+                id: newId,
+                shortName: `${newId}. Evre`,
+                title: `${newId}. Gelişim Evresi`,
+                time: "Evre Dönemi Giriniz",
+                image: "assets/images/stage_5.jpg",
+                hastalik: [],
+                zararli: [],
+                besleme: []
+            };
+            
+            prog.stages.push(newStage);
+            renderProgram();
+            saveProgramsToServer();
+            
+            // Scroll to the end
+            setTimeout(() => {
+                const container = document.getElementById('table-container');
+                container.scrollLeft = container.scrollWidth;
+            }, 100);
+        }
+
+        function deleteStage(stageId) {
+            if (!confirm(`${stageId}. evreyi ve içindeki tüm ilaçlama kartlarını silmek istediğinizden emin misiniz?`)) return;
+            
+            const prog = programs[activeProgramId];
+            const index = prog.stages.findIndex(s => s.id === stageId);
+            prog.stages.splice(index, 1);
+            
+            // Re-index stages IDs
+            prog.stages.forEach((stage, idx) => {
+                stage.id = idx + 1;
+            });
+            
+            renderProgram();
+            saveProgramsToServer();
+        }
+
+        // 10. Guidelines Editing details
+        function openEditGuidelinePrompt(index) {
+            const prog = programs[activeProgramId];
+            const rule = prog.guidelines[index];
+            const newRule = prompt("Uygulama kuralını düzenleyin:", rule.replace(/<strong>/g, '').replace(/<\/strong>/g, ''));
+            
+            if (newRule === null) return;
+            
+            // If they want to wrap with bold, we try to preserve or they format it
+            prog.guidelines[index] = newRule.trim();
+            renderGuidelines();
+            saveProgramsToServer();
+        }
+
+        document.getElementById('btnAddGuideline').addEventListener('click', () => {
+            const prog = programs[activeProgramId];
+            const newRule = prompt("Yeni bir takvim kuralı ekleyin:");
+            if (!newRule) return;
+            
+            prog.guidelines.push(newRule.trim());
+            renderGuidelines();
+            saveProgramsToServer();
+        });
+
+        function deleteGuideline(index) {
+            if (!confirm("Bu kuralı kaldırmak istediğinizden emin misiniz?")) return;
+            const prog = programs[activeProgramId];
+            prog.guidelines.splice(index, 1);
+            
+            renderGuidelines();
+            saveProgramsToServer();
+        }
+
+        // 11. Crop Program Add / Delete Logic
+        function openAddProgramModal() {
+            document.getElementById('new-prog-name').value = '';
+            document.getElementById('new-prog-emoji').value = '🍐';
+            document.getElementById('new-prog-stages-count').value = 8;
+            
+            document.getElementById('add-program-overlay').classList.add('active');
+        }
+
+        function closeAddProgramModal() {
+            document.getElementById('add-program-overlay').classList.remove('active');
+        }
+
+        function createNewProgram(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-prog-name').value.trim();
+            const emoji = document.getElementById('new-prog-emoji').value;
+            const stagesCount = parseInt(document.getElementById('new-prog-stages-count').value, 10) || 8;
+            
+            // Generate crop key
+            const key = 'custom_' + Date.now();
+            
+            // Build crop program default stages
+            const stages = [];
+            for (let i = 1; i <= stagesCount; i++) {
+                stages.push({
+                    id: i,
+                    shortName: `${i}. Evre`,
+                    title: `${i}. Evre Gelişimi`,
+                    time: "Zaman Dilimi",
+                    image: "assets/images/stage_5.jpg",
+                    hastalik: [],
+                    zararli: [],
+                    besleme: []
+                });
+            }
+            
+            programs[key] = {
+                title: `${name} Koruma ve Yapraktan Besleme Programı`,
+                subtitle: `${name} ağaçlarınızın tüm hayati evrelerine göre optimize edilmiş koruma ve besleme takvimi.`,
+                badge: "Özel Üretici Modülü",
+                emoji: emoji,
+                guidelines: [
+                    "<strong>Uygulama Saatlerine Dikkat Edin:</strong> Foliar uygulamaları gün ortasındaki sıcak saatlerde yapmayın.",
+                    "<strong>pH Değerini Kontrol Edin:</strong> Püskürtme suyunuzun pH derecesi 5.5 - 6.5 aralığında olmalıdır."
+                ],
+                stages: stages
+            };
+            
+            closeAddProgramModal();
+            saveProgramsToServer();
+            
+            // Redirect to the newly created crop page
+            window.location.href = `program.html?id=${key}`;
+        }
+
+        // Delete Program completely
+        document.getElementById('btnDeleteProgram').addEventListener('click', () => {
+            const isDefault = ['apple', 'cherry', 'apricot', 'peach'].includes(activeProgramId);
+            if (isDefault) {
+                alert("Varsayılan programlar silinemez.");
+                return;
+            }
+            
+            if (!confirm("Bu özel takvimi kalıcı olarak silmek istediğinizden emin misiniz?")) return;
+            
+            delete programs[activeProgramId];
+            saveProgramsToServer();
+            
+            // Redirect back to default apple program
+            window.location.href = 'program.html?id=apple';
+        });
+    </script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    if (typeof logout !== 'function') {
+        function logout() {
+            localStorage.removeItem('isLoggedIn');
+            window.location.href = 'login.html';
+        }
+    }
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

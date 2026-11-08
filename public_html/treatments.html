@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İlaçlama Takip Sistemi - Bahçe Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+    <style>
+        /* Force Leaflet interactive paths to ignore external border-radius overrides */
+        path.leaflet-interactive {
+            border-radius: 0 !important;
+        }
+        body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; }
+        .container { max-width: 1100px; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-top: 30px; }
+        .form-group-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px 16px; margin-bottom: 16px; padding: 16px; background: #f8f9fa; border-radius: 12px; align-items: start; }
+        .form-group-grid label { font-size: .85rem; font-weight: 600; margin-bottom: 4px; display: block; color: #37474f; }
+        .form-group-grid .form-control, .form-group-grid .form-select { font-size: .9rem; padding: .35rem .6rem; }
+        .fg-date, .fg-water, .fg-status { grid-column: span 2; }
+        .fg-notes { grid-column: span 6; }
+        .fg-notes textarea { height: 38px; min-height: 38px; resize: vertical; }
+        .fg-products { grid-column: 1 / span 7; }
+        .fg-parcels { grid-column: 8 / span 5; }
+        .fg-parcels .checkbox-container { max-height: 190px; padding: 10px; }
+        #product-rows-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 12px; }
+        #product-rows-container .product-row { margin-bottom: 0; grid-template-columns: 1.4fr 1fr auto; gap: 6px; }
+        @media (max-width: 991.98px) {
+            .fg-date, .fg-water, .fg-status { grid-column: span 4; }
+            .fg-products, .fg-notes, .fg-parcels { grid-column: 1 / -1; }
+            #product-rows-container { grid-template-columns: 1fr; }
+        }
+        .product-row { display: grid; grid-template-columns: 2fr 1fr auto; gap: 10px; margin-bottom: 10px; }
+        .checkbox-container { border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; max-height: 250px; overflow-y: auto; background: #fff; }
+        .variety-group { margin-bottom: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.02); }
+        .variety-group-title { font-weight: bold; color: #2e7d32; border-bottom: 2px solid #e0e0e0; margin-bottom: 10px; display: block; }
+        .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .status-planlanan { background-color: #fff3e0; color: #e65100; }
+        .status-gerceklesen { background-color: #e8f5e9; color: #1b5e20; }
+        .badge-variety { padding: 3px 10px; border-radius: 5px; font-size: 0.75rem; font-weight: bold; margin: 2px; }
+        .row-elma { border-left: 6px solid #198754 !important; }
+        .row-armut { border-left: 6px solid #ffc107 !important; }
+        .row-nektarin { border-left: 6px solid #c0392b !important; }
+        .row-kayisi { border-left: 6px solid #fd7e14 !important; }
+        .row-kiraz { border-left: 6px solid #b71c1c !important; }
+        .row-bag { border-left: 6px solid #6f42c1 !important; }
+        .row-yassi-nektarin { border-left: 6px solid #8e44ad !important; }
+        .row-yassi-seftali { border-left: 6px solid #e67e22 !important; }
+        .row-seftali { border-left: 6px solid #f39c12 !important; }
+        /* Fix Leaflet map tile rendering in Bootstrap modals */
+        .leaflet-container img.leaflet-tile {
+            max-width: none !important;
+            max-height: none !important;
+        }
+        /* Premium Tooltip styling */
+        .premium-tooltip {
+            background: #1a252f !important;
+            color: white !important;
+            border: 1px solid #4caf50 !important;
+            border-radius: 6px !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+            padding: 4px 8px !important;
+        }
+        .premium-tooltip::before {
+            border-top-color: #1a252f !important;
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link active" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-success fw-bold mb-0">İlaçlama Takip Formu</h2>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="openAgendaSyncModal()">
+                <i class="bi bi-calendar-event me-1"></i>Ajandadan Aktar
+            </button>
+            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="exportToPDF()">
+                <i class="bi bi-file-pdf me-1"></i>PDF
+            </button>
+            <button class="btn btn-outline-success btn-sm rounded-pill px-3" onclick="exportToExcel()">
+                <i class="bi bi-file-earmark-excel me-1"></i>Excel
+            </button>
+            <div id="activeGardenBadge"></div>
+        </div>
+    </div>
+
+    <div class="form-group-grid">
+        <div class="fg-date">
+            <label>Tarih</label>
+            <input type="date" id="tarih" class="form-control">
+        </div>
+        <div class="fg-notes">
+            <label>Açıklama</label>
+            <textarea id="aciklama" class="form-control" rows="2" placeholder="Uygulama ile ilgili ek notlar, gözlemler..."></textarea>
+        </div>
+        <div class="fg-products">
+            <label>Ürünler ve Dozlar</label>
+            <div id="product-rows-container">
+                <div class="product-row">
+                    <select class="urun-input form-control" onchange="autoFillTreatmentDose(this)" required>
+                        <option value="">Stoktan ürün seçin</option>
+                    </select>
+                    <input type="text" class="doz-input form-control" placeholder="Doz otomatik gelir; değiştirebilirsiniz">
+                    <div style="width: 38px;"></div> <!-- Hizalama için boşluk -->
+                </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-info text-white mt-2" onclick="addProductRow()">+ Ürün Ekle</button>
+        </div>
+        <div class="fg-water">
+            <label>Kullanılan Su (Ton)</label>
+            <input type="number" id="su" step="0.1" placeholder="Örn: 2.5" class="form-control">
+        </div>
+        <div class="fg-status">
+            <label>Durum</label>
+            <select id="durum" class="form-select">
+                <option value="Planlanan">Planlanan</option>
+                <option value="Gerçekleşen">Gerçekleşen</option>
+            </select>
+        </div>
+        <div class="fg-parcels">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <label class="mb-0 fw-semibold">Çeşit Parselleri (Çoklu Seçim)</label>
+                <button type="button" class="btn btn-outline-success btn-sm rounded-pill" onclick="openMapSelectionModal()">
+                    <i class="bi bi-map"></i> Haritadan Seç
+                </button>
+            </div>
+            <div id="selectedVarietiesBadges" class="d-flex flex-wrap gap-1 mb-2"></div>
+            <div class="checkbox-container" id="cesitler-selection">
+                <!-- JS ile dinamik doldurulacak -->
+            </div>
+            <div id="areaInfoAlert" class="alert alert-info mt-2 py-2 px-3 small d-none">
+                <i class="bi bi-info-circle-fill me-1"></i>
+                Haritadan seçilen toplam alan: <span id="mapSelectedArea" class="fw-bold">0</span> da.
+                <button type="button" class="btn btn-xs btn-primary ms-2 py-0 px-2 small" onclick="applySuggestedWater()">Önerilen Su Miktarını Uygula (<span id="suggestedWaterVal">0</span> Ton)</button>
+            </div>
+        </div>
+    </div>
+    <button class="btn btn-success btn-lg w-100 fw-bold mb-4 shadow-sm" id="kaydetBtn" onclick="kaydet()">Listeye Ekle</button>
+
+    <!-- Arama Çubuğu -->
+    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div class="card-body p-1 bg-light">
+            <div class="input-group">
+                <span class="input-group-text bg-transparent border-0 text-success"><i class="bi bi-search fs-5"></i></span>
+                <input type="text" id="aramaInput" class="form-control border-0 bg-transparent shadow-none" 
+                       placeholder="Tarih, ürün, çeşit parseli veya açıklama ile ara..." oninput="tabloyuGuncelle()">
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Tarih</th>
+                    <th>Ürün</th>
+                    <th>Doz (Ton/Su)</th>
+                    <th>Su (Ton)</th>
+                    <th>Toplam İlaç</th>
+                    <th>Çeşit Parselleri</th>
+                    <th>Durum</th>
+                    <th>Açıklama</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="tabloGövdesi">
+                <!-- Veriler buraya gelecek -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Ajanda Senkronizasyon Modalı -->
+<div class="modal fade" id="agendaSyncModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-event me-2"></i>Ajandadan Planlanan İlaçlamalar</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="agendaSyncList" class="row g-3">
+                    <!-- JS ile dinamik doldurulacak -->
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Harita Seçim Modalı -->
+<div class="modal fade" id="mapSelectionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-map me-2"></i>Haritadan Çeşit Parseli Seç</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalMap" style="height: 450px; width: 100%;"></div>
+            </div>
+            <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center">
+                <div class="text-start ms-2">
+                    <div class="small text-muted">Seçilen Parseller: <span id="modalSelectedVarieties" class="fw-bold text-dark">-</span></div>
+                    <div class="small text-muted">Toplam Alan: <span id="modalSelectedArea" class="fw-bold text-success">0 da</span></div>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" onclick="confirmMapSelection()">Seçimi Uygula</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bilgi Mesajı Modalı (Pencere şeklinde uyarı) -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-5">
+                <div id="statusIcon" class="mb-3"></div>
+                <h4 id="statusTitle" class="fw-bold"></h4>
+                <p id="statusBody" class="text-muted fs-5"></p>
+                <div class="mt-4">
+                    <button type="button" id="statusModalBtn" class="btn btn-lg px-5 shadow-sm" data-bs-dismiss="modal">Tamam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let veriler = [];
+    let duzenlenenId = null;
+    let varietyGroups = {};
+    let activeAgendaId = null;
+    let agendaSyncModalInstance = null;
+    const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+    const gardenName = localStorage.getItem('selected_garden_name') || '';
+
+    async function openAgendaSyncModal() {
+        if (!agendaSyncModalInstance) {
+            agendaSyncModalInstance = new bootstrap.Modal(document.getElementById('agendaSyncModal'));
+        }
+        
+        const container = document.getElementById('agendaSyncList');
+        container.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="text-muted mt-2">Ajanda kayıtları yükleniyor...</p></div>';
+        
+        agendaSyncModalInstance.show();
+        
+        try {
+            const res = await fetch(`api/get_agenda.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                const agenda = await res.json();
+                if (Array.isArray(agenda)) {
+                    const plannedSpraying = agenda.filter(item => item.type === 'ilaclama' && item.status === 'planned');
+                    
+                    if (plannedSpraying.length === 0) {
+                        container.innerHTML = '<div class="alert alert-info text-center p-4 w-100"><i class="bi bi-info-circle fs-4"></i><br>Ajandada planlanmış ilaçlama kaydı bulunamadı.</div>';
+                        return;
+                    }
+                    
+                    container.innerHTML = plannedSpraying.map(item => {
+                        const productsList = (item.products || []).map(p => `<span class="badge bg-secondary me-1 mb-1">${p.name}: ${p.dose}</span>`).join('');
+                        return `
+                            <div class="col-12">
+                                <div class="card shadow-sm border-0 border-start border-primary border-4 p-3 bg-light bg-opacity-50">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="fw-bold mb-1 text-primary"><i class="bi bi-tag-fill me-1"></i>${item.parselCesit || 'Tüm Bahçe'}</h6>
+                                            <div class="small text-muted mb-2"><i class="bi bi-calendar-check me-1"></i>Tarih: ${item.date}</div>
+                                            <div class="mb-2">${productsList}</div>
+                                            ${item.notes ? `<div class="small text-muted font-italic bg-white p-2 rounded border border-light"><i class="bi bi-chat-left-text me-1"></i>${item.notes}</div>` : ''}
+                                        </div>
+                                        <button class="btn btn-primary btn-sm rounded-pill px-3 fw-bold" onclick="populateFormFromAgenda('${item.id}')">
+                                            <i class="bi bi-arrow-down-left-circle me-1"></i>Forma Aktar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+        } catch (e) {
+            container.innerHTML = '<div class="alert alert-danger text-center w-100">Ajanda verileri yüklenirken hata oluştu!</div>';
+        }
+    }
+
+    async function populateFormFromAgenda(agendaIdStr) {
+        try {
+            const res = await fetch(`api/get_agenda.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                const agenda = await res.json();
+                const item = agenda.find(x => x.id === agendaIdStr);
+                if (item) {
+                    activeAgendaId = item.id;
+                    
+                    // Tarih belirle
+                    document.getElementById('tarih').value = item.date;
+                    
+                    // Durumu 'Gerçekleşen' yap (Çünkü ilaçlama kaydını şimdi uyguluyoruz)
+                    document.getElementById('durum').value = 'Gerçekleşen';
+                    
+                    // Açıklama
+                    document.getElementById('aciklama').value = (item.notes || '') + ` (Ajandadan otomatik aktarıldı. Ajanda No: ${item.id})`;
+                    
+                    // Ürünleri yükle
+                    const container = document.getElementById('product-rows-container');
+                    container.innerHTML = '';
+                    
+                    const productsToLoad = item.products || [];
+                    if (productsToLoad.length > 0) {
+                        productsToLoad.forEach(p => {
+                            addProductRow(p.name, p.dose);
+                        });
+                    } else if (item.name) {
+                        addProductRow(item.name, item.dose || '');
+                    } else {
+                        addProductRow();
+                    }
+                    
+                    // Çeşitleri parse et ve eşleşen kutucukları işaretle
+                    const parselCesitStr = (item.parselCesit || "").toLowerCase();
+                    
+                    document.querySelectorAll('#cesitler-selection input').forEach(cb => {
+                        cb.checked = false;
+                    });
+                    
+                    selectedPlotNames = [];
+                    mapSelectionAreaSum = 0;
+                    
+                    const cleanString = (str) => {
+                        return str.toLowerCase()
+                            .replace(/ğ/g, 'g').replace(/ü/g, 'u')
+                            .replace(/ş/g, 's').replace(/ı/g, 'i')
+                            .replace(/ö/g, 'o').replace(/ç/g, 'c')
+                            .replace(/\s+/g, '');
+                    };
+                    
+                    const cleanParselCesit = cleanString(parselCesitStr);
+                    
+                    let matchedCount = 0;
+                    document.querySelectorAll('#cesitler-selection input').forEach(cb => {
+                        const cleanCbVal = cleanString(cb.value);
+                        if (cleanParselCesit.includes(cleanCbVal) || cleanCbVal.includes(cleanParselCesit)) {
+                            cb.checked = true;
+                            matchedCount++;
+                            selectedPlotNames.push(cb.value);
+                        }
+                    });
+                    
+                    console.log(`Ajandadan Eşleştirilen Çeşit Sayısı: ${matchedCount}`);
+                    
+                    if (allMapPlots.length === 0) {
+                        await loadMapDataForSelection();
+                    }
+                    
+                    selectedPlotNames.forEach(name => {
+                        const plot = allMapPlots.find(p => p.name === name);
+                        if (plot) mapSelectionAreaSum += parseFloat(plot.area);
+                    });
+                    mapSelectionAreaSum = parseFloat(mapSelectionAreaSum.toFixed(2));
+                    
+                    if (mapSelectionAreaSum > 0) {
+                        document.getElementById('areaInfoAlert').classList.remove('d-none');
+                        document.getElementById('mapSelectedArea').innerText = mapSelectionAreaSum;
+                        const suggestedWater = parseFloat((mapSelectionAreaSum * 0.1).toFixed(2));
+                        document.getElementById('suggestedWaterVal').innerText = suggestedWater;
+                        document.getElementById('su').value = suggestedWater;
+                    } else {
+                        document.getElementById('areaInfoAlert').classList.add('d-none');
+                    }
+                    
+                    updateSelectedVarietiesBadges();
+                    
+                    agendaSyncModalInstance.hide();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    alert(`Ajandadaki planlanan ilaçlama başarıyla forma yüklendi! Tarih, ürünler ve çeşitler otomatik dolduruldu.`);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Ajandadan veri yüklenirken hata oluştu!");
+        }
+    }
+
+    const gardenConfigs = {
+        'Muzaffer Yılmaz': {
+            html: `
+                <div class="variety-group">
+                    <span class="variety-group-title">KİRAZ</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Regina"> Regina</label>
+                        <label class="variety-item"><input type="checkbox" value="Skeena"> Skeena</label>
+                        <label class="variety-item"><input type="checkbox" value="Sweetheart"> Sweetheart</label>
+                        <label class="variety-item"><input type="checkbox" value="Staccato"> Staccato</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">ELMA</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Gala"> Gala</label>
+                        <label class="variety-item"><input type="checkbox" value="Granny Smith"> Granny Smith</label>
+                        <label class="variety-item"><input type="checkbox" value="Rosy Glowe"> Rosy Glowe</label>
+                        <label class="variety-item"><input type="checkbox" value="Scarlet Spur"> Scarlet Spur</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">ARMUT</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Eden"> Eden</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">KAYISI</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Nelson"> Nelson</label>
+                        <label class="variety-item"><input type="checkbox" value="Bolero"> Bolero</label>
+                        <label class="variety-item"><input type="checkbox" value="Memphis"> Memphis</label>
+                        <label class="variety-item"><input type="checkbox" value="Farlis"> Farlis</label>
+                        <label class="variety-item"><input type="checkbox" value="Farclo"> Farclo</label>
+                        <label class="variety-item"><input type="checkbox" value="Rouge Cot"> Rouge Cot</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">NEKTARİN</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Bayblone"> Bayblone</label>
+                        <label class="variety-item"><input type="checkbox" value="Filoe"> Filoe</label>
+                        <label class="variety-item"><input type="checkbox" value="Kinolea"> Kinolea</label>
+                    </div>
+                </div>
+            `,
+            groups: {
+                'Regina': 'kiraz', 'Skeena': 'kiraz', 'Sweetheart': 'kiraz', 'Staccato': 'kiraz',
+                'Gala': 'elma', 'Granny Smith': 'elma', 'Rosy Glowe': 'elma', 'Scarlet Spur': 'elma',
+                'Eden': 'armut',
+                'Nelson': 'kayisi', 'Bolero': 'kayisi', 'Memphis': 'kayisi', 'Farlis': 'kayisi', 'Farclo': 'kayisi', 'Rouge Cot': 'kayisi',
+                'Bayblone': 'nektarin', 'Filoe': 'nektarin', 'Kinolea': 'nektarin'
+            }
+        },
+        'default': {
+            html: `
+                <div class="variety-group">
+                    <span class="variety-group-title">KAYISI</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Bolero"> Bolero</label>
+                        <label class="variety-item"><input type="checkbox" value="Nelson"> Nelson</label>
+                        <label class="variety-item"><input type="checkbox" value="Madrigal"> Madrigal</label>
+                        <label class="variety-item"><input type="checkbox" value="Memphis"> Memphis</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">YASSI NEKTARİN</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Diosa"> Diosa</label>
+                        <label class="variety-item"><input type="checkbox" value="Canoppe"> Canoppe</label>
+                        <label class="variety-item"><input type="checkbox" value="Tintosa"> Tintosa</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">NEKTARİN</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Diablotina"> Diablotina</label>
+                        <label class="variety-item"><input type="checkbox" value="Esmeralda"> Esmeralda</label>
+                        <label class="variety-item"><input type="checkbox" value="Kinolea"> Kinolea</label>
+                        <label class="variety-item"><input type="checkbox" value="Nebreska"> Nebreska</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">ŞEFTALİ</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Sweet Henry"> Sweet Henry</label>
+                    </div>
+                </div>
+                <div class="variety-group">
+                    <span class="variety-group-title">YASSI ŞEFTALİ</span>
+                    <div class="d-flex flex-wrap gap-3">
+                        <label class="variety-item"><input type="checkbox" value="Bayblone"> Bayblone</label>
+                        <label class="variety-item"><input type="checkbox" value="Filoe"> Filoe</label>
+                    </div>
+                </div>
+            `,
+            groups: {
+                'Bolero': 'kayisi', 'Nelson': 'kayisi', 'Madrigal': 'kayisi', 'Memphis': 'kayisi',
+                'Diosa': 'yassi-nektarin', 'Canoppe': 'yassi-nektarin', 'Tintosa': 'yassi-nektarin',
+                'Diablotina': 'nektarin', 'Esmeralda': 'nektarin', 'Kinolea': 'nektarin', 'Nebreska': 'nektarin',
+                'Sweet Henry': 'seftali',
+                'Bayblone': 'yassi-seftali', 'Filoe': 'yassi-seftali'
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        if (gardenName) {
+            document.getElementById('activeGardenBadge').innerHTML = 
+                `<span class="badge bg-success bg-opacity-10 text-success p-2"><i class="bi bi-pin-map-fill me-1"></i>${gardenName}</span>`;
+        }
+
+        // Bahçe ismine göre çeşitleri ayarla
+        const config = gardenConfigs[gardenName] || gardenConfigs['default'];
+        document.getElementById('cesitler-selection').innerHTML = config.html;
+        varietyGroups = config.groups;
+
+        // Parsel seçimi bütün bahçelerde interaktif haritadaki sulama parsellerinden yapılır.
+        document.getElementById('cesitler-selection').style.display = 'none';
+        updateSelectedVarietiesBadges();
+
+        // Tarih alanını bugünün tarihiyle başlat
+        const today = new Date();
+        const localDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        document.getElementById('tarih').value = localDate;
+
+        await loadProductsForAutocomplete();
+        await loadRecords();
+    });
+
+    async function loadRecords() {
+        const res = await fetch(`api/get_treatments.php?garden_id=${gardenId}&t=${Date.now()}`);
+        veriler = await res.json();
+        veriler.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+        tabloyuGuncelle();
+    }
+
+    function duzenle(id) {
+        const veri = veriler.find(v => v.id == id);
+        if (!veri) return;
+
+        duzenlenenId = id;
+        document.getElementById('tarih').value = veri.tarih;
+        document.getElementById('su').value = veri.su;
+        document.getElementById('durum').value = veri.durum;
+        document.getElementById('aciklama').value = veri.aciklama || ''; // Yeni açıklama alanı
+
+        // Ürünleri yükle
+        const container = document.getElementById('product-rows-container');
+        container.innerHTML = '';
+        if (veri.products && veri.products.length > 0) {
+            veri.products.forEach((p) => {
+                addProductRow(p.urun, p.doz);
+            });
+        } else {
+             // Eski kayıt desteği
+             addProductRow(veri.urun || '', veri.doz || '');
+        }
+
+        // Çeşitleri seç
+        const secilenDizi = (veri.cesitler || "").split(', ').map(s => s.trim());
+        document.querySelectorAll('#cesitler-selection input').forEach(cb => {
+            cb.checked = secilenDizi.includes(cb.value);
+        });
+
+        // Düzenleme modunda selectedPlotNames dizisini de dolduralım
+        selectedPlotNames = secilenDizi.filter(Boolean);
+        // mapSelectionAreaSum değerini allMapPlots içindeki alanlardan eşleştirip hesaplayalım
+        mapSelectionAreaSum = 0;
+        selectedPlotNames.forEach(name => {
+            const plot = allMapPlots.find(p => p.name === name);
+            if (plot) mapSelectionAreaSum += parseFloat(plot.area);
+        });
+        mapSelectionAreaSum = parseFloat(mapSelectionAreaSum.toFixed(2));
+        
+        // Eğer alan sıfırdan büyükse alan uyarısını da gösterelim
+        if (mapSelectionAreaSum > 0) {
+            document.getElementById('areaInfoAlert').classList.remove('d-none');
+            document.getElementById('mapSelectedArea').innerText = mapSelectionAreaSum;
+            const suggestedWater = parseFloat((mapSelectionAreaSum * 0.1).toFixed(2));
+            document.getElementById('suggestedWaterVal').innerText = suggestedWater;
+        } else {
+            document.getElementById('areaInfoAlert').classList.add('d-none');
+        }
+
+        updateSelectedVarietiesBadges();
+
+        // Buton metnini değiştir ve yukarı kaydır
+        document.getElementById('kaydetBtn').textContent = 'Kaydet';
+        document.getElementById('kaydetBtn').className = 'btn btn-warning btn-lg w-100 fw-bold mb-4 shadow-sm';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function addProductRow(urun = '', doz = '') {
+        const container = document.getElementById('product-rows-container');
+        const div = document.createElement('div');
+        div.className = 'product-row';
+        const isFirst = container.children.length === 0;
+        div.innerHTML = `
+            <select class="urun-input form-control" onchange="autoFillTreatmentDose(this)" required>
+                <option value="">Stoktan ürün seçin</option>
+            </select>
+            <input type="text" class="doz-input form-control" placeholder="Doz otomatik gelir; değiştirebilirsiniz">
+            ${isFirst ? '<div style="width: 38px;"></div>' : '<button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="bi bi-trash"></i></button>'}
+        `;
+        container.appendChild(div);
+        populateStockProductSelect(div.querySelector('.urun-input'), urun);
+        if (doz) {
+            div.querySelector('.doz-input').value = doz;
+        } else {
+            autoFillTreatmentDose(div.querySelector('.urun-input'));
+        }
+    }
+
+    function calculateTreatmentTotal(dosageText, waterTons) {
+        const waterAmount = Number(String(waterTons ?? '').replace(',', '.'));
+        if (!dosageText || !Number.isFinite(waterAmount) || waterAmount <= 0) return '';
+
+        const normalized = String(dosageText)
+            .toLocaleLowerCase('tr-TR')
+            .replace(/,/g, '.')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const doseMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(ml|cc|gr|g|kg|lt|l)\b/i);
+        if (!doseMatch) return '';
+
+        const doseAmount = Number(doseMatch[1]);
+        const doseUnit = doseMatch[2].toLowerCase();
+        if (!Number.isFinite(doseAmount) || doseAmount <= 0) return '';
+
+        const applicationCount = waterAmount;
+        let totalAmount;
+        let totalUnit;
+
+        if (doseUnit === 'ml' || doseUnit === 'cc') {
+            totalAmount = (doseAmount * applicationCount) / 1000;
+            totalUnit = 'lt';
+        } else if (doseUnit === 'l' || doseUnit === 'lt') {
+            totalAmount = doseAmount * applicationCount;
+            totalUnit = 'lt';
+        } else if (doseUnit === 'g' || doseUnit === 'gr') {
+            totalAmount = (doseAmount * applicationCount) / 1000;
+            totalUnit = 'kg';
+        } else if (doseUnit === 'kg') {
+            totalAmount = doseAmount * applicationCount;
+            totalUnit = 'kg';
+        } else {
+            return '';
+        }
+
+        return `${totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${totalUnit}`;
+    }
+
+    function normalizeTreatmentDose(dosageText) {
+        const text = String(dosageText || '').trim();
+        const match = text.match(/^(\s*)(\d+(?:[.,]\d+)?)(\s*(?:ml|cc|gr|g|kg|lt|l)\s*)\/\s*100\s*(?:l|lt|litre|litreler|su)\b(.*)$/i);
+        if (!match) return text;
+
+        const amount = Number(match[2].replace(',', '.')) * 10;
+        const formattedAmount = Number.isInteger(amount) ? String(amount) : amount.toLocaleString('tr-TR', { maximumFractionDigits: 4 });
+        return `${match[1]}${formattedAmount}${match[3].trim()}/ton su${match[4]}`;
+    }
+
+    function parseTreatmentAmount(amountText) {
+        const match = String(amountText || '').replace(',', '.').match(/([\d.]+)\s*(lt|l|kg)\b/i);
+        if (!match) return null;
+        const amount = Number(match[1]);
+        const unit = match[2].toLowerCase() === 'l' ? 'lt' : match[2].toLowerCase();
+        return Number.isFinite(amount) && amount > 0 ? { amount, unit } : null;
+    }
+
+    function parsePackageAmount(packageText) {
+        const match = String(packageText || '').replace(',', '.').match(/^\s*([\d.]+)\s*(ml|mlt|l|lt|gr|g|kg)\b/i);
+        if (!match) return null;
+        let amount = Number(match[1]);
+        let unit = match[2].toLowerCase();
+        if (!Number.isFinite(amount) || amount <= 0) return null;
+        if (unit === 'ml' || unit === 'mlt') { amount /= 1000; unit = 'lt'; }
+        else if (unit === 'l') unit = 'lt';
+        else if (unit === 'gr' || unit === 'g') { amount /= 1000; unit = 'kg'; }
+        return { amount, unit };
+    }
+
+    function getTreatmentConsumption(record) {
+        if (!record || record.durum !== 'Gerçekleşen') return [];
+        const products = record.products && record.products.length > 0
+            ? record.products
+            : (record.urun ? [{ urun: record.urun, doz: record.doz, toplamIlac: record.toplamIlac }] : []);
+        return products.map(product => ({
+            name: product.urun,
+            amount: parseTreatmentAmount(calculateTreatmentTotal(product.doz, record.su) || product.toplamIlac)
+        })).filter(item => item.name && item.amount);
+    }
+
+    async function updateStockForTreatment(previousRecord, nextRecord) {
+        const changes = new Map();
+        getTreatmentConsumption(previousRecord).forEach(item => {
+            const key = item.name.toLocaleLowerCase('tr-TR');
+            const current = changes.get(key) || { name: item.name, amount: 0, unit: item.amount.unit };
+            current.amount -= item.amount.amount;
+            changes.set(key, current);
+        });
+        getTreatmentConsumption(nextRecord).forEach(item => {
+            const key = item.name.toLocaleLowerCase('tr-TR');
+            const current = changes.get(key) || { name: item.name, amount: 0, unit: item.amount.unit };
+            current.amount += item.amount.amount;
+            current.unit = item.amount.unit;
+            changes.set(key, current);
+        });
+
+        const effectiveChanges = Array.from(changes.values()).filter(change => Math.abs(change.amount) > 0.000001);
+        if (effectiveChanges.length === 0) return true;
+
+        const response = await fetch(`api/get_products.php?garden_id=${encodeURIComponent(gardenId)}&t=${Date.now()}`);
+        if (!response.ok) throw new Error('Stok listesi alınamadı.');
+        const stockProducts = await response.json();
+        if (!Array.isArray(stockProducts)) throw new Error('Stok listesi geçersiz.');
+
+        const stockChanges = [];
+        for (const change of effectiveChanges) {
+            const product = stockProducts.find(item => String(item.name || '').trim().toLocaleLowerCase('tr-TR') === change.name.toLocaleLowerCase('tr-TR'));
+            if (!product) throw new Error(`"${change.name}" ürünü stokta bulunamadı.`);
+            const packageAmount = parsePackageAmount(product.pkg_info);
+            if (!packageAmount || packageAmount.unit !== change.unit) {
+                throw new Error(`"${change.name}" ürününün ambalaj bilgisi (${product.pkg_info || 'tanımsız'}) tüketim birimiyle uyumlu değil.`);
+            }
+            const packageChange = change.amount / packageAmount.amount;
+            const newQuantity = Number(product.quantity || 0) - packageChange;
+            if (newQuantity < -0.000001) throw new Error(`"${change.name}" ürünü için yeterli stok bulunmuyor.`);
+            stockChanges.push({ product, newQuantity: Math.max(0, newQuantity), packageChange });
+        }
+
+        const now = new Date().toISOString();
+        stockChanges.forEach(({ product, newQuantity, packageChange }) => {
+            product.quantity = Number(newQuantity.toFixed(4));
+            product.total_amount = calculateTotalValueForTreatment(product.pkg_info, product.quantity);
+            product.timestamp = now;
+            product.transaction_type = 'İlaçlama Uygulaması';
+            if (!product.history) product.history = [];
+            product.history.push({
+                date: now,
+                type: 'İlaçlama Uygulaması',
+                qty: `${packageChange > 0 ? '-' : '+'}${Number(Math.abs(packageChange).toFixed(4)).toLocaleString('tr-TR', { useGrouping: false })} Adet`,
+                desc: `${(nextRecord || previousRecord).tarih} tarihli ilaçlama kaydı`
+            });
+        });
+
+        const saveResponse = await fetch(`api/save.php?garden_id=${encodeURIComponent(gardenId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(stockProducts)
+        });
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok || saveResult.status !== 'success') throw new Error('Stok güncellenemedi.');
+        localStorage.setItem(`garden_${gardenId}_products`, JSON.stringify(stockProducts));
+        return true;
+    }
+
+    function calculateTotalValueForTreatment(pkgInfo, quantity) {
+        const match = String(pkgInfo || '').match(/^\s*([\d,.]+)\s*(.*)$/);
+        if (!match) return '';
+        let amount = Number(match[1].replace(',', '.')) * (Number(quantity) || 0);
+        let unit = match[2].trim();
+        if (unit.toLowerCase() === 'ml' || unit.toLowerCase() === 'mlt') { amount /= 1000; unit = 'lt'; }
+        else if (unit.toLowerCase() === 'gr' || unit.toLowerCase() === 'g') { amount /= 1000; unit = 'kg'; }
+        return `${amount.toFixed(2)} ${unit}`;
+    }
+
+    async function kaydet() {
+        const tarih = document.getElementById('tarih').value;
+        const suValue = parseFloat(document.getElementById('su').value);
+        const durum = document.getElementById('durum').value;
+        const aciklama = document.getElementById('aciklama').value; // Yeni açıklama alanı
+
+        // İlaçlama takip kayıtları yalnızca haritadaki çeşit parsellerine bağlanır.
+        const secilenCesitler = selectedPlotNames.filter(Boolean).join(', ');
+
+        const rows = document.querySelectorAll('.product-row');
+        const products = []; // Her bir ürün için detayları tutacak dizi
+
+        for (const row of rows) {
+            const urunInput = row.querySelector('.urun-input');
+            const urun = urunInput.value.trim();
+            const dozInput = normalizeTreatmentDose(row.querySelector('.doz-input').value);
+
+            if (!urun) continue;
+
+            if (!dozInput) {
+                alert(`"${urun}" ürününün stok kartında doz bilgisi bulunmuyor. Önce Stok Listesi sayfasından doz bilgisini ekleyin.`);
+                urunInput.focus();
+                return;
+            }
+
+            if (!allProductsForAutocomplete.some(product => product.name === urun)) {
+                alert(`"${urun}" stok listesinde bulunamadı. Lütfen stoktan bir ürün seçin.`);
+                urunInput.focus();
+                return;
+            }
+
+            const calculatedTotal = calculateTreatmentTotal(dozInput, suValue);
+            if (!calculatedTotal) {
+                alert(`"${urun}" ürününün doz bilgisi hesaplamaya uygun değil: "${dozInput}". Stok kartındaki dozu örneğin "250 ml/100 L su" biçiminde düzeltin.`);
+                return;
+            }
+
+            // Yasaklı Madde Kontrolü
+            if (typeof getBannedProductDetails !== 'undefined') {
+                const banned = getBannedProductDetails(urun);
+                if (banned) {
+                    const proceed = confirm(`⚠️ DİKKAT: Seçtiğiniz "${urun}" ilacı (${banned.aktif_madde}), T.C. Tarım ve Orman Bakanlığı tarafından YASAKLANMIŞTIR!\n\nKullanım Sonlandırma Tarihi: ${banned.kullanim_sonlandirma || 'Yasaklandı'}\n\nYine de bu ilaçlama kaydını kaydetmek istiyor musunuz?`);
+                    if (!proceed) return;
+                }
+            }
+
+            products.push({
+                urun,
+                doz: dozInput,
+                toplamIlac: calculatedTotal
+            });
+        }
+
+        if (!tarih || products.length === 0 || isNaN(suValue) || secilenCesitler === "") {
+            alert("Lütfen tüm alanları doldurun (Tarih, Su, Çeşit Parseli seçimi ve en az bir ürün gereklidir).");
+            return;
+        }
+
+        const previousRecord = duzenlenenId ? veriler.find(v => v.id == duzenlenenId) : null;
+        const nextRecord = { tarih, su: suValue, products, cesitler: secilenCesitler, durum, aciklama };
+
+        try {
+            await updateStockForTreatment(previousRecord, nextRecord);
+        } catch (error) {
+            showAlert(`İlaçlama kaydı stoktan düşülemedi: ${error.message}`, 'danger');
+            return;
+        }
+
+        if (duzenlenenId) {
+            const index = veriler.findIndex(v => v.id === duzenlenenId);
+            if (index > -1) {
+                veriler[index] = { ...veriler[index], ...nextRecord };
+            }
+            duzenlenenId = null;
+        } else {
+            const yeniKayit = {
+                id: Date.now(),
+                ...nextRecord
+            };
+            veriler.push(yeniKayit);
+        }
+
+        // Kayıt sonrası verileri tarihe göre tekrar sırala
+        veriler.sort((a, b) => new Date(b.tarih) - new Date(a.tarih));
+
+        const isSuccess = await syncRecords();
+        if (isSuccess) {
+            // AJANDA DURUM GÜNCELLEMESİ (Çift yönlü senkronizasyon!)
+            if (activeAgendaId) {
+                try {
+                    const resAgenda = await fetch(`api/get_agenda.php?garden_id=${gardenId}&t=${Date.now()}`);
+                    if (resAgenda.ok) {
+                        const agenda = await resAgenda.json();
+                        if (Array.isArray(agenda)) {
+                            const agendaIndex = agenda.findIndex(x => x.id === activeAgendaId.toString());
+                            if (agendaIndex > -1) {
+                                agenda[agendaIndex].status = 'completed';
+                                const resSave = await fetch(`api/save_agenda.php?garden_id=${gardenId}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(agenda)
+                                });
+                                const saveResult = await resSave.json();
+                                if (saveResult.status === 'success') {
+                                    console.log("Ajanda kaydı durumu başarıyla 'completed' yapıldı.");
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Ajanda durumu güncellenirken hata oluştu:", err);
+                }
+                activeAgendaId = null; // Sıfırla
+            }
+            showAlert("İlaçlama kaydı başarıyla kaydedildi.", "success");
+        } else {
+            showAlert("Hata: Kayıt sunucuya gönderilemedi.", "danger");
+        }
+
+        // Formu temizle
+        const today = new Date();
+        const localDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        document.getElementById('tarih').value = localDate;
+        document.getElementById('product-rows-container').innerHTML = '';
+        addProductRow();
+        document.getElementById('su').value = '';
+        document.getElementById('aciklama').value = ''; // Açıklama alanını temizle
+        document.getElementById('areaInfoAlert').classList.add('d-none');
+        document.getElementById('kaydetBtn').textContent = 'Listeye Ekle';
+        document.getElementById('kaydetBtn').className = 'btn btn-success btn-lg w-100 fw-bold mb-4 shadow-sm';
+        document.querySelectorAll('#cesitler-selection input').forEach(cb => cb.checked = false);
+        selectedPlotNames = [];
+        mapSelectionAreaSum = 0;
+        updateSelectedVarietiesBadges();
+        tabloyuGuncelle();
+    }
+
+    async function syncRecords() {
+        const response = await fetch(`api/save_treatments.php?garden_id=${gardenId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(veriler)
+        });
+        const result = await response.json();
+        return result && result.status === 'success';
+    }
+
+    function showAlert(message, type = 'success') {
+        const iconDiv = document.getElementById('statusIcon');
+        const titleH5 = document.getElementById('statusTitle');
+        const bodyP = document.getElementById('statusBody');
+        const btn = document.getElementById('statusModalBtn');
+
+        if (type === 'success') {
+            iconDiv.innerHTML = '<i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>';
+            titleH5.innerText = 'Başarılı!';
+            titleH5.className = 'fw-bold text-success';
+            btn.className = 'btn btn-success btn-lg px-5 shadow-sm';
+        } else {
+            iconDiv.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>';
+            titleH5.innerText = 'Hata!';
+            titleH5.className = 'fw-bold text-danger';
+            btn.className = 'btn btn-danger btn-lg px-5 shadow-sm';
+        }
+
+        bodyP.innerText = message;
+        const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
+        statusModal.show();
+    }
+
+    function trChars(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+            .replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function exportToExcel() {
+        const ws = XLSX.utils.json_to_sheet(veriler.map(v => ({
+            'Tarih': v.tarih,
+            'Ürünler': v.products ? v.products.map(p => p.urun).join(', ') : (v.urun || ''),
+            'Dozlar': v.products ? v.products.map(p => p.doz).join(', ') : (v.doz || ''),
+            'Su (Ton)': v.su,
+            'Toplam İlaç': v.products ? v.products.map(p => calculateTreatmentTotal(p.doz, v.su) || p.toplamIlac).join(', ') : (calculateTreatmentTotal(v.doz, v.su) || v.toplamIlac || ''),
+            'Çeşit Parselleri': v.cesitler,
+            'Durum': v.durum,
+            'Açıklama': v.aciklama || ''
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "İlaçlama Kayıtları");
+        XLSX.writeFile(wb, "Ilaclama_Kayitlari.xlsx");
+    }
+
+    function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+        doc.text(trChars("Ilaclama Takip Kayitlari"), 14, 15);
+        
+        const rows = veriler.map(v => [
+            v.tarih,
+            trChars(v.products ? v.products.map(p => p.urun).join('\n') : v.urun),
+            trChars(v.products ? v.products.map(p => p.doz).join('\n') : v.doz),
+            v.su + " Ton",
+            trChars(v.products ? v.products.map(p => calculateTreatmentTotal(p.doz, v.su) || p.toplamIlac).join('\n') : (calculateTreatmentTotal(v.doz, v.su) || v.toplamIlac)),
+            trChars(v.cesitler),
+            trChars(v.durum),
+            trChars(v.aciklama || "-")
+        ]);
+
+        doc.autoTable({
+            head: [[
+                trChars('Tarih'), 
+                trChars('Urunler'), 
+                trChars('Dozlar'), 
+                trChars('Su (Ton)'), 
+                trChars('Toplam Ilac'), 
+                trChars('Cesitler'), 
+                trChars('Durum'), 
+                trChars('Aciklama')
+            ]],
+            body: rows,
+            startY: 20,
+            styles: { fontSize: 8, cellPadding: 2 },
+            columnStyles: {
+                1: { cellWidth: 40 },
+                2: { cellWidth: 30 },
+                4: { cellWidth: 30 },
+                5: { cellWidth: 40 },
+                7: { cellWidth: 40 }
+            }
+        });
+        doc.save("Ilaclama_Kayitlari.pdf");
+    }
+
+    function tabloyuGuncelle() {
+        const aramaTerimi = (document.getElementById('aramaInput')?.value || "").toLowerCase();
+        const gövde = document.getElementById('tabloGövdesi');
+        gövde.innerHTML = '';
+
+        // Arama terimine göre verileri filtrele
+        const filtrelenmis = veriler.filter(veri => {
+            const urunlerStr = (veri.products ? veri.products.map(p => p.urun).join(' ') : (veri.urun || '')).toLowerCase();
+            const cesitlerStr = (veri.cesitler || "").toLowerCase();
+            const tarihStr = (veri.tarih || "").toLowerCase();
+            const aciklamaStr = (veri.aciklama || "").toLowerCase();
+            const durumStr = (veri.durum || "").toLowerCase();
+
+            return urunlerStr.includes(aramaTerimi) || 
+                   cesitlerStr.includes(aramaTerimi) || 
+                   tarihStr.includes(aramaTerimi) || 
+                   aciklamaStr.includes(aramaTerimi) ||
+                   durumStr.includes(aramaTerimi);
+        });
+
+        // Filtrelenmiş verileri tarihe göre sıralayıp ekrana bas
+        filtrelenmis.sort((a, b) => new Date(b.tarih) - new Date(a.tarih)).forEach(veri => {
+            let urunlerHtml, dozlarHtml, toplamlarHtml;
+            if (veri.products) {
+                urunlerHtml = veri.products.map(p => p.urun).join('<br>');
+                dozlarHtml = veri.products.map(p => p.doz).join('<br>');
+                toplamlarHtml = veri.products.map(p => `<strong>${calculateTreatmentTotal(p.doz, veri.su) || p.toplamIlac}</strong>`).join('<br>');
+            } else { // Eski tekli kayıtlar için uyumluluk
+                // Bu kısım, `products` alanı olmayan eski kayıtları göstermek içindir.
+                urunlerHtml = veri.urun || '-';
+                dozlarHtml = veri.doz || '-';
+                toplamlarHtml = `<strong>${calculateTreatmentTotal(veri.doz, veri.su) || veri.toplamIlac || '-'}</strong>`;
+            }
+
+            // Satırın hangi uygulama grubuna ait olduğunu tespit et
+            const entryVarieties = (veri.cesitler || "").split(', ').map(v => v.trim());
+            const groupsFound = [...new Set(entryVarieties.map(v => varietyGroups[v]).filter(Boolean))];
+            
+            let rowClass = "";
+            if (groupsFound.length === 1) {
+                rowClass = `row-${groupsFound[0]}`;
+            } else if (groupsFound.length > 1) {
+                rowClass = "row-mixed";
+            }
+
+            // Çeşitleri renkli etiketlere dönüştür
+            const cesitlerBadges = (veri.cesitler || "").split(', ').map(c => {
+                const groupClass = varietyGroups[c] ? `badge-${varietyGroups[c]}` : '';
+                return `<span class="badge-variety ${groupClass}">${c}</span>`;
+            }).join(' ');
+
+            gövde.innerHTML += `
+                <tr class="${rowClass}">
+                    <td>${veri.tarih}</td>
+                    <td>${urunlerHtml}</td>
+                    <td class="small">${dozlarHtml}</td>
+                    <td>${veri.su} Ton</td>
+                    <td>${toplamlarHtml}</td>
+                    <td>${cesitlerBadges}</td>
+                    <td><span class="status-badge ${veri.durum === 'Planlanan' ? 'status-planlanan' : 'status-gerceklesen'}">${veri.durum}</span></td>
+                    <td><small class="text-muted">${veri.aciklama || '-'}</small></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick="duzenle(${veri.id})"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="sil(${veri.id})"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function sil(id) {
+        if(confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+            const recordToDelete = veriler.find(v => v.id === id);
+            if (!recordToDelete) return;
+
+            try {
+                await updateStockForTreatment(recordToDelete, null);
+            } catch (error) {
+                showAlert(`İlaçlama kaydı silinemedi: ${error.message}`, 'danger');
+                return;
+            }
+
+            veriler = veriler.filter(v => v.id !== id);
+            const isSuccess = await syncRecords();
+            if (!isSuccess) {
+                showAlert('İlaçlama kaydı sunucuya kaydedilemedi.', 'danger');
+                return;
+            }
+            tabloyuGuncelle();
+        } 
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+
+    function iptalDuzenleme() {
+        duzenlenenId = null;
+        const btn = document.getElementById('kaydetBtn');
+        btn.textContent = 'Listeye Ekle';
+        btn.className = 'btn btn-success btn-lg w-100 fw-bold mb-4 shadow-sm';
+        const today = new Date();
+        const localDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+        document.getElementById('tarih').value = localDate;
+        document.getElementById('product-rows-container').innerHTML = '';
+        addProductRow();
+        document.getElementById('su').value = '';
+        document.getElementById('aciklama').value = ''; // Açıklama alanını temizle
+        document.getElementById('areaInfoAlert').classList.add('d-none');
+        document.querySelectorAll('#cesitler-selection input').forEach(cb => cb.checked = false);
+        updateSelectedVarietiesBadges();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const kaydetBtnElement = document.getElementById('kaydetBtn');
+    const iptalBtn = document.createElement('button');
+    iptalBtn.type = 'button';
+    iptalBtn.className = 'btn btn-secondary w-100 mb-5';
+    iptalBtn.textContent = 'İptal';
+    iptalBtn.onclick = iptalDuzenleme;
+    kaydetBtnElement.parentNode.insertBefore(iptalBtn, kaydetBtnElement.nextSibling);
+
+    // Seçili bahçenin stok ürünleri ve otomatik doz bilgileri
+    let allProductsForAutocomplete = [];
+
+    async function loadProductsForAutocomplete() {
+        try {
+            const res = await fetch(`api/get_products.php?garden_id=${encodeURIComponent(gardenId)}&t=${Date.now()}`);
+            if (res.ok) {
+                const stockProducts = await res.json();
+                const uniqueProducts = new Map();
+                (Array.isArray(stockProducts) ? stockProducts : []).forEach(product => {
+                    const name = String(product.name || '').trim();
+                    if (!name) return;
+                    const key = name.toLocaleLowerCase('tr-TR');
+                    if (!uniqueProducts.has(key)) {
+                        uniqueProducts.set(key, {
+                            name,
+                            dosage: String(product.dosage || '').trim()
+                        });
+                    }
+                });
+                allProductsForAutocomplete = Array.from(uniqueProducts.values())
+                    .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
+                updateStockProductSelects();
+            }
+        } catch (e) { console.warn("Ürün listesi yüklenemedi."); }
+    }
+
+    function populateStockProductSelect(select, selectedName = '') {
+        if (!select) return;
+        const normalizedSelected = String(selectedName || '').trim().toLocaleLowerCase('tr-TR');
+        select.innerHTML = '';
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = allProductsForAutocomplete.length ? 'Stoktan ürün seçin' : 'Stokta ürün bulunamadı';
+        select.appendChild(placeholder);
+
+        allProductsForAutocomplete.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.name;
+            option.textContent = product.name;
+            option.selected = product.name.toLocaleLowerCase('tr-TR') === normalizedSelected;
+            select.appendChild(option);
+        });
+    }
+
+    function updateStockProductSelects() {
+        document.querySelectorAll('.urun-input').forEach(select => {
+            populateStockProductSelect(select, select.value);
+            autoFillTreatmentDose(select);
+        });
+    }
+
+    function autoFillTreatmentDose(inputElem) {
+        const val = inputElem.value.trim();
+        const product = allProductsForAutocomplete.find(p => p.name === val);
+        const row = inputElem.closest('.product-row');
+        const dozInput = row ? row.querySelector('.doz-input') : null;
+        if (dozInput) {
+            dozInput.value = product ? product.dosage : '';
+            dozInput.placeholder = product && !product.dosage
+                ? 'Dozu manuel girin'
+                : 'Doz otomatik gelir; değiştirebilirsiniz';
+        }
+    }
+
+    // Dynamic Interactive Map Selection Functions
+    let selectionMap = null;
+    let mapSelectionModalInstance = null;
+    let allMapPlots = [];
+    let selectedPlotNames = [];
+    let mapSelectionAreaSum = 0;
+    let leafletLayersMap = {};
+
+    function openMapSelectionModal() {
+        if (!mapSelectionModalInstance) {
+            const modalEl = document.getElementById('mapSelectionModal');
+            mapSelectionModalInstance = new bootstrap.Modal(modalEl);
+            
+            modalEl.addEventListener('shown.bs.modal', () => {
+                setTimeout(() => {
+                    if (!selectionMap) {
+                        selectionMap = L.map('modalMap', {
+                            center: [39.0, 35.0],
+                            zoom: 6,
+                            zoomControl: false
+                        });
+
+                        L.control.zoom({ position: 'topright' }).addTo(selectionMap);
+
+                        // Premium Google Hybrid Satellite Layer (Bulutsuz, Yüksek Çözünürlüklü ve En Güncel Melez Uydu)
+                        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                            maxZoom: 21,
+                            attribution: '&copy; Google Maps'
+                        }).addTo(selectionMap);
+                    }
+                    
+                    // Always invalidate map size so Leaflet recalculates correctly
+                    selectionMap.invalidateSize();
+
+                    loadMapDataForSelection();
+                }, 200);
+            });
+        }
+        
+        mapSelectionModalInstance.show();
+    }
+
+    async function loadMapDataForSelection() {
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                allMapPlots = await res.json();
+                if (!Array.isArray(allMapPlots)) allMapPlots = [];
+                
+                renderSelectionMapPlots();
+            }
+        } catch (e) { console.warn("Harita yüklenemedi", e); }
+    }
+
+    function renderSelectionMapPlots() {
+        // Clear old layers
+        Object.values(leafletLayersMap).forEach(l => selectionMap.removeLayer(l));
+        leafletLayersMap = {};
+        
+        // İlaçlama takip formunda yalnızca çeşit parsellerini göster.
+        const varietyPlots = allMapPlots.filter(p => p.type === 'variety');
+        
+        const previousSelectedPlotNames = [...selectedPlotNames];
+
+        // Reset selections
+        selectedPlotNames = [];
+        mapSelectionAreaSum = 0;
+
+        // Düzenlenen kayıtta daha önce seçilmiş parselleri önceden işaretle.
+        const checkedBoxValues = previousSelectedPlotNames.map(name => name.toLowerCase());
+
+        if (varietyPlots.length === 0) {
+            alert("Bu bahçe için henüz çeşit parseli çizilmemiş. Önce İnteraktif Harita sayfasında çeşit parsellerini oluşturmalısınız.");
+            mapSelectionModalInstance.hide();
+            return;
+        }
+
+        const boundsPoints = [];
+        varietyPlots.forEach(plot => {
+            const latlngs = plot.coordinates.map(c => [c.lat, c.lng]);
+            latlngs.forEach(pt => boundsPoints.push(pt));
+
+            const plotNameLower = plot.name.toLowerCase();
+            
+            // Check if this plot name matches any of the checked varieties in the form
+            let isPreSelected = false;
+            checkedBoxValues.forEach(cbVal => {
+                if (plotNameLower.includes(cbVal) || cbVal.includes(plotNameLower)) {
+                    isPreSelected = true;
+                }
+            });
+
+            const polygon = L.polygon(latlngs, {
+                color: isPreSelected ? '#ffc107' : plot.color,
+                fillColor: isPreSelected ? '#ffc107' : plot.color,
+                fillOpacity: isPreSelected ? 0.75 : 0.35,
+                weight: isPreSelected ? 4 : 2
+            }).addTo(selectionMap);
+
+            polygon.bindTooltip(`${plot.name} (${plot.area} da)`, {
+                permanent: true,
+                direction: 'center',
+                className: 'premium-tooltip'
+            });
+
+            // Store selection state directly on polygon object
+            polygon.selected = isPreSelected;
+            leafletLayersMap[plot.id] = polygon;
+
+            if (isPreSelected) {
+                selectedPlotNames.push(plot.name);
+                mapSelectionAreaSum += parseFloat(plot.area);
+            }
+
+            // Toggle selection on click
+            polygon.on('click', () => {
+                polygon.selected = !polygon.selected;
+                if (polygon.selected) {
+                    polygon.setStyle({
+                        fillOpacity: 0.75,
+                        weight: 4,
+                        color: '#ffc107', // Highlight border gold
+                        fillColor: '#ffc107'
+                    });
+                    selectedPlotNames.push(plot.name);
+                    mapSelectionAreaSum += parseFloat(plot.area);
+                } else {
+                    polygon.setStyle({
+                        fillOpacity: 0.35,
+                        weight: 2,
+                        color: plot.color, // Reset border color
+                        fillColor: plot.color
+                    });
+                    selectedPlotNames = selectedPlotNames.filter(n => n !== plot.name);
+                    mapSelectionAreaSum -= parseFloat(plot.area);
+                }
+                
+                // Keep area sum positive and clean float
+                mapSelectionAreaSum = Math.max(0, parseFloat(mapSelectionAreaSum.toFixed(2)));
+                updateSelectionSummary();
+            });
+        });
+
+        // Fit map bounds to show all plots
+        if (boundsPoints.length > 0) {
+            selectionMap.fitBounds(boundsPoints, { padding: [30, 30] });
+        }
+
+        // Initialize display totals
+        mapSelectionAreaSum = Math.max(0, parseFloat(mapSelectionAreaSum.toFixed(2)));
+        updateSelectionSummary();
+    }
+
+    function updateSelectionSummary() {
+        document.getElementById('modalSelectedVarieties').innerText = selectedPlotNames.length > 0 ? selectedPlotNames.join(', ') : '-';
+        document.getElementById('modalSelectedArea').innerText = `${mapSelectionAreaSum} da`;
+    }
+
+    function confirmMapSelection() {
+        if (selectedPlotNames.length === 0) {
+            alert("Lütfen en az bir parsel seçin!");
+            return;
+        }
+
+        // Show areaInfoAlert and fill area sum
+        const alertDiv = document.getElementById('areaInfoAlert');
+        alertDiv.classList.remove('d-none');
+        document.getElementById('mapSelectedArea').innerText = mapSelectionAreaSum;
+        
+        // Suggest water (0.1 ton or 100 liters of water per decare)
+        const suggestedWater = parseFloat((mapSelectionAreaSum * 0.1).toFixed(2));
+        document.getElementById('suggestedWaterVal').innerText = suggestedWater;
+
+        updateSelectedVarietiesBadges();
+        mapSelectionModalInstance.hide();
+    }
+
+    function updateSelectedVarietiesBadges() {
+        const badgesContainer = document.getElementById('selectedVarietiesBadges');
+        if (!badgesContainer) return;
+        
+        badgesContainer.classList.remove('d-none');
+        const checkedBoxes = selectedPlotNames.filter(Boolean);
+        if (checkedBoxes.length === 0) {
+            badgesContainer.innerHTML = '<span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Haritadan henüz çeşit parseli seçilmedi.</span>';
+            return;
+        }
+
+        badgesContainer.innerHTML = checkedBoxes.map(c => {
+            const groupClass = varietyGroups[c] ? `badge-${varietyGroups[c]}` : 'bg-success bg-opacity-10 text-success';
+            return `<span class="badge-variety ${groupClass} py-1 px-2 fs-6"><i class="bi bi-tag-fill me-1"></i>${c}</span>`;
+        }).join(' ');
+    }
+
+    function applySuggestedWater() {
+        const waterVal = document.getElementById('suggestedWaterVal').innerText;
+        document.getElementById('su').value = waterVal;
+    }
+</script>
+<!-- Dış Kütüphaneler -->
+<script src="assets/js/bku_database.js"></script>
+<script src="assets/js/banned_ingredients.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

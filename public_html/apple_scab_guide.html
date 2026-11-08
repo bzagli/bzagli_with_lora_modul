@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elma Karaleke Mücadele Rehberi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        }
+    </script>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .hero-guide { background: linear-gradient(135deg, #198754 0%, #157347 100%); color: white; padding: 50px 0; border-radius: 0 0 40px 40px; }
+        .stage-card { border: none; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); transition: transform 0.3s ease; height: 100%; border-top: 5px solid #198754; }
+        .stage-card:hover { transform: translateY(-10px); }
+        .frac-badge { font-weight: bold; padding: 5px 10px; border-radius: 8px; font-size: 0.85rem; }
+        .note-box { border-left: 5px solid #ffc107; background: #fff9e6; padding: 15px; border-radius: 10px; margin-top: 20px; height: 100%; }
+        .recommendation-box { border-left: 5px solid #6c757d; background: #e9ecef; padding: 15px; border-radius: 10px; margin-top: 20px; }
+        .navbar { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item active" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<header class="hero-guide text-center mb-5 shadow">
+    <div class="container">
+        <h1 class="display-5 fw-bold">Elma Karaleke (Venturia inaequalis)</h1>
+        <p class="lead opacity-75">Fenolojik Evrelere Göre Bilimsel Mücadele Programı</p>
+        <span class="badge bg-light text-success px-3 py-2">Expert Program - FRAC Uyumlu</span>
+    </div>
+</header>
+
+<main class="container mb-5">
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-3"><i class="bi bi-flower1 fs-2"></i></div>
+                <h5 class="fw-bold">1. Evre: Fare Kulağı</h5>
+                <p class="text-muted small">Uyku Dönemi / Gümüş Uç</p>
+                <hr>
+                <span class="badge bg-danger frac-badge mb-2">FRAC M1 / U12</span>
+                <p class="mb-2"><strong>Bakır veya Dodine</strong></p>
+                <p class="small text-secondary">İnokulum yükünü azaltmak ve koruma başlatmak için kritik başlangıç.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">1. Uygulama Grubu (Bakır):</small></div>
+                <ul id="stage1_g1" class="list-unstyled small text-dark mb-0"></ul>
+                <div class="mt-2 border-top pt-1"><small class="text-danger fw-bold">2. Uygulama Grubu (Dodine):</small></div>
+                <ul id="stage1_g2" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-3"><i class="bi bi-brightness-high fs-2"></i></div>
+                <h5 class="fw-bold">2. Evre: Pembe Tomurcuk</h5>
+                <p class="text-muted small">Primer Enfeksiyon Önleme</p>
+                <hr>
+                <span class="badge bg-primary frac-badge mb-2">FRAC 9+M3 / 11+M4</span>
+                <p class="mb-2"><strong>Sistemik + Koruyucu Kombinasyonu</strong></p>
+                <p class="small text-secondary">Serin havalarda (erken ilkbahar) yüksek performans gösterir.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">1. Uygulama (Anilin.+M3):</small></div>
+                <ul id="stage2_g1" class="list-unstyled small text-dark mb-0"></ul>
+                <div class="mt-2 border-top pt-1"><small class="text-danger fw-bold">2. Uygulama (Strob.+M4):</small></div>
+                <ul id="stage2_g2" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-3"><i class="bi bi-sun fs-2"></i></div>
+                <h5 class="fw-bold">3. Evre: Çiçeklenme</h5>
+                <p class="text-muted small">Hassas Doku Koruması</p>
+                <hr>
+                <span class="badge bg-info frac-badge mb-2">FRAC M4 / U12</span>
+                <p class="mb-2"><strong>Captan veya Dodine</strong></p>
+                <p class="small text-secondary">Çiçek yapraklarını korumak için koruyucu veya hafif eradikant etki.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">1. Uygulama (Captan/Folpet):</small></div>
+                <ul id="stage3_g1" class="list-unstyled small text-dark mb-0"></ul>
+                <div class="mt-2 border-top pt-1"><small class="text-danger fw-bold">2. Uygulama (Dodine):</small></div>
+                <ul id="stage3_g2" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-3"><i class="bi bi-droplet-half fs-2"></i></div>
+                <h5 class="fw-bold">4. Evre: Taç Yaprak Dökümü</h5>
+                <p class="text-muted small">Kritik Müdahale Dönemi</p>
+                <hr>
+                <span class="badge bg-dark frac-badge mb-2">FRAC 3+M3 / 7+M4</span>
+                <p class="mb-2"><strong>Güçlü Sistemik + Koruyucu Karışımı</strong></p>
+                <p class="small text-secondary">Başlamış enfeksiyonları durdurur. İki grup arasında dönüşüm şarttır.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">1. Uygulama (SBI + M3):</small></div>
+                <ul id="stage4_g1" class="list-unstyled small text-dark mb-0"></ul>
+                <div class="mt-2 border-top pt-1"><small class="text-danger fw-bold">2. Uygulama (SDHI + M4):</small></div>
+                <ul id="stage4_g2" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card stage-card p-4">
+                <div class="text-success mb-3"><i class="bi bi-shield-check fs-2"></i></div>
+                <h5 class="fw-bold">5. Evre: Meyve Büyüme</h5>
+                <p class="text-muted small">Hasat Öncesi Koruma</p>
+                <hr>
+                <span class="badge bg-warning text-dark frac-badge mb-2">FRAC 11 / 3</span>
+                <p class="mb-2"><strong>Strobilurin veya Triazol Grubu</strong></p>
+                <p class="small text-secondary">Translaminar etkiyle yaprak ve meyve yüzeyini uzun süreli temiz tutar.</p>
+                <div class="mt-2 border-top pt-2"><small class="text-primary fw-bold">1. Uygulama (Strobilurin):</small></div>
+                <ul id="stage5_g1" class="list-unstyled small text-dark mb-0"></ul>
+                <div class="mt-2 border-top pt-1"><small class="text-danger fw-bold">2. Uygulama (Triazol):</small></div>
+                <ul id="stage5_g2" class="list-unstyled small text-dark mb-0"></ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12">
+            <h4 class="fw-bold mb-4 text-dark"><i class="bi bi-info-square-fill text-primary me-2"></i>Uygulama Prensipleri</h4>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="note-box">
+                        <h6><strong>Direnç Yönetimi</strong></h6>
+                        <p class="small mb-0">Aynı gruptan (FRAC kodu) ilaçları üst üste 2 kereden fazla kullanmayın. SBI ve SDHI gibi sistemikleri her zaman M3/M4 koruyucularla karıştırın.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="note-box" style="border-left-color: #0dcaf0; background: #eefbff;">
+                        <h6><strong>Tahmin Uyarı Sistemi</strong></h6>
+                        <p class="small mb-0">İlaçlamayı ezbere değil; sıcaklık, nem ve yaprak ıslaklık süresine dayalı enfeksiyon risk uyarılarına göre yapın.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="note-box" style="border-left-color: #198754; background: #f1fcf6;">
+                        <h6><strong>Karışabilirlik</strong></h6>
+                        <p class="small mb-0">Bakırlı ilaçları çiçeklenme sonrası meyvede pas riski nedeniyle tercih etmeyin. Captan ve yağlı karışımlara dikkat edin.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ek Tavsiyeler -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h4 class="fw-bold mb-4 text-dark"><i class="bi bi-lightbulb-fill text-secondary me-2"></i>Ek Tavsiyeler (Referans Dışı)</h4>
+            <div class="recommendation-box">
+                <ul class="small mb-0">
+                    <li><strong>Biyolojik Fungisitler:</strong> Bazı Bacillus subtilis suşları, karalekeye karşı koruyucu etki gösterebilir. Özellikle organik tarımda tercih edilebilir.</li>
+                    <li><strong>Kültürel Önlemler:</strong> Sonbaharda yaprak dökümünden sonra yere düşen yaprakların toplanması veya parçalanması, kışlayan inokulumu azaltır.</li>
+                    <li><strong>Potasyum Bikarbonat:</strong> Organik tarımda veya hassas dönemlerde hafif eradikant etki için kullanılabilir.</li>
+                    <li><strong>Kükürt:</strong> Özellikle erken dönemlerde koruyucu olarak kullanılabilir, ancak yüksek sıcaklıklarda fitotoksite riski taşır.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-secondary mt-5 small shadow-sm text-center">
+        <i class="bi bi-clipboard-check me-2"></i> Bu program <strong>disease_info.json</strong> rehberindeki uzman verileri ile oluşturulmuştur.
+    </div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', loadGuideProducts);
+
+    async function loadGuideProducts() {
+        const userRole = localStorage.getItem('userRole');
+        const permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+
+        // Sayfa gizleme kontrolü
+        if (permissions.hidden) {
+            permissions.hidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink) navLink.parentElement.style.display = 'none';
+            });
+        }
+
+        if (userRole === 'admin') {
+            document.getElementById('adminUsers').style.display = 'block';
+            document.getElementById('adminLogs').style.display = 'block';
+        }
+        try {
+            const res = await fetch('api/get_reference.php');
+            const references = await res.json();
+            
+            const mapping = {
+                m1: ['bakir', 'copper'],
+                anilin: ['cyprodinil', 'pyrimethanil'],
+                m3: ['mancozeb', 'maneb'],
+                m4: ['captan', 'folpet'],
+                u12: ['dodine'],
+                sbi: ['difenoconazole', 'tebuconazole', 'myclobutanil', 'penconazole'],
+                sdhi: ['fluopyram', 'fluxapyroxad', 'penthiopyrad'],
+                qoi: ['kresoxim', 'trifloxystrobin', 'pyraclostrobin']
+            };
+
+            const fracInfo = {
+                'bakir': 'Grup M1', 'copper': 'Grup M1',
+                'cyprodinil': 'Grup 9', 'pyrimethanil': 'Grup 9',
+                'mancozeb': 'Grup M3', 'maneb': 'Grup M3',
+                'captan': 'Grup M4', 'folpet': 'Grup M4',
+                'dodine': 'Grup U12',
+                'difenoconazole': 'Grup 3', 'tebuconazole': 'Grup 3', 'myclobutanil': 'Grup 3', 'penconazole': 'Grup 3',
+                'fluopyram': 'Grup 7', 'fluxapyroxad': 'Grup 7', 'penthiopyrad': 'Grup 7',
+                'kresoxim': 'Grup 11', 'trifloxystrobin': 'Grup 11', 'pyraclostrobin': 'Grup 11'
+            };
+
+            const findProducts = (keys) => {
+                return references.filter(r => 
+                    keys.some(k => (r.active_ingredient || "").toLowerCase().includes(k))
+                );
+            };
+
+            const getFracGroup = (active) => {
+                if (!active) return '';
+                const lowerActive = active.toLowerCase();
+                for (const [key, group] of Object.entries(fracInfo)) {
+                    if (lowerActive.includes(key)) return group;
+                }
+                return '';
+            };
+
+            const render = (id, prods) => {
+                const el = document.getElementById(id);
+                if (prods.length > 0) {
+                    // Ürün ismine göre tekilleştirme yaparken detayları koru
+                    const uniqueMap = new Map();
+                    prods.forEach(p => {
+                        if (!uniqueMap.has(p.name)) uniqueMap.set(p.name, p);
+                    });
+                    
+                    el.innerHTML = Array.from(uniqueMap.values()).map(p => {
+                        const group = getFracGroup(p.active_ingredient);
+                        const groupBadge = group ? `<span class="badge bg-secondary ms-1" style="font-size: 0.7rem;">${group}</span>` : '';
+                        return `
+                        <li class="mb-2">
+                            <i class="bi bi-check2-circle text-success me-1"></i>
+                            <strong class="text-dark">${p.name}</strong> ${groupBadge}
+                            <div class="small text-muted ps-4" style="line-height: 1.2;">
+                                ${p.active_ingredient} <br>
+                                <span class="text-primary fw-bold">Doz: ${p.dosage}</span>
+                            </div>
+                        </li>`;
+                    }).join('');
+                } else {
+                    el.innerHTML = '<li class="text-muted opacity-50"><i>Uygun ürün bulunamadı</i></li>';
+                }
+            };
+
+            // Evre Bazlı Gruplandırma
+            render('stage1_g1', findProducts(mapping.m1));
+            render('stage1_g2', findProducts(mapping.u12));
+
+            render('stage2_g1', findProducts([...mapping.anilin, ...mapping.m3]));
+            render('stage2_g2', findProducts([...mapping.qoi, ...mapping.m4]));
+
+            render('stage3_g1', findProducts(mapping.m4));
+            render('stage3_g2', findProducts(mapping.u12));
+
+            render('stage4_g1', findProducts([...mapping.sbi, ...mapping.m3]));
+            render('stage4_g2', findProducts([...mapping.sdhi, ...mapping.m4]));
+
+            render('stage5_g1', findProducts(mapping.qoi));
+            render('stage5_g2', findProducts(mapping.sbi));
+
+        } catch (e) { console.error("Rehber ürünleri yüklenemedi", e); }
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

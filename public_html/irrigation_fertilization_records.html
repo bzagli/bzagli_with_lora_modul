@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sulama ve Gübreleme Kayıtları - Bahçe Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (!localStorage.getItem('selected_garden_id')) {
+            window.location.href = 'gardens.html';
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        /* Force Leaflet interactive paths to ignore external border-radius overrides */
+        path.leaflet-interactive {
+            border-radius: 0 !important;
+        }
+        body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .navbar { box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .table thead { background-color: #f8f9fa; }
+        .stat-card { transition: transform 0.2s; cursor: default; }
+        .stat-card:hover { transform: translateY(-5px); }
+        .checkbox-container { border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; max-height: 250px; overflow-y: auto; background: #fff; }
+        .variety-group { margin-bottom: 15px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.02); }
+        .variety-group-title { font-weight: bold; color: #2e7d32; border-bottom: 2px solid #e0e0e0; margin-bottom: 10px; display: block; }
+        .variety-item { display: inline-flex; align-items: center; gap: 5px; margin-right: 15px; font-size: 0.9rem; cursor: pointer; }
+        .variety-item input { cursor: pointer; }
+        .row-running { background-color: #fff8e1 !important; } /* Devam eden kayıtlar için sarımtırak arka plan */
+        .row-abnormal { background-color: #fce8e6 !important; } /* Anormal debi kayıtları için pastel kırmızı arka plan */
+        /* Premium Tooltip styling */
+        .premium-tooltip {
+            background: #1a252f !important;
+            color: white !important;
+            border: 1px solid #4caf50 !important;
+            border-radius: 6px !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2) !important;
+            padding: 4px 8px !important;
+        }
+        .premium-tooltip::before {
+            border-top-color: #1a252f !important;
+        }
+    </style>
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold active" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item active" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="fertilization.html"><i class="bi bi-flower1 me-1 text-success"></i>Gübreleme Yönetimi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container mb-5">
+    <!-- İstatistik Kartları -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card stat-card p-3 border-start border-primary border-4">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-primary bg-opacity-10 p-3 rounded-circle me-3 text-primary">
+                        <i class="bi bi-water fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0">Toplam Sulama Kaydı</h6>
+                        <h4 class="fw-bold mb-0" id="statTotalIrrigation">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card p-3 border-start border-success border-4">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-success bg-opacity-10 p-3 rounded-circle me-3 text-success">
+                        <i class="bi bi-box-seam fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0">Toplam Gübreleme Kaydı</h6>
+                        <h4 class="fw-bold mb-0" id="statTotalFertilization">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card p-3 border-start border-info border-4">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-info bg-opacity-10 p-3 rounded-circle me-3 text-info">
+                        <i class="bi bi-calendar-check fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted mb-0">Son Uygulama</h6>
+                        <h4 class="fw-bold mb-0" id="statLastDate">-</h4>
+                    </div>
+                </div>
+            </div>
+    </div>
+
+    <!-- Parsel Analiz ve İstatistik Paneli -->
+    <div class="row g-3 mb-4" id="parcelStatsContainer" style="display: none;">
+        <div class="col-lg-7">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-0">
+                    <h5 class="mb-0 fw-bold text-success d-flex flex-wrap align-items-center justify-content-between">
+                        <span><i class="bi bi-bar-chart-line me-2"></i>Parsel Bazlı Su Tüketimi (m³ / Ton)</span>
+                        <span id="chartTotalWater" class="badge bg-success bg-opacity-10 text-success border border-success-subtle fw-semibold fs-6 px-3 py-2 rounded-pill mt-1 mt-md-0">Toplam: 0.0 m³</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 320px; width: 100%;">
+                        <canvas id="parcelWaterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-success"><i class="bi bi-box-seam me-2"></i>Parsel Detay Analizi</h5>
+                    <select id="parcelDetailSelector" class="form-select form-select-sm border-secondary-subtle" style="width: auto;" onchange="renderParcelDetails(this.value)">
+                        <option value="">Seçiniz...</option>
+                    </select>
+                </div>
+                <div class="card-body py-2">
+                    <div id="parcelDetailContent" class="text-center py-5 text-muted">
+                        <i class="bi bi-info-circle fs-2 d-block mb-2"></i>
+                        Detaylarını görüntülemek için grafik üzerinden bir parsele tıklayın veya listeden seçin.
+                    </div>
+                    <div id="parcelDetailData" style="display: none;">
+                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                            <span class="text-muted">Parsel Alanı:</span>
+                            <span class="fw-bold text-dark" id="detailParcelArea">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2 pb-2 border-bottom">
+                            <span class="text-muted">Toplam Verilen Su:</span>
+                            <span class="fw-bold text-primary" id="detailParcelWater">-</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 pb-2 border-bottom">
+                            <span class="text-muted">Dekar Başına Su:</span>
+                            <span class="fw-bold text-success" id="detailParcelWaterPerDecare">-</span>
+                        </div>
+                        <h6 class="fw-bold text-secondary mb-2" style="font-size: 0.9rem;"><i class="bi bi-droplet-half me-1"></i>Uygulanan Gübre Toplamları</h6>
+                        <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Gübre Adı</th>
+                                        <th class="text-end">Toplam Miktar</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="detailParcelFertilizersBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-md-6">
+                    <h4 class="mb-0 fw-bold text-primary"><i class="bi bi-journal-check text-primary me-2"></i>Sulama ve Gübreleme Günlüğü</h4>
+                    <div id="activeGardenBadge" class="mt-1 small fw-bold text-muted"></div>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <div class="d-inline-flex align-items-center me-2 mb-2 mb-md-0 border rounded-pill px-2 py-1 bg-light shadow-sm" style="font-size: 0.85rem;">
+                        <i class="bi bi-funnel text-muted me-2 ms-1"></i>
+                        <input type="date" id="filterStartDate" class="form-control form-control-sm border-0 bg-transparent p-0" style="width: 100px;" oninput="renderTable()" title="Başlangıç Tarihi">
+                        <span class="mx-1 text-muted">-</span>
+                        <input type="date" id="filterEndDate" class="form-control form-control-sm border-0 bg-transparent p-0" style="width: 100px;" oninput="renderTable()" title="Bitiş Tarihi">
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm rounded-pill px-3 me-1" onclick="exportRecordsPDF()">
+                        <i class="bi bi-file-pdf me-1"></i>PDF
+                    </button>
+                    <button class="btn btn-outline-success btn-sm rounded-pill px-3 me-2" onclick="exportRecordsExcel()">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                    </button>
+                    <button class="btn btn-primary rounded-pill px-4" onclick="openRecordModal()">
+                        <i class="bi bi-plus-circle me-2"></i>Yeni Kayıt Ekle
+                    </button>
+                </div>
+                <div class="col-12 mt-3">
+                    <input type="text" id="recordSearch" class="form-control" placeholder="Parsel, ürün veya açıklama ara..." oninput="renderTable()">
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tarih</th>
+                            <th>Uygulama Tipi</th>
+                            <th>Parsel/Çeşit</th>
+                            <th>Uygulanan Gübreler</th>
+                            <th>Saat / Süre</th>
+                            <th>Sayaç (m³)</th>
+                            <th>Tüketim (m³)</th>
+                            <th>Alan & Notlar</th>
+                            <th class="text-end">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kayıt Modalı -->
+<div class="modal fade" id="recordModal" tabindex="-1">
+    <div class="modal-dialog modal-lg shadow-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-clipboard-plus me-2"></i>Sulama ve Gübreleme Kaydı Oluştur</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="recordForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Uygulama Tarihi</label>
+                            <input type="date" class="form-control" id="date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Başlangıç Saati</label>
+                            <input type="time" class="form-control" id="startTime" oninput="calculateConsumption()">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Bitiş Saati</label>
+                            <input type="time" class="form-control" id="endTime" oninput="calculateConsumption()">
+                        </div>
+                        <div class="col-12" id="parcelContainer">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-semibold mb-0">Parsel / Çeşit (Çoklu Seçim)</label>
+                                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill" onclick="openIrrigationMapModal()">
+                                    <i class="bi bi-map"></i> Haritadan Seç
+                                </button>
+                            </div>
+                            <div id="parcelInputWrapper"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Uygulama Tipi</label>
+                            <select class="form-select" id="applicationType" onchange="toggleFertilizationFields()">
+                                <option value="Sulama">Sulama</option>
+                                <option value="Gübreleme" selected>Gübreleme</option>
+                                <option value="Sulama+Gübreleme">Sulama + Gübreleme</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 irrigation-field icachem-only">
+                            <label class="form-label fw-semibold">Pompa Seçimi</label>
+                            <select class="form-select" id="pumpType" onchange="calculateConsumption()">
+                                <option value="Büyük Pompa" selected>Büyük Pompa (x10)</option>
+                                <option value="Küçük Pompa">Küçük Pompa (x1)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 irrigation-field icachem-only">
+                            <label class="form-label fw-semibold">Sayaç Başlangıç (m³)</label>
+                            <input type="number" step="0.01" class="form-control" id="counterStart" placeholder="0.00" oninput="detectPumpType(); calculateConsumption();">
+                        </div>
+                        <div class="col-md-3 irrigation-field icachem-only">
+                            <label class="form-label fw-semibold">Sayaç Bitiş (m³)</label>
+                            <input type="number" step="0.01" class="form-control" id="counterEnd" placeholder="0.00" oninput="calculateConsumption()">
+                        </div>
+                        <div class="col-md-6 icachem-only">
+                            <label class="form-label fw-semibold">Toplam Tüketim (m³ / Ton)</label>
+                            <input type="number" step="0.1" class="form-control" id="waterAmount" placeholder="Hesaplanan m³">
+                        </div>
+                        <div class="col-md-6 fertilization-field">
+                            <label class="form-label fw-semibold">Uygulama Alanı (da)</label>
+                            <input type="number" step="0.1" class="form-control" id="totalArea" placeholder="Örn: 32" oninput="calculateProductTotals(); calculateConsumption();">
+                        </div>
+                        <div class="col-12 fertilization-field">
+                            <label class="form-label fw-semibold">Gübreler ve Dozlar</label>
+                            <div id="fertilizerContainer"></div>
+                            <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="addFertilizerRow()">
+                                <i class="bi bi-plus-circle me-1"></i>Gübre Ekle
+                            </button>
+                            <div class="form-text">Örn: "5 kg/da" veya "0.5 lt/da" yazın, toplam miktar otomatik hesaplanır.</div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Açıklama / Notlar</label>
+                            <textarea class="form-control" id="notes" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Kaydı Tamamla</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Harita Seçim Modalı -->
+<div class="modal fade" id="irrigationMapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-map me-2"></i>Haritadan Sulama Parseli Seç</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="modalMap" style="height: 450px; width: 100%;"></div>
+            </div>
+            <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center">
+                <div class="text-start ms-2">
+                    <div class="small text-muted">Seçilen Parseller: <span id="modalSelectedParsels" class="fw-bold text-dark">-</span></div>
+                    <div class="small text-muted">Toplam Alan: <span id="modalSelectedArea" class="fw-bold text-primary">0 da</span></div>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="confirmIrrigationMapSelection()">Seçimi Uygula</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    const { jsPDF } = window.jspdf || {}; // jsPDF'i global olarak tanımla (güvenli)
+    let records = [];
+    let editRecordId = null;
+    let recordModal = null; // DOMContentLoaded içinde güvenli başlatılacak
+
+    const icachemParcels = [
+        { group: "1", items: ["1.1 (16 da)", "1.2 (16 da)", "1.3 (16 da)"] },
+        { group: "2", items: ["2.1 (15 da)", "2.2 (15 da)", "2.3 (15 da)"] },
+        { group: "3", items: ["3.1 (16 da)", "3.2 (16 da)", "3.3 (7 da)"] },
+        { group: "4", items: ["4.1 (13 da)", "4.2 (12 da)", "4.3 (12 da)", "4.4 (13 da)"] },
+        { group: "5", items: ["5.1 (14 da)", "5.2 (21 da)", "5.3 (22 da)", "5.4 (9 da)", "5.5 (17 da)", "5.6 (6 da)"] },
+        { group: "6", items: ["6.1 (21 da)", "6.2 (21 da)"] },
+        { group: "7", items: ["7.1 (9 da)", "7.2 (24 da)", "7.3 (9 da)"] },
+        { group: "8", items: ["8.0 (12 da)"] },
+        { group: "9", items: ["9.1 (9 da)", "9.2 (9 da)", "9.3 (17 da)", "9.4 (11 da)", "9.5 (16 da)", "9.6 (16 da)"] },
+        { group: "10", items: ["10.1 (17 da)", "10.2 (17 da)", "10.3 (17 da)"] },
+        { group: "11", items: ["11.1 (16 da)", "11.2 (16 da)", "11.3 (16 da)", "11.4 (7 da)"] },
+        { group: "12", items: ["12.1 (22 da)", "12.2 (22 da)"] }
+    ];
+
+    function renderParcelInput() {
+        const wrapper = document.getElementById('parcelInputWrapper');
+        const gardenName = localStorage.getItem('selected_garden_name') || '';
+
+        if (gardenName.includes('Icachem')) {
+            let html = '<div class="checkbox-container">';
+            icachemParcels.forEach(g => {
+                html += ` 
+                    <div class="variety-group"> 
+                        <span class="variety-group-title">Shift ${g.group}</span> 
+                        <div class="d-flex flex-wrap">
+                            ${g.items.map(item => `
+                                <label class="variety-item">
+                                    <input type="checkbox" class="parcel-checkbox" value="${item}" onchange="updateAreaFromParcels()"> ${item}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            });
+            html += '</div>';
+            wrapper.innerHTML = html;
+        } else {
+            wrapper.innerHTML = '<input type="text" class="form-control" id="parcelVariety" placeholder="Örn: A Parseli, Golden Çeşidi" oninput="detectPumpType(); calculateConsumption();">';
+        }
+    }
+
+    function updateAreaFromParcels() {
+        const areaInput = document.getElementById('totalArea');
+        if (!areaInput) return;
+        const checkboxes = document.querySelectorAll('.parcel-checkbox:checked');
+        let total = 0;
+        checkboxes.forEach(cb => {
+            const match = cb.value.match(/\((\d+(?:\.\d+)?)\s*da\)/);
+            if (match) total += parseFloat(match[1]);
+        });
+        areaInput.value = total > 0 ? total.toFixed(1) : '';
+        calculateProductTotals();
+        detectPumpType();
+        calculateConsumption();
+    }
+
+    function addFertilizerRow(name = '', dose = '') {
+        const container = document.getElementById('fertilizerContainer');
+        const div = document.createElement('div');
+        div.className = 'row g-2 mb-2 fertilizer-row align-items-center';
+        div.innerHTML = `
+            <div class="col-6">
+                <input type="text" class="form-control fert-name" placeholder="Gübre Adı" value="${name}" list="fertilizerProductDatalist" onchange="autoFillFertilizerDose(this)">
+            </div>
+            <div class="col-3">
+                <input type="text" class="form-control fert-dose" placeholder="Doz/da" value="${dose}" oninput="calculateProductTotals()">
+            </div>
+            <div class="col-2 text-primary fw-bold small fert-total"></div>
+            <div class="col-1">
+                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.parentElement.parentElement.remove(); calculateProductTotals();"><i class="bi bi-trash"></i></button>
+            </div>
+        `;
+        container.appendChild(div);
+    }
+
+    function calculateProductTotals() {
+        const area = parseFloat(document.getElementById('totalArea').value) || 0;
+        const rows = document.querySelectorAll('.fertilizer-row');
+        rows.forEach(row => {
+            const doseInput = row.querySelector('.fert-dose').value.trim();
+            const totalDisplay = row.querySelector('.fert-total');
+            
+            // "5 kg/da" veya "0.5 lt/da" gibi yapıları yakalar
+            const match = doseInput.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+            if (match && area > 0) {
+                const val = parseFloat(match[1].replace(',', '.'));
+                let unit = (match[2] || "").split('/')[0].trim();
+                const total = (val * area).toFixed(2);
+                totalDisplay.innerText = `= ${total} ${unit}`;
+            } else {
+                totalDisplay.innerText = '';
+            }
+        });
+    }
+
+    function getParcelVarietyValue() {
+        const checkboxes = document.querySelectorAll('.parcel-checkbox:checked');
+        if (checkboxes.length > 0) {
+            return Array.from(checkboxes).map(cb => cb.value).join(', ');
+        }
+        const input = document.getElementById('parcelVariety');
+        return input ? input.value : '';
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // recordModal'ı güvenli bir şekilde burada başlatıyoruz
+        const modalElem = document.getElementById('recordModal');
+        if (modalElem && typeof bootstrap !== 'undefined') {
+            recordModal = new bootstrap.Modal(modalElem);
+        }
+
+        const gardenName = localStorage.getItem('selected_garden_name');
+        const userRole = localStorage.getItem('userRole');
+        
+        let permissions = { hidden: [] };
+        try {
+            permissions = JSON.parse(localStorage.getItem('userPermissions') || '{"hidden":[]}');
+        } catch (e) {
+            console.error("Yetki verileri ayrıştırılamadı:", e);
+        }
+
+        if (gardenName) {
+            const activeGardenBadge = document.getElementById('activeGardenBadge');
+            if (activeGardenBadge) {
+                activeGardenBadge.innerHTML = `<i class="bi bi-pin-map-fill text-success me-1"></i>${gardenName}`;
+            }
+        }
+
+        if (userRole === 'admin') {
+            const au = document.getElementById('adminUsers');
+            const al = document.getElementById('adminLogs');
+            const am = document.getElementById('adminMenu');
+            if (au) au.style.display = 'block';
+            if (al) al.style.display = 'block';
+            if (am) am.style.display = 'block';
+        }
+
+        // Sayfa ve menü gizleme kontrolü (Sadece yönetici olmayanlar için)
+        if (userRole !== 'admin') {
+            const systemHidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+            const allHidden = Array.from(new Set([...(permissions.hidden || []), ...systemHidden]));
+            if (allHidden.includes('irrigation_fertilization_records.html')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            allHidden.forEach(page => {
+                const navLink = document.querySelector(`nav a[href="${page}"]`);
+                if (navLink && navLink.parentElement) navLink.parentElement.style.display = 'none';
+            });
+        }
+
+        const dateInput = document.getElementById('date');
+        if (dateInput) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+        loadFertilizersForAutocomplete();
+        await loadRecords();
+        loadMapPlots();
+        toggleFertilizationFields(); // Initial toggle
+    });
+
+    async function loadRecords() {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        try {
+            const res = await fetch(`api/get_irrigation_fertilization.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            records = await res.json();
+            renderTable();
+        } catch (e) { console.warn("Kayıtlar yüklenemedi", e); }
+    }
+
+    function toggleFertilizationFields() {
+        const type = document.getElementById('applicationType').value;
+        const fertFields = document.querySelectorAll('.fertilization-field');
+        const irrFields = document.querySelectorAll('.irrigation-field');
+
+        fertFields.forEach(f => f.style.display = type.includes('Gübreleme') ? 'block' : 'none');
+        irrFields.forEach(f => f.style.display = type.includes('Sulama') ? 'block' : 'none');
+
+        // Pompa, sayaç ve toplam tüketim alanları sadece Icachem bahçesinde gösterilir
+        const gardenName = localStorage.getItem('selected_garden_name') || '';
+        if (!gardenName.includes('Icachem')) {
+            document.querySelectorAll('.icachem-only').forEach(f => f.style.display = 'none');
+        }
+    }
+
+    function detectPumpType() {
+        const pumpSelect = document.getElementById('pumpType');
+        if (!pumpSelect) return;
+
+        // 1. Önce parsellerden algıla (Parsel bilgisi fiziksel pompayı kesin belirler)
+        const parcelVal = getParcelVarietyValue();
+        if (parcelVal) {
+            const smallPumpPatterns = [
+                /\b1[.-][123]\b/,   // 1-1, 1.1, 1-2, 1.2, 1-3, 1.3
+                /\b2[.-][123]\b/,   // 2-1, 2.2, etc.
+                /\b3[.-][123]\b/,   // 3-1, 3.2, etc.
+                /\b4[.-][12]\b/,    // 4-1, 4.2
+                /\b10[.-][123]\b/,  // 10.1, 10.2, etc.
+                /\b11[.-][1234]\b/  // 11-1, 11.2, etc.
+            ];
+            
+            const isSmallPump = smallPumpPatterns.some(pattern => pattern.test(parcelVal));
+            if (isSmallPump) {
+                pumpSelect.value = 'Küçük Pompa';
+                return; // Eşleştiyse sayaç kontrolüne girmeden çık
+            } else {
+                pumpSelect.value = 'Büyük Pompa';
+            }
+        }
+
+        // 2. Parsel eşleşmediyse sayaç numarası başlangıcına göre algıla
+        const counterStartElem = document.getElementById('counterStart');
+        const startVal = counterStartElem ? counterStartElem.value.trim() : '';
+        if (startVal) {
+            if (startVal.startsWith('5') || startVal.startsWith('05')) {
+                pumpSelect.value = 'Büyük Pompa'; // 05 ile başlayanlar Büyük Pompa
+            } else if (startVal.startsWith('9') || startVal.startsWith('09') || startVal.startsWith('8') || startVal.startsWith('08')) {
+                pumpSelect.value = 'Küçük Pompa'; // 09, 08 ile başlayanlar Küçük Pompa
+            }
+        }
+    }
+
+    function calculateConsumptionFromTime() {
+        const startElem = document.getElementById('counterStart');
+        const endElem = document.getElementById('counterEnd');
+        const startVal = startElem ? startElem.value.trim() : '';
+        const endVal = endElem ? endElem.value.trim() : '';
+        
+        // Sadece sayaç değerleri boş veya eksik olduğunda süreye göre hesapla
+        if (startVal !== '' && endVal !== '') {
+            return;
+        }
+        
+        const startTime = document.getElementById('startTime') ? document.getElementById('startTime').value : '';
+        const endTime = document.getElementById('endTime') ? document.getElementById('endTime').value : '';
+        const totalArea = parseFloat(document.getElementById('totalArea').value) || 0;
+        const waterAmountElem = document.getElementById('waterAmount');
+        
+        if (startTime && endTime && waterAmountElem) {
+            const start = new Date(`2000-01-01T${startTime}:00`);
+            const end = new Date(`2000-01-01T${endTime}:00`);
+            let duration = Math.round((end - start) / (1000 * 60)); // dakika
+            if (duration < 0) duration += 1440; // gece yarısı geçişi
+            
+            if (duration > 0) {
+                // Dekar başına saatte 2 m³ (ton)
+                // Toplam Tüketim = Alan (da) * Süre (saat) * 2
+                const calculatedWater = totalArea * (duration / 60) * 2;
+                waterAmountElem.value = calculatedWater > 0 ? calculatedWater.toFixed(2) : '';
+            } else {
+                waterAmountElem.value = '';
+            }
+        }
+    }
+
+    function calculateConsumption() {
+        const startElem = document.getElementById('counterStart');
+        const endElem = document.getElementById('counterEnd');
+        if (!startElem || !endElem) return;
+        
+        const start = parseFloat(startElem.value);
+        const end = parseFloat(endElem.value);
+        const pumpType = document.getElementById('pumpType') ? document.getElementById('pumpType').value : 'Büyük Pompa';
+        
+        if (!isNaN(start) && !isNaN(end) && end >= start) {
+            // Büyük Pompa çarpanı x10, Küçük Pompa çarpanı ise x1'dir
+            const multiplier = pumpType === 'Büyük Pompa' ? 10 : 1;
+            const waterAmountElem = document.getElementById('waterAmount');
+            if (waterAmountElem) {
+                waterAmountElem.value = ((end - start) * multiplier).toFixed(2);
+            }
+        } else {
+            calculateConsumptionFromTime();
+        }
+    }
+
+    function getFilteredRecords() {
+        const search = document.getElementById('recordSearch').value.toLowerCase();
+        const start = document.getElementById('filterStartDate').value;
+        const end = document.getElementById('filterEndDate').value;
+
+        return records.filter(r => {
+            const matchesSearch = (r.parcelVariety || "").toLowerCase().includes(search) || 
+                                 (r.productName || "").toLowerCase().includes(search) ||
+                                 (r.notes || "").toLowerCase().includes(search) ||
+                                 (r.applicationType || "").toLowerCase().includes(search);
+            const matchesStart = !start || r.date >= start;
+            const matchesEnd = !end || r.date <= end;
+            return matchesSearch && matchesStart && matchesEnd;
+        });
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('recordTableBody');
+        const filtered = getFilteredRecords();
+
+        // Tarih ve saate göre azalan sıralama (En yeni en üstte)
+        filtered.sort((a, b) => {
+            const dtA = new Date(`${a.date}T${a.startTime || '00:00'}`);
+            const dtB = new Date(`${b.date}T${b.startTime || '00:00'}`);
+            return dtB - dtA;
+        });
+
+        let totalIrrigation = 0;
+        let totalFertilization = 0;
+        let totalIrrigationDurationMinutes = 0;
+        let lastDate = '-';
+
+        tbody.innerHTML = filtered.map(r => {
+            if (r.applicationType === 'Sulama' || r.applicationType === 'Sulama+Gübreleme') totalIrrigation++;
+            if (r.applicationType === 'Gübreleme' || r.applicationType === 'Sulama+Gübreleme') totalFertilization++;
+            if (lastDate === '-' || new Date(r.date) > new Date(lastDate)) lastDate = r.date;
+
+            let durationDisplay = '-';
+            let isRunning = !r.endTime || (r.applicationType.includes('Sulama') && !r.counterEnd); // Bitiş saati veya sayaç yoksa devam ediyordur
+            
+            if (r.duration) {
+                const hours = Math.floor(r.duration / 60);
+                const minutes = r.duration % 60;
+                durationDisplay = `${hours}s ${minutes}d`;
+                if (r.applicationType === 'Sulama' || r.applicationType === 'Sulama+Gübreleme') totalIrrigationDurationMinutes += r.duration;
+            }
+
+            let fertDisplay = '-';
+            if (r.products && r.products.length > 0) {
+                fertDisplay = r.products.map(p => `• ${p.name}: <b>${p.totalAmount}</b> <small>(${p.dose})</small>`).join('<br>');
+            } else if (r.productName) {
+                fertDisplay = `• ${r.productName}: <b>${r.dosage}</b>`;
+            }
+
+            const startTimeDisplay = r.startTime ? r.startTime : '-';
+            const endTimeDisplay = r.endTime ? r.endTime : '-';
+            const counterDisplay = (r.counterStart !== undefined && r.counterEnd !== undefined) ? `${r.counterStart} → ${r.counterEnd}` : '-';
+
+            // Debi durum kontrolü
+            const m3_da = (r.waterAmount && r.totalArea && parseFloat(r.totalArea) > 0) ? (parseFloat(r.waterAmount) / parseFloat(r.totalArea)) : 0;
+            const m3_da_hour = (m3_da > 0 && r.duration && parseFloat(r.duration) > 0) ? (m3_da / (parseFloat(r.duration) / 60)) : 0;
+            const isAbnormal = (m3_da_hour > 0 && (m3_da_hour < 1.80 || m3_da_hour > 2.20));
+
+            let rowClass = '';
+            if (isRunning) rowClass = 'row-running';
+            else if (isAbnormal) rowClass = 'row-abnormal';
+
+            return `
+                <tr class="${rowClass}">
+                    <td><div class="fw-bold">${new Date(r.date).toLocaleDateString('tr-TR')}</div></td>
+                    <td><span class="badge bg-primary">${r.applicationType}</span></td>
+                    <td>${r.parcelVariety || '-'}</td>
+                    <td class="small">${fertDisplay}</td>
+                    <td>
+                        <small>${startTimeDisplay} - ${endTimeDisplay}</small><br>
+                        ${isRunning ? '<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Devam Ediyor...</span>' : `<span class="badge bg-light text-dark border">${durationDisplay}</span>`}
+                    </td>
+                    <td>
+                        <small class="text-muted">${counterDisplay}</small>
+                        ${r.pumpType && r.counterStart ? `<br><span class="badge bg-secondary" style="font-size: 0.725rem; font-weight: normal;">${r.pumpType}</span>` : ''}
+                    </td>
+                    <td>
+                        <span class="fw-bold text-primary">${r.waterAmount || '-'} m³</span>
+                        ${(r.waterAmount && r.totalArea && parseFloat(r.totalArea) > 0) ? `<br><span class="badge bg-success-subtle text-success border border-success-subtle mt-1" style="font-size: 0.725rem; font-weight: 500;">${(parseFloat(r.waterAmount) / parseFloat(r.totalArea)).toFixed(1)} m³/da</span>` : ''}
+                        ${(m3_da_hour > 0) ? `<br><span class="badge ${isAbnormal ? 'bg-danger text-white' : 'bg-info-subtle text-info border border-info-subtle'} mt-1" style="font-size: 0.725rem; font-weight: 500;">${m3_da_hour.toFixed(2)} m³/da/saat ${isAbnormal ? '<i class="bi bi-exclamation-triangle-fill ms-1" title="Anormal debi tespiti! Beklenen: 1.80 - 2.20 m³/da/saat"></i>' : ''}</span>` : ''}
+                    </td>
+                    <td><small class="text-muted">${r.totalArea ? r.totalArea + ' da <br>' : ''}${r.notes || '-'}</small></td>
+                    <td class="text-end">
+                        ${isRunning ? `<button class="btn btn-sm btn-success me-1" onclick="finishRecord('${r.id}')"><i class="bi bi-play-btn"></i> Bitir</button>` : ''}
+                        <button class="btn btn-sm btn-outline-warning me-1" onclick="editRecord('${r.id}')"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRecord('${r.id}')"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        document.getElementById('statTotalIrrigation').innerText = totalIrrigation;
+        document.getElementById('statTotalFertilization').innerText = totalFertilization; // Bu istatistik aslında gübreleme kaydı sayısını tutuyor, isim karışıklığı olabilir.
+        document.getElementById('statLastDate').innerText = lastDate !== '-' ? new Date(lastDate).toLocaleDateString('tr-TR') : '-';
+
+        // Toplam sulama süresini göster
+        const totalDurationHours = Math.floor(totalIrrigationDurationMinutes / 60); // Corrected variable name
+        const totalDurationMinutesRemainder = totalIrrigationDurationMinutes % 60; // Corrected variable name
+        // İstatistik kartı olmadığı için şimdilik console'a yazıyorum veya uygun bir yere ekleyebiliriz.
+        console.log(`Toplam Sulama Süresi: ${totalDurationHours} saat ${totalDurationMinutesRemainder} dakika`);
+        
+        // Parsel analiz ve grafiklerini güncelle
+        updateParcelStats();
+    }
+
+    function openRecordModal() {
+        editRecordId = null;
+        const now = new Date();
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+        document.getElementById('startTime').value = currentTime;
+        document.getElementById('endTime').value = currentTime;
+        document.getElementById('recordForm').reset();
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('applicationType').value = 'Sulama+Gübreleme';
+        document.getElementById('fertilizerContainer').innerHTML = '';
+        addFertilizerRow();
+        renderParcelInput();
+        toggleFertilizationFields();
+        
+        document.querySelector('#recordModal .modal-title').innerHTML = '<i class="bi bi-clipboard-plus me-2"></i>Sulama ve Gübreleme Kaydı Oluştur';
+        document.querySelector('#recordForm button[type="submit"]').textContent = 'Kaydı Tamamla';
+        document.querySelector('#recordForm button[type="submit"]').className = 'btn btn-primary w-100 py-2 fw-bold';
+        
+        recordModal.show();
+    }
+
+    function editRecord(id) {
+        const r = records.find(item => item.id === id);
+        if (!r) return;
+
+        editRecordId = id;
+        renderParcelInput();
+
+        document.getElementById('date').value = r.date;
+        document.getElementById('startTime').value = r.startTime || '';
+        document.getElementById('endTime').value = r.endTime || '';
+        document.getElementById('counterStart').value = r.counterStart || '';
+        document.getElementById('counterEnd').value = r.counterEnd || '';
+        if (document.getElementById('pumpType')) {
+            document.getElementById('pumpType').value = r.pumpType || 'Büyük Pompa';
+        }
+        document.getElementById('totalArea').value = r.totalArea || '';
+
+        const parcelVals = (r.parcelVariety || "").split(', ').map(v => v.trim());
+        document.querySelectorAll('.parcel-checkbox').forEach(cb => {
+            cb.checked = parcelVals.includes(cb.value);
+        });
+        if (document.getElementById('parcelVariety')) {
+            document.getElementById('parcelVariety').value = r.parcelVariety || '';
+        }
+        document.getElementById('applicationType').value = r.applicationType;
+        document.getElementById('waterAmount').value = r.waterAmount;
+
+        document.getElementById('fertilizerContainer').innerHTML = '';
+        if (r.products) {
+            r.products.forEach(p => addFertilizerRow(p.name, p.dose));
+        } else if (r.productName) {
+            addFertilizerRow(r.productName, r.dosage);
+        }
+        calculateProductTotals();
+        document.getElementById('notes').value = r.notes || '';
+
+        toggleFertilizationFields(); // Adjust fields based on type
+
+        document.querySelector('#recordModal .modal-title').innerHTML = '<i class="bi bi-pencil-square me-2"></i>Kaydı Düzenle';
+        document.querySelector('#recordForm button[type="submit"]').textContent = 'Değişiklikleri Kaydet';
+        document.querySelector('#recordForm button[type="submit"]').className = 'btn btn-warning w-100 py-2 fw-bold';
+
+        recordModal.show();
+    }
+
+    function finishRecord(id) {
+        const r = records.find(item => item.id === id);
+        if (!r) return;
+
+        editRecordId = id;
+        renderParcelInput();
+
+        document.getElementById('date').value = r.date;
+        document.getElementById('startTime').value = r.startTime || '';
+        
+        // Pre-fill end time with current time if empty
+        const now = new Date();
+        const currentTime = now.toTimeString().split(' ')[0].substring(0, 5); // HH:MM
+        document.getElementById('endTime').value = r.endTime || currentTime;
+        
+        document.getElementById('counterStart').value = r.counterStart || '';
+        document.getElementById('counterEnd').value = r.counterEnd || '';
+        if (document.getElementById('pumpType')) {
+            document.getElementById('pumpType').value = r.pumpType || 'Büyük Pompa';
+        }
+        document.getElementById('totalArea').value = r.totalArea || '';
+
+        const parcelVals = (r.parcelVariety || "").split(', ').map(v => v.trim());
+        document.querySelectorAll('.parcel-checkbox').forEach(cb => {
+            cb.checked = parcelVals.includes(cb.value);
+        });
+        if (document.getElementById('parcelVariety')) {
+            document.getElementById('parcelVariety').value = r.parcelVariety || '';
+        }
+        document.getElementById('applicationType').value = r.applicationType;
+        document.getElementById('waterAmount').value = r.waterAmount || '';
+
+        document.getElementById('fertilizerContainer').innerHTML = '';
+        if (r.products) {
+            r.products.forEach(p => addFertilizerRow(p.name, p.dose));
+        } else if (r.productName) {
+            addFertilizerRow(r.productName, r.dosage);
+        }
+        calculateProductTotals();
+        document.getElementById('notes').value = r.notes || '';
+
+        toggleFertilizationFields(); // Adjust fields based on type
+
+        document.querySelector('#recordModal .modal-title').innerHTML = '<i class="bi bi-play-btn me-2"></i>Kaydı Bitir';
+        document.querySelector('#recordForm button[type="submit"]').textContent = 'Kaydı Bitir ve Kaydet';
+        document.querySelector('#recordForm button[type="submit"]').className = 'btn btn-success w-100 py-2 fw-bold';
+
+        recordModal.show();
+        
+        // Focus appropriate field
+        setTimeout(() => {
+            if (r.applicationType.includes('Sulama')) {
+                document.getElementById('counterEnd').focus();
+            } else {
+                document.getElementById('endTime').focus();
+            }
+        }, 500);
+    }
+
+    document.getElementById('recordForm').onsubmit = async (e) => {
+        e.preventDefault();
+
+        const fertRows = document.querySelectorAll('.fertilizer-row');
+        const products = Array.from(fertRows).map(row => ({
+            name: row.querySelector('.fert-name').value,
+            dose: row.querySelector('.fert-dose').value,
+            totalAmount: row.querySelector('.fert-total').innerText.replace('= ', '')
+        })).filter(p => p.name && p.dose);
+
+        const recordData = {
+            date: document.getElementById('date').value, // YYYY-MM-DD
+            startTime: document.getElementById('startTime').value, // HH:MM
+            endTime: document.getElementById('endTime').value, // HH:MM
+            counterStart: document.getElementById('counterStart').value,
+            counterEnd: document.getElementById('counterEnd').value,
+            pumpType: document.getElementById('pumpType') ? document.getElementById('pumpType').value : '',
+            parcelVariety: getParcelVarietyValue(),
+            totalArea: document.getElementById('totalArea').value,
+            applicationType: document.getElementById('applicationType').value,
+            waterAmount: document.getElementById('waterAmount').value,
+            products: products,
+            productName: products[0] ? products[0].name : '', // Uyumluluk için
+            dosage: products[0] ? products[0].dose : '',      // Uyumluluk için
+            notes: document.getElementById('notes').value,
+            duration: 0 // Süre (dakika cinsinden)
+        };
+
+        // Icachem dışındaki bahçelerde pompa, sayaç ve tüketim kaydedilmez (eski kayıtlardaki değerler korunur)
+        if (!(localStorage.getItem('selected_garden_name') || '').includes('Icachem')) {
+            const prev = editRecordId ? records.find(item => item.id === editRecordId) : null;
+            recordData.counterStart = prev ? (prev.counterStart || '') : '';
+            recordData.counterEnd = prev ? (prev.counterEnd || '') : '';
+            recordData.pumpType = prev ? (prev.pumpType || '') : '';
+            recordData.waterAmount = prev ? (prev.waterAmount || '') : '';
+        }
+
+        // Süre hesaplama
+        if (recordData.startTime && recordData.endTime) {
+            const start = new Date(`2000-01-01T${recordData.startTime}:00`);
+            const end = new Date(`2000-01-01T${recordData.endTime}:00`);
+            recordData.duration = Math.round((end - start) / (1000 * 60)); // Dakika cinsinden
+            if (recordData.duration < 0) recordData.duration += 1440; // Gece yarısı geçişi
+        }
+
+        // Anormal debi (m3/da/saat) kontrolü
+        if (recordData.applicationType.includes('Sulama')) {
+            const waterVal = parseFloat(recordData.waterAmount) || 0;
+            const areaVal = parseFloat(recordData.totalArea) || 0;
+            const durationVal = parseFloat(recordData.duration) || 0;
+            
+            if (waterVal > 0 && areaVal > 0 && durationVal > 0) {
+                const m3_da = waterVal / areaVal;
+                const m3_da_hour = m3_da / (durationVal / 60);
+                
+                if (m3_da_hour < 1.80 || m3_da_hour > 2.20) {
+                    const confirmSave = confirm(`⚠️ UYARI: Hesaplanan damlama debisi (${m3_da_hour.toFixed(2)} m³/da/saat), beklenen normal standartların (1.80 - 2.20 m³/da/saat) dışındadır!\n\nYine de bu kaydı kaydetmek istiyor musunuz?`);
+                    if (!confirmSave) {
+                        return; // Kaydetmeyi iptal et
+                    }
+                }
+            }
+        }
+
+        if (editRecordId) {
+            const index = records.findIndex(r => r.id === editRecordId);
+            if (index > -1) {
+                records[index] = { ...records[index], ...recordData };
+            }
+        } else {
+            const newRecord = {
+                id: Date.now().toString(),
+                ...recordData
+            };
+            records.push(newRecord);
+        }
+
+        await syncRecords();
+        renderTable();
+        
+        recordModal.hide();
+    };
+
+    async function deleteRecord(id) {
+        if(confirm('Bu kaydı silmek istediğinize emin misiniz?')) {
+            records = records.filter(r => r.id !== id);
+            await syncRecords();
+            renderTable();
+        }
+    }
+
+    async function syncRecords() {
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        try {
+            await fetch(`api/save_irrigation_fertilization.php?garden_id=${gardenId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(records)
+            });
+        } catch (e) { alert("Sunucu senkronizasyon hatası!"); }
+    }
+
+    function exportRecordsExcel() {
+        if (typeof XLSX === 'undefined') {
+            alert("Excel kütüphanesi yüklenemedi. Lütfen internet bağlantınızı kontrol edin.");
+            return;
+        }
+        const filteredData = getFilteredRecords();
+        const ws = XLSX.utils.json_to_sheet(filteredData.map(r => ({
+            'Tarih': r.date,
+            'Uygulama Tipi': r.applicationType,
+            'Parsel/Çeşit': r.parcelVariety || '',
+            'Başlangıç Saati': r.startTime || '',
+            'Bitiş Saati': r.endTime || '',
+            'Süre (Dakika)': r.duration || '',
+            'Sayaç Başlama (m3)': r.counterStart || '',
+            'Sayaç Bitiş (m3)': r.counterEnd || '',
+            'Pompa': r.pumpType || '',
+            'Alan (da)': r.totalArea || '',
+            'Gübreler': r.products ? r.products.map(p => `${p.name}: ${p.totalAmount} (${p.dose})`).join(', ') : r.productName,
+            'Toplam Tüketim (m3)': r.waterAmount || '',
+            'Tüketim (m3/da)': (r.waterAmount && r.totalArea && parseFloat(r.totalArea) > 0) ? (parseFloat(r.waterAmount) / parseFloat(r.totalArea)).toFixed(2) : '',
+            'Tüketim (m3/da/saat)': (r.waterAmount && r.totalArea && parseFloat(r.totalArea) > 0 && r.duration && parseFloat(r.duration) > 0) ? ((parseFloat(r.waterAmount) / parseFloat(r.totalArea)) / (parseFloat(r.duration) / 60)).toFixed(2) : '',
+            'Açıklama': r.notes || ''
+        })));
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sulama ve Gübreleme Kayıtları");
+        XLSX.writeFile(wb, "Sulama_Gubreleme_Kayitlari.xlsx");
+    }
+
+    function trChars(str) {
+        if (!str) return "";
+        return str.toString()
+            .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+            .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+            .replace(/ş/g, 's').replace(/Ş/g, 'S')
+            .replace(/ı/g, 'i').replace(/İ/g, 'I')
+            .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+            .replace(/ç/g, 'c').replace(/Ç/g, 'C');
+    }
+
+    function exportRecordsPDF() {
+        const doc = new jsPDF();
+        const filteredData = getFilteredRecords();
+        
+        doc.text(trChars("Sulama ve Gubreleme Kayitlari"), 14, 15);
+        
+        const rows = filteredData.map(r => {
+            const m3_da = (r.waterAmount && r.totalArea && parseFloat(r.totalArea) > 0) ? (parseFloat(r.waterAmount) / parseFloat(r.totalArea)) : 0;
+            const m3_da_hour = (m3_da > 0 && r.duration && parseFloat(r.duration) > 0) ? (m3_da / (parseFloat(r.duration) / 60)) : 0;
+            
+            let consumptionText = (r.waterAmount || "") + " m3";
+            if (m3_da > 0) {
+                consumptionText += `\n(${m3_da.toFixed(1)} m3/da)`;
+                if (m3_da_hour > 0) {
+                    consumptionText += `\n(${m3_da_hour.toFixed(2)} m3/da/saat)`;
+                }
+            }
+
+            return [
+                trChars(new Date(r.date).toLocaleDateString('tr-TR') || "-"),
+                trChars(r.applicationType || "-"),
+                trChars(r.parcelVariety || "-"),
+                trChars(r.products ? r.products.map(p => `${p.name}: ${p.totalAmount}`).join('\n') : (r.productName || "-")),
+                trChars(`${r.startTime} - ${r.endTime}`),
+                trChars(r.duration ? `${r.duration} dk` : "-"),
+                trChars((r.counterStart || r.counterEnd) ? `${r.counterStart || '-'} - ${r.counterEnd || '-'}${r.pumpType ? ` (${r.pumpType})` : ''}` : "-"),
+                trChars(consumptionText),
+                trChars(r.totalArea ? r.totalArea + " da" : "-"),
+                trChars(r.notes || "-")
+            ];
+        });
+        
+        doc.autoTable({
+            head: [[
+                trChars('Tarih'), 
+                trChars('Tip'), 
+                trChars('Parsel'), 
+                trChars('Urun'), 
+                trChars('Zaman'), 
+                trChars('Sure'), 
+                trChars('Sayac Araligi'), 
+                trChars('Tuketim'), 
+                trChars('Dozaj'), 
+                trChars('Notlar')
+            ]],
+            body: rows,
+            startY: 20,
+            theme: 'striped',
+            styles: { fontSize: 8 }
+        });
+
+        doc.save("Sulama_Gubreleme_Kayitlari.pdf");
+    }
+
+    // Parsel bazında sulama ve gübreleme istatistikleri hesaplama ve görselleştirme fonksiyonları
+    let currentParcelStats = {};
+    let parcelChart = null;
+
+    async function loadMapPlots() {
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                allMapPlots = await res.json();
+                if (!Array.isArray(allMapPlots)) allMapPlots = [];
+                // Parsel istatistiklerini güncelle (Harita verisi geldikten sonra alan bilgileriyle yeniden hesaplar)
+                updateParcelStats();
+            }
+        } catch (e) { console.warn("Harita parsel verileri yüklenemedi", e); }
+    }
+
+    function parseFertilizerAmount(totalAmountStr) {
+        if (!totalAmountStr) return { value: 0, unit: '' };
+        const cleanStr = totalAmountStr.toString().replace(/\s+/g, '').replace(',', '.');
+        const match = cleanStr.match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+        if (match) {
+            return {
+                value: parseFloat(match[1]) || 0,
+                unit: match[2] || 'kg'
+            };
+        }
+        return { value: parseFloat(cleanStr) || 0, unit: 'kg' };
+    }
+
+    function calculateParcelStats() {
+        const filteredRecords = getFilteredRecords();
+        const parcelAreas = {};
+        
+        // 1. Icachem için statik parsel alanlarını ekle
+        const gardenName = localStorage.getItem('selected_garden_name') || '';
+        if (gardenName.includes('Icachem')) {
+            icachemParcels.forEach(g => {
+                g.items.forEach(item => {
+                    const match = item.match(/^(\d+\.\d+)\s*\((\d+(?:\.\d+)?)\s*da\)/);
+                    if (match) {
+                        parcelAreas[match[1]] = parseFloat(match[2]);
+                    }
+                });
+            });
+        }
+        
+        // 2. Haritada çizilen pencerelerden alanları al
+        if (allMapPlots && Array.isArray(allMapPlots)) {
+            allMapPlots.forEach(plot => {
+                if (plot.name && plot.area) {
+                    const match = plot.name.match(/(\d+\.\d+)/);
+                    const key = match ? match[1] : plot.name.trim();
+                    parcelAreas[key] = parseFloat(plot.area);
+                }
+            });
+        }
+
+        const parcelStats = {};
+
+        filteredRecords.forEach(r => {
+            let matched = [];
+            if (r.parcelVariety) {
+                const matches = r.parcelVariety.match(/(\d+\.\d+)/g);
+                if (matches) {
+                    matched = Array.from(new Set(matches));
+                }
+            }
+
+            if (matched.length === 0 && r.parcelVariety && r.parcelVariety.trim().length > 0) {
+                const valClean = r.parcelVariety.toLowerCase().trim();
+                if (valClean.includes('esmeralda')) {
+                    matched = ["5.1", "5.2", "5.3", "5.4", "5.5", "5.6"];
+                } else {
+                    matched = [r.parcelVariety.trim()];
+                }
+            }
+
+            if (matched.length === 0) return;
+
+            let totalMatchedArea = 0;
+            matched.forEach(p => {
+                totalMatchedArea += (parcelAreas[p] || 0);
+            });
+
+            const parcelShares = [];
+            matched.forEach(p => {
+                let share = 0;
+                if (totalMatchedArea > 0) {
+                    share = (parcelAreas[p] || 0) / totalMatchedArea;
+                } else {
+                    share = 1 / matched.length;
+                }
+                parcelShares.push({ name: p, share: share, area: parcelAreas[p] || 0 });
+            });
+
+            const waterVal = parseFloat(r.waterAmount) || 0;
+            
+            let productsList = [];
+            if (r.products && r.products.length > 0) {
+                productsList = r.products;
+            } else if (r.productName) {
+                productsList = [{ name: r.productName, totalAmount: r.dosage }];
+            }
+
+            parcelShares.forEach(item => {
+                const pName = item.name;
+                if (!parcelStats[pName]) {
+                    parcelStats[pName] = {
+                        name: pName,
+                        area: item.area || parcelAreas[pName] || 0,
+                        water: 0,
+                        fertilizers: {}
+                    };
+                }
+
+                parcelStats[pName].water += waterVal * item.share;
+
+                productsList.forEach(prod => {
+                    if (!prod.name || !prod.totalAmount) return;
+                    const pNameClean = prod.name.trim();
+                    const parsed = parseFertilizerAmount(prod.totalAmount);
+                    if (parsed.value > 0) {
+                        if (!parcelStats[pName].fertilizers[pNameClean]) {
+                            parcelStats[pName].fertilizers[pNameClean] = {
+                                value: 0,
+                                unit: parsed.unit
+                            };
+                        }
+                        parcelStats[pName].fertilizers[pNameClean].value += parsed.value * item.share;
+                    }
+                });
+            });
+        });
+
+        return parcelStats;
+    }
+
+    function updateParcelStats() {
+        const statsContainer = document.getElementById('parcelStatsContainer');
+        if (!statsContainer) return;
+
+        currentParcelStats = calculateParcelStats();
+        const keys = Object.keys(currentParcelStats);
+
+        if (keys.length === 0) {
+            statsContainer.style.display = 'none';
+            return;
+        }
+
+        statsContainer.style.display = 'flex';
+
+        // Toplam su tüketimi hesapla ve rozete bas
+        let grandTotalWater = 0;
+        keys.forEach(k => {
+            grandTotalWater += currentParcelStats[k].water;
+        });
+        const totalBadge = document.getElementById('chartTotalWater');
+        if (totalBadge) {
+            totalBadge.innerText = `Toplam: ${grandTotalWater.toFixed(1)} m³`;
+        }
+
+        const selector = document.getElementById('parcelDetailSelector');
+        const selectedVal = selector.value;
+        
+        const sortedKeys = keys.sort((a, b) => {
+            const aMatch = a.match(/^(\d+)\.(\d+)/);
+            const bMatch = b.match(/^(\d+)\.(\d+)/);
+            if (aMatch && bMatch) {
+                const a1 = parseInt(aMatch[1]);
+                const a2 = parseInt(aMatch[2]);
+                const b1 = parseInt(bMatch[1]);
+                const b2 = parseInt(bMatch[2]);
+                if (a1 !== b1) return a1 - b1;
+                return a2 - b2;
+            }
+            return a.localeCompare(b);
+        });
+
+        selector.innerHTML = '<option value="">Parsel Seçin...</option>' + 
+            sortedKeys.map(k => `<option value="${k}">Parsel ${k}</option>`).join('');
+
+        if (selectedVal && currentParcelStats[selectedVal]) {
+            selector.value = selectedVal;
+            renderParcelDetails(selectedVal);
+        } else {
+            renderParcelDetails('');
+        }
+
+        const labels = sortedKeys;
+        const dataValues = sortedKeys.map(k => currentParcelStats[k].water.toFixed(1));
+
+        if (parcelChart) {
+            parcelChart.destroy();
+        }
+
+        const canvasElem = document.getElementById('parcelWaterChart');
+        if (!canvasElem) return;
+
+        const ctx = canvasElem.getContext('2d');
+        if (typeof Chart === 'undefined') {
+            console.warn("Chart.js kütüphanesi henüz yüklenmemiş.");
+            return;
+        }
+
+        parcelChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Toplam Tüketim (m³)',
+                    data: dataValues,
+                    backgroundColor: 'rgba(25, 135, 84, 0.75)',
+                    borderColor: 'rgba(25, 135, 84, 1)',
+                    borderWidth: 1.5,
+                    borderRadius: 6,
+                    hoverBackgroundColor: 'rgba(25, 135, 84, 0.95)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` Su Tüketimi: ${context.raw} m³`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Su Miktarı (m³ / Ton)',
+                            font: { family: 'Inter', size: 11, weight: 'bold' }
+                        },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { font: { family: 'Inter' } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Inter', weight: 'bold' } }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const parcelName = labels[index];
+                        document.getElementById('parcelDetailSelector').value = parcelName;
+                        renderParcelDetails(parcelName);
+                    }
+                }
+            }
+        });
+    }
+
+    function renderParcelDetails(parcelName) {
+        const detailContent = document.getElementById('parcelDetailContent');
+        const detailData = document.getElementById('parcelDetailData');
+        
+        if (!parcelName) {
+            detailContent.style.display = 'block';
+            detailData.style.display = 'none';
+            return;
+        }
+
+        const stats = currentParcelStats[parcelName];
+        if (!stats) return;
+
+        detailContent.style.display = 'none';
+        detailData.style.display = 'block';
+
+        document.getElementById('detailParcelArea').innerText = stats.area > 0 ? `${stats.area} da` : 'Belirtilmemiş';
+        document.getElementById('detailParcelWater').innerText = `${stats.water.toFixed(2)} m³`;
+        
+        if (stats.area > 0 && stats.water > 0) {
+            document.getElementById('detailParcelWaterPerDecare').innerText = `${(stats.water / stats.area).toFixed(2)} m³/da`;
+        } else {
+            document.getElementById('detailParcelWaterPerDecare').innerText = '-';
+        }
+
+        const tbody = document.getElementById('detailParcelFertilizersBody');
+        const fertKeys = Object.keys(stats.fertilizers).sort();
+        
+        if (fertKeys.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted py-3">Uygulanan gübre bulunmamaktadır.</td></tr>`;
+        } else {
+            tbody.innerHTML = fertKeys.map(k => {
+                const f = stats.fertilizers[k];
+                return `
+                    <tr>
+                        <td>${k}</td>
+                        <td class="text-end fw-bold text-success">${f.value.toFixed(2)} ${f.unit}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('isLoggedIn');
+        window.location.href = 'login.html';
+    }
+
+    // Dynamic Autocomplete/Quick Fill Functions for Fertilizers
+    let allFertilizersForAutocomplete = [];
+
+    async function loadFertilizersForAutocomplete() {
+        try {
+            const res = await fetch('api/get_all_products.php');
+            if (res.ok) {
+                const allProducts = await res.json();
+                
+                // Gübre, yaprak gübresi ve BGD'leri önceliklendirerek listeyi hazırla
+                const fertilizers = allProducts.filter(p => 
+                    (p.category || '').toLowerCase().includes('gübre') || 
+                    (p.category || '').toLowerCase().includes('yaprak') ||
+                    (p.category || '').toLowerCase().includes('gelişim')
+                );
+                const others = allProducts.filter(p => 
+                    !(p.category || '').toLowerCase().includes('gübre') && 
+                    !(p.category || '').toLowerCase().includes('yaprak') &&
+                    !(p.category || '').toLowerCase().includes('gelişim')
+                );
+                
+                allFertilizersForAutocomplete = [...fertilizers, ...others];
+                updateFertilizersDatalist();
+            }
+        } catch (e) { console.warn("Gübre listesi yüklenemedi."); }
+    }
+
+    function updateFertilizersDatalist() {
+        let datalist = document.getElementById('fertilizerProductDatalist');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'fertilizerProductDatalist';
+            document.body.appendChild(datalist);
+        }
+        
+        datalist.innerHTML = allFertilizersForAutocomplete.map(p => {
+            const categoryText = p.category ? ` [${p.category}]` : '';
+            const stockText = p.source === 'stock' ? ' [Stokta Var]' : '';
+            return `<option value="${p.name}">${p.active_ingredient}${categoryText}${stockText}</option>`;
+        }).join('');
+    }
+
+    function autoFillFertilizerDose(inputElem) {
+        const val = inputElem.value.trim();
+        const product = allFertilizersForAutocomplete.find(p => p.name === val);
+        if (product && product.dosage) {
+            const row = inputElem.parentElement.parentElement;
+            const doseInput = row.querySelector('.fert-dose');
+            if (doseInput) {
+                doseInput.value = product.dosage;
+                calculateProductTotals();
+            }
+        }
+    }
+
+    // Dynamic Interactive Map Selection Functions
+    const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+    let selectionMap = null;
+    let mapSelectionModalInstance = null;
+    let allMapPlots = [];
+    let selectedPlotNames = [];
+    let mapSelectionAreaSum = 0;
+    let leafletLayersMap = {};
+
+    function openIrrigationMapModal() {
+        if (!mapSelectionModalInstance) {
+            mapSelectionModalInstance = new bootstrap.Modal(document.getElementById('irrigationMapModal'));
+        }
+        
+        mapSelectionModalInstance.show();
+
+        // Initialize Leaflet Map inside Modal on first open
+        setTimeout(() => {
+            if (!selectionMap) {
+                selectionMap = L.map('modalMap', {
+                    center: [39.0, 35.0],
+                    zoom: 6,
+                    zoomControl: false
+                });
+
+                L.control.zoom({ position: 'topright' }).addTo(selectionMap);
+
+                // Premium Google Hybrid Satellite Layer (Bulutsuz, Yüksek Çözünürlüklü ve En Güncel Melez Uydu)
+                L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                    maxZoom: 21,
+                    attribution: '&copy; Google Maps'
+                }).addTo(selectionMap);
+            }
+
+            loadMapDataForSelection();
+        }, 300); // Wait for modal slide transition
+    }
+
+    async function loadMapDataForSelection() {
+        try {
+            const res = await fetch(`api/get_map.php?garden_id=${gardenId}&t=${Date.now()}`);
+            if (res.ok) {
+                allMapPlots = await res.json();
+                if (!Array.isArray(allMapPlots)) allMapPlots = [];
+                
+                renderSelectionMapPlots();
+            }
+        } catch (e) { console.warn("Harita yüklenemedi", e); }
+    }
+
+    function renderSelectionMapPlots() {
+        // Clear old layers
+        Object.values(leafletLayersMap).forEach(l => selectionMap.removeLayer(l));
+        leafletLayersMap = {};
+        
+        // Filter only 'irrigation' type plots, except for Toros and Muzaffer gardens where we also load 'variety' plots
+        const gardenName = localStorage.getItem('selected_garden_name') || '';
+        const isStandardGarden = gardenName.includes('Toros') || gardenName.includes('Muzaffer');
+        const irrigationPlots = allMapPlots.filter(p => {
+            if (isStandardGarden) {
+                return p.type === 'variety' || p.type === 'irrigation';
+            }
+            return p.type === 'irrigation';
+        });
+        
+        // Reset selections
+        selectedPlotNames = [];
+        mapSelectionAreaSum = 0;
+        updateSelectionSummary();
+
+        if (irrigationPlots.length === 0) {
+            const errorMsg = isStandardGarden 
+                ? "Bu bahçe için henüz çeşit veya sulama parseli çizilmemiş! İnteraktif Harita sayfasından önce çizim yapmalısınız."
+                : "Bu bahçe için henüz sulama parseli çizilmemiş! İnteraktif Harita sayfasından önce çizim yapmalısınız.";
+            alert(errorMsg);
+            mapSelectionModalInstance.hide();
+            return;
+        }
+
+        const boundsPoints = [];
+        irrigationPlots.forEach(plot => {
+            const latlngs = plot.coordinates.map(c => [c.lat, c.lng]);
+            latlngs.forEach(pt => boundsPoints.push(pt));
+
+            const polygon = L.polygon(latlngs, {
+                color: plot.color,
+                fillColor: plot.color,
+                fillOpacity: 0.35,
+                weight: 2
+            }).addTo(selectionMap);
+
+            polygon.bindTooltip(`${plot.name} (${plot.area} da)`, {
+                permanent: true,
+                direction: 'center',
+                className: 'premium-tooltip'
+            });
+
+            // Store selection state directly on polygon object
+            polygon.selected = false;
+            leafletLayersMap[plot.id] = polygon;
+
+            // Toggle selection on click
+            polygon.on('click', () => {
+                polygon.selected = !polygon.selected;
+                if (polygon.selected) {
+                    polygon.setStyle({
+                        fillOpacity: 0.75,
+                        weight: 4,
+                        color: '#ffc107' // Highlight border gold
+                    });
+                    selectedPlotNames.push(plot.name);
+                    mapSelectionAreaSum += parseFloat(plot.area);
+                } else {
+                    polygon.setStyle({
+                        fillOpacity: 0.35,
+                        weight: 2,
+                        color: plot.color // Reset border color
+                    });
+                    selectedPlotNames = selectedPlotNames.filter(n => n !== plot.name);
+                    mapSelectionAreaSum -= parseFloat(plot.area);
+                }
+                
+                // Keep area sum positive and clean float
+                mapSelectionAreaSum = Math.max(0, parseFloat(mapSelectionAreaSum.toFixed(2)));
+                updateSelectionSummary();
+            });
+        });
+
+        // Fit map bounds to show all plots
+        if (boundsPoints.length > 0) {
+            selectionMap.fitBounds(boundsPoints, { padding: [30, 30] });
+        }
+    }
+
+    function updateSelectionSummary() {
+        document.getElementById('modalSelectedParsels').innerText = selectedPlotNames.length > 0 ? selectedPlotNames.join(', ') : '-';
+        document.getElementById('modalSelectedArea').innerText = `${mapSelectionAreaSum} da`;
+    }
+
+    function confirmIrrigationMapSelection() {
+        if (selectedPlotNames.length === 0) {
+            alert("Lütfen en az bir parsel seçin!");
+            return;
+        }
+
+        // Handle checkboxes if they exist (e.g. for Icachem)
+        const checkboxes = document.querySelectorAll('.parcel-checkbox');
+        if (checkboxes.length > 0) {
+            checkboxes.forEach(cb => cb.checked = false);
+            selectedPlotNames.forEach(plotName => {
+                const plotNameLower = plotName.toLowerCase();
+                checkboxes.forEach(cb => {
+                    const cbValLower = cb.value.toLowerCase();
+                    if (plotNameLower.includes(cbValLower) || cbValLower.includes(plotNameLower)) {
+                        cb.checked = true;
+                    }
+                });
+            });
+        } else {
+            // Handle fallback text input
+            const input = document.getElementById('parcelVariety');
+            if (input) {
+                input.value = selectedPlotNames.join(', ');
+            }
+        }
+
+        // Fill total area
+        const areaInput = document.getElementById('totalArea');
+        if (areaInput) {
+            areaInput.value = mapSelectionAreaSum;
+        }
+
+        // Trigger weight totals calculation instantly
+        calculateProductTotals();
+        detectPumpType();
+        calculateConsumption();
+
+        mapSelectionModalInstance.hide();
+    }
+
+    async function syncNightEstimates() {
+        const btn = document.getElementById('btnSyncEstimates');
+        if (!btn) return;
+        
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Senkronize Ediliyor...';
+        
+        const gardenId = localStorage.getItem('selected_garden_id') || 'default';
+        
+        try {
+            const res = await fetch(`api/sync_night_estimates.php?garden_id=${gardenId}&t=${Date.now()}`);
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                alert(data.message);
+                await loadRecords(); // reload the data table
+            } else {
+                alert('Hata: ' + data.message);
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Senkronizasyon sırasında teknik bir hata oluştu.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const activeGardenName = localStorage.getItem('selected_garden_name');
+    if (activeGardenName) {
+        document.querySelectorAll('.navbar-brand').forEach(brand => {
+            const icon = brand.querySelector('i, svg');
+            if (icon) {
+                brand.innerHTML = icon.outerHTML + ' ' + activeGardenName;
+            } else {
+                brand.textContent = activeGardenName;
+            }
+        });
+    }
+});
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/auth_guard.js?v=1"></script>
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') {
+            window.location.href = 'login.html';
+        } else if (localStorage.getItem('userRole') !== 'admin') {
+            window.location.href = 'index.html';
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kullanıcı Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/navbar_custom.css?v=25">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-expand-xl navbar-dark bg-dark sticky-top shadow-sm mb-4">
+    <div class="container-fluid px-lg-3">
+        <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="index.html">Ana Sayfa</a></li>
+                <li class="nav-item"><a class="nav-link" href="products.html">Stok Listesi</a></li>
+                
+                <!-- Tek Menü: Sulama & Gübre Yönetimi -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-droplet-half me-1"></i>Sulama & Gübre Yönetimi
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="irrigation_fertilization_records.html"><i class="bi bi-droplet-fill me-1 text-info"></i>Sulama Gübreleme Kayıtları</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="irrigation_schedule.html"><i class="bi bi-calendar-check me-1"></i>Sulama Uygulamaları</a></li>
+                    </ul>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="treatments.html">İlaçlama Kayıtları</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="schedule.html"><i class="bi bi-calendar3 me-1"></i>İlaçlama Takvimi</a></li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-info fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-map-fill me-1"></i>İnteraktif Haritalar
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="garden_map.html"><i class="bi bi-geo-alt me-1"></i>Bahçe & Çeşit Haritası</a></li>
+                        <li><a class="dropdown-item text-info fw-bold" href="garden_map.html?topo=1"><i class="bi bi-triangle-half me-1"></i>Topoğrafik Sulama Haritası</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="herbicide_map.html"><i class="bi bi-droplet-half me-1"></i>Herbisit Harita & Planlama</a></li>
+                    </ul>
+                </li>
+
+                <!-- Meteoroloji İstasyonu -->
+                <li class="nav-item">
+                    <a class="nav-link text-info fw-bold" href="meteo.html">
+                        <i class="bi bi-cloud-sun-fill me-1 text-warning"></i>Meteoroloji
+                    </a>
+                </li>
+
+                <li class="nav-item"><a class="nav-link" href="puantaj.html">Puantaj</a></li>
+                <li class="nav-item"><a class="nav-link text-warning fw-bold" href="cari.html"><i class="bi bi-calculator me-1"></i>Cari & Maliyet</a></li>
+                <li class="nav-item"><a class="nav-link" href="agenda.html">Ajanda</a></li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning fw-bold" href="recommendations.html">
+                        <i class="bi bi-chat-heart-fill me-1 text-warning"></i>Tavsiye & İletişim
+                    </a>
+                </li>
+
+                <!-- Sezon & Yıl Seçici -->
+                <li class="nav-item dropdown season-selector-nav">
+                    <a class="nav-link dropdown-toggle text-warning fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar-range me-1"></i>Sezon: <span class="seasonYearDisplayBadge">2026</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow" id="navbarSeasonMenu">
+                        <li><h6 class="dropdown-header text-muted">Çalışma / Arşiv Yılı</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2026')"><i class="bi bi-calendar-check me-1"></i>2026 Sezonu</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="SeasonManager.switchSeason('2027')"><i class="bi bi-calendar-plus me-1"></i>2027 Sezonu</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="gardens.html"><i class="bi bi-archive me-1"></i>Sezon Arşiv Yönetimi</a></li>
+                    </ul>
+                </li>
+                
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-success fw-bold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-shield-check"></i> Rehberler & BKÜ
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li><a class="dropdown-item" href="apple_scab_guide.html">Elma Karaleke</a></li>
+                        <li><a class="dropdown-item" href="codling_moth_guide.html">Elma İç Kurdu</a></li>
+                        <li><a class="dropdown-item" href="peach_management_guide.html">Şeftali Programı</a></li>
+                        <li><a class="dropdown-item text-warning fw-bold" href="apricot_management_guide.html"><i class="bi bi-shield-fill-check me-1"></i>Kayısı İlaçlama Programı</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-success fw-bold" href="bku_dashboard.html"><i class="bi bi-speedometer2 me-1"></i>BKÜ Dashboard</a></li>
+                        <li><a class="dropdown-item text-success" href="spray.html"><i class="bi bi-droplet-half me-1"></i>Karışım & Nozul Asistanı</a></li>
+                        <li><a class="dropdown-item text-success" href="analiz.html"><i class="bi bi-flask me-1"></i>Toprak/Su Analizi</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header text-muted">Zirai Takvimler (Foliar)</h6></li>
+                        <li><a class="dropdown-item" href="apple.html">🍏 Elma Takvimi</a></li>
+                        <li><a class="dropdown-item" href="cherry.html">🍒 Kiraz Takvimi</a></li>
+                        <li><a class="dropdown-item" href="apricot.html">🍊 Kayısı Takvimi</a></li>
+                        <li><a class="dropdown-item" href="peach.html">🍑 Şeftali Takvimi</a></li>
+                    </ul>
+                </li>
+                <li id="adminUsers" class="nav-item" style="display:none;"><a class="nav-link text-danger active" href="users.html"><i class="bi bi-people-fill"></i> Kullanıcılar</a></li>
+                <li id="adminLogs" class="nav-item" style="display:none;"><a class="nav-link text-warning" href="activity_logs.html"><i class="bi bi-journal-text"></i> Loglar</a></li>
+                <li class="nav-item border-start ms-xl-2 ps-xl-2"></li>
+                <li class="nav-item"><a class="nav-link text-info" href="gardens.html"><i class="bi bi-arrow-left-right"></i> Bahçe Seç</a></li>
+                <li class="nav-item"><a class="nav-link text-warning" href="#" onclick="logout()"><i class="bi bi-box-arrow-right"></i> Çıkış</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<div class="container mb-5">
+    <!-- Genel Sayfa Görünürlük & Kısıtlama Yönetimi -->
+    <div class="card shadow-sm mb-4 border-0" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: #ffffff; border-radius: 16px;">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary p-3 rounded-circle text-white shadow">
+                        <i class="bi bi-shield-lock-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1 text-white">Genel Sayfa Görünürlük & Kısıtlama Yönetimi</h5>
+                        <p class="text-white-50 mb-0 small">Yönetici haricindeki tüm kullanıcılar için sayfaları tek tıkla gizleyin veya açın.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-warning fw-bold px-4 py-2 shadow-sm" onclick="window.openGlobalPageVisibilityModal()">
+                    <i class="bi bi-sliders2-vertical me-2"></i>Tüm Sayfaları Yönet & Gizle
+                </button>
+            </div>
+            <hr class="border-secondary my-3 opacity-25">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <div id="usersPageGlobalVisSummary" class="small d-flex align-items-center gap-2 flex-wrap">
+                    <span class="text-white-50">Yükleniyor...</span>
+                </div>
+                <small class="text-white-50"><i class="bi bi-info-circle me-1"></i>Sayfa görünürlük ve kısıtlamalarını bu sayfadan veya kullanıcı bazlı izinlerden yönetebilirsiniz.</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white fw-bold" id="formHeader">Yeni Kullanıcı Ekle</div>
+        <div class="card-body">
+            <form id="userForm" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" id="newUsername" class="form-control" placeholder="Kullanıcı Adı" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="password" id="newPassword" class="form-control" placeholder="Şifre" required>
+                </div>
+                <div class="col-md-3">
+                    <select id="newRole" class="form-select">
+                        <option value="viewer">Gözlemci (Sadece İzler)</option>
+                        <option value="editor">Editör (Kayıt Yapar)</option>
+                        <option value="admin">Yönetici (Tam Yetki)</option>
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label fw-bold">İşlem Yetkileri:</label>
+                    <div class="d-flex flex-wrap gap-4 p-2 border rounded bg-white">
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permEdit" checked><label class="form-check-label" for="permEdit">Düzeltme Yapabilir</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permDelete" checked><label class="form-check-label" for="permDelete">Silme Yapabilir</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permOnlyStock"><label class="form-check-label" for="permOnlyStock">Sadece Stoktan Seçim (Rehberi Gizle)</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permMapEdit" checked><label class="form-check-label" for="permMapEdit">Harita Düzenleyebilir</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permMapNote" checked><label class="form-check-label" for="permMapNote">Harita Notu/Arıza Ekleyebilir</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permMapDelete" checked><label class="form-check-label" for="permMapDelete">Harita Silebilir</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="permSeasonArchive" checked><label class="form-check-label fw-bold text-warning" for="permSeasonArchive"><i class="bi bi-archive me-1"></i>Sezon / Arşiv Yönetebilir</label></div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <label class="form-label fw-bold mb-0">Gizlenecek Sayfalar (Bu Kullanıcıya Özel):</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.openGlobalPageVisibilityModal(document.getElementById('newUsername').value || '__all__')">
+                            <i class="bi bi-sliders2-vertical me-1"></i>Gelişmiş Görünürlük Modalı ile Yönet
+                        </button>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3 p-2 border rounded bg-white">
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="products.html" id="p_stok"><label class="form-check-label" for="p_stok">Stok Listesi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="treatments.html" id="p_ilac"><label class="form-check-label" for="p_ilac">İlaçlama Kayıtları</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="schedule.html" id="p_schedule"><label class="form-check-label" for="p_schedule">İlaçlama Programı & Takvim</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="recommendations.html" id="p_recommendations"><label class="form-check-label" for="p_recommendations">Tavsiye & İletişim Portalı</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="irrigation_fertilization_records.html" id="p_irrigation_fert"><label class="form-check-label" for="p_irrigation_fert">Sulama & Gübreleme Kayıtları</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="fertilization.html" id="p_fertilization"><label class="form-check-label text-success fw-semibold" for="p_fertilization">Gübreleme Yönetimi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="irrigation_schedule.html" id="p_irrigation_sched"><label class="form-check-label" for="p_irrigation_sched">Sulama Programı</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="garden_map.html" id="p_garden_map"><label class="form-check-label" for="p_garden_map">Bahçe & Çeşit Haritası</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="herbicide_map.html" id="p_herbicide"><label class="form-check-label" for="p_herbicide">Herbisit Haritası</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="cari.html" id="p_cari"><label class="form-check-label" for="p_cari">Cari & Maliyet Hesabı</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="puantaj.html" id="p_puantaj"><label class="form-check-label" for="p_puantaj">Puantaj Takibi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="agenda.html" id="p_agenda"><label class="form-check-label" for="p_agenda">Çiftlik Ajandası</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="analiz.html" id="p_analiz"><label class="form-check-label" for="p_analiz">Analiz Yorumlama</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="meteo.html" id="p_meteo"><label class="form-check-label" for="p_meteo">Meteoroloji İstasyonu</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="bku_dashboard.html" id="p_bku_dashboard"><label class="form-check-label" for="p_bku_dashboard">BKÜ Dashboard</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="spray.html" id="p_spray"><label class="form-check-label" for="p_spray">Karışım Asistanı</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="season_archive" id="p_season_archive"><label class="form-check-label text-warning fw-bold" for="p_season_archive">Sezon Arşiv Yönetimi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="apple_scab_guide.html" id="p_scab"><label class="form-check-label" for="p_scab">Karaleke Rehberi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="codling_moth_guide.html" id="p_codling"><label class="form-check-label" for="p_codling">İç Kurdu Rehberi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="peach_management_guide.html" id="p_peach"><label class="form-check-label" for="p_peach">Şeftali Rehberi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="apricot_management_guide.html" id="p_apricot_guide"><label class="form-check-label text-warning fw-bold" for="p_apricot_guide">Kayısı İlaçlama Programı</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="apple.html" id="p_apple"><label class="form-check-label" for="p_apple">Elma Takvimi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="cherry.html" id="p_cherry"><label class="form-check-label" for="p_cherry">Kiraz Takvimi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="apricot.html" id="p_apricot"><label class="form-check-label" for="p_apricot">Kayısı Takvimi</label></div>
+                        <div class="form-check"><input class="form-check-input page-hide-check" type="checkbox" value="peach.html" id="p_peach_cal"><label class="form-check-label" for="p_peach_cal">Şeftali Takvimi</label></div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold">Erişim İzni Verilecek Bahçeler:</label>
+                    <div id="gardenCheckboxes" class="d-flex flex-wrap gap-3 p-2 border rounded bg-white">
+                        <small class="text-muted">Bahçeler yükleniyor...</small>
+                    </div>
+                    <small class="text-muted">Yöneticiler varsayılan olarak tüm bahçelere erişebilir.</small>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" id="submitBtn" class="btn btn-success w-100">Ekle</button>
+                    <button type="button" id="cancelBtn" class="btn btn-secondary w-100" style="display:none;" onclick="resetForm()">Vazgeç</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Kullanıcı Adı</th>
+                    <th>Parola</th>
+                    <th>Rol</th>
+                    <th>Yetkiler & Gizli Sayfalar</th>
+                    <th>İzinli Bahçeler</th>
+                    <th class="text-end">İşlem</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    if (localStorage.getItem('userRole') !== 'admin') window.location.href = 'index.html';
+
+    let allUsers = [];
+    let allGardens = [];
+    let editUserIndex = -1;
+
+    async function loadUsers() {
+        const res = await fetch('api/get_users.php');
+        allUsers = await res.json();
+        if (!Array.isArray(allUsers)) allUsers = [];
+        renderUsers();
+    }
+
+    async function loadGardens() {
+        const res = await fetch('api/get_gardens.php');
+        allGardens = await res.json();
+        renderGardenCheckboxes();
+    }
+
+    function renderGardenCheckboxes() {
+        const container = document.getElementById('gardenCheckboxes');
+        if (allGardens.length === 0) {
+            container.innerHTML = '<small class="text-danger">Henüz sistemde kayıtlı bahçe yok.</small>';
+            return;
+        }
+        container.innerHTML = allGardens.map(g => `
+            <div class="form-check">
+                <input class="form-check-input garden-check" type="checkbox" value="${g.id}" id="chk_${g.id}">
+                <label class="form-check-label" for="chk_${g.id}">${g.name}</label>
+            </div>
+        `).join('');
+    }
+
+    function renderUsers() {
+        document.getElementById('userTableBody').innerHTML = allUsers.map((u, i) => `
+            <tr>
+                <td>${u.username}</td>
+                <td><code class="text-dark">${u.password}</code></td>
+                <td><span class="badge bg-secondary">${u.role}</span></td>
+                <td>
+                    <small class="d-block">İşlem: ${u.permissions?.edit ? '✓Düzen' : '✗Düzen'} | ${u.permissions?.delete ? '✓Sil' : '✗Sil'}</small>
+                    <small class="d-block text-secondary">Harita: ${u.permissions?.mapEdit !== false ? '✓Düzenleme' : '✗Düzenleme'} | ${u.permissions?.seasonArchive !== false ? '✓Sezon Arşivi' : '✗Sezon Arşivi'}</small>
+                    <small class="d-block text-primary">${u.permissions?.onlyStock ? 'ⓘ Sadece Stok Yetkili' : 'ⓘ Rehber Erişimi Açık'}</small>
+                    ${u.permissions?.hidden?.length > 0 ? 
+                        `<small class="text-danger">Gizli: ${u.permissions.hidden.join(', ')}</small>` : 
+                        '<small class="text-success">Tüm sayfalar açık</small>'}
+                </td>
+                <td>
+                    ${u.role === 'admin' ? '<span class="text-success small fw-bold">Tüm Bahçeler</span>' : 
+                      (u.allowed_gardens && u.allowed_gardens.length > 0 ? 
+                        u.allowed_gardens.map(gid => allGardens.find(g => g.id === gid)?.name || gid).join(', ') : 
+                        '<span class="text-danger small">Erişim Yok</span>')}
+                </td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="window.openGlobalPageVisibilityModal('${u.username}')" title="Bu kullanıcı için sayfa görünürlüklerini aç">
+                        <i class="bi bi-sliders me-1"></i>Sayfa İzinleri
+                    </button>
+                    <button class="btn btn-sm btn-warning me-1" onclick="editUser(${i})">Düzenle</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteUser(${i})" ${u.username === 'Bulent' ? 'disabled' : ''}>Sil</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function editUser(index) {
+        editUserIndex = index;
+        const user = allUsers[index];
+        
+        document.getElementById('newUsername').value = user.username;
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newPassword').placeholder = 'Değiştirmek istemiyorsanız boş bırakın';
+        document.getElementById('newPassword').required = false;
+        document.getElementById('newRole').value = user.role;
+        
+        document.getElementById('permEdit').checked = user.permissions?.edit ?? true;
+        document.getElementById('permDelete').checked = user.permissions?.delete ?? true;
+        document.getElementById('permOnlyStock').checked = user.permissions?.onlyStock ?? false;
+        document.getElementById('permMapEdit').checked = user.permissions?.mapEdit ?? true;
+        document.getElementById('permMapNote').checked = user.permissions?.mapNote ?? true;
+        document.getElementById('permMapDelete').checked = user.permissions?.mapDelete ?? true;
+        document.getElementById('permSeasonArchive').checked = user.permissions?.seasonArchive ?? true;
+        
+        document.querySelectorAll('.page-hide-check').forEach(cb => {
+            cb.checked = user.permissions?.hidden?.includes(cb.value);
+        });
+        
+        document.querySelectorAll('.garden-check').forEach(cb => {
+            cb.checked = user.allowed_gardens?.includes(cb.value);
+        });
+
+        document.getElementById('formHeader').innerText = 'Kullanıcıyı Düzenle: ' + user.username;
+        document.getElementById('submitBtn').innerText = 'Güncelle';
+        document.getElementById('submitBtn').className = 'btn btn-warning w-100';
+        document.getElementById('cancelBtn').style.display = 'block';
+        window.scrollTo(0, 0);
+    }
+
+    function resetForm() {
+        editUserIndex = -1;
+        document.getElementById('userForm').reset();
+        document.getElementById('newPassword').placeholder = 'Şifre';
+        document.getElementById('newPassword').required = true;
+        document.getElementById('formHeader').innerText = 'Yeni Kullanıcı Ekle';
+        document.getElementById('submitBtn').innerText = 'Ekle';
+        document.getElementById('permOnlyStock').checked = false;
+        document.getElementById('permMapEdit').checked = true;
+        document.getElementById('permMapNote').checked = true;
+        document.getElementById('permMapDelete').checked = true;
+        document.getElementById('permSeasonArchive').checked = true;
+        document.getElementById('submitBtn').className = 'btn btn-success w-100';
+        document.getElementById('cancelBtn').style.display = 'none';
+    }
+
+    document.getElementById('userForm').onsubmit = async (e) => {
+        e.preventDefault();
+        // Liste sunucudan yüklenemediyse kaydetmek mevcut kullanıcıları silerdi.
+        if (allUsers.length === 0) {
+            alert('Kullanıcı listesi sunucudan yüklenemedi. Sayfayı yenileyip tekrar deneyin.');
+            return;
+        }
+        const selectedGardens = Array.from(document.querySelectorAll('.garden-check:checked')).map(cb => cb.value);
+        const hiddenPages = Array.from(document.querySelectorAll('.page-hide-check:checked')).map(cb => cb.value);
+
+        const userData = {
+            username: document.getElementById('newUsername').value,
+            role: document.getElementById('newRole').value,
+            allowed_gardens: selectedGardens,
+            permissions: {
+                edit: document.getElementById('permEdit').checked,
+                delete: document.getElementById('permDelete').checked,
+                onlyStock: document.getElementById('permOnlyStock').checked,
+                mapEdit: document.getElementById('permMapEdit').checked,
+                mapNote: document.getElementById('permMapNote').checked,
+                mapDelete: document.getElementById('permMapDelete').checked,
+                seasonArchive: document.getElementById('permSeasonArchive').checked,
+                hidden: hiddenPages
+            }
+        };
+
+        const password = document.getElementById('newPassword').value;
+        if (password) userData.password = password;
+        else if (editUserIndex > -1) userData.password = allUsers[editUserIndex].password;
+
+        if (editUserIndex > -1) {
+            allUsers[editUserIndex] = userData;
+        } else {
+            allUsers.push(userData);
+        }
+
+        try {
+            const res = await fetch('api/save_users.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allUsers)
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                alert(editUserIndex > -1 ? 'Kullanıcı güncellendi.' : 'Yeni kullanıcı eklendi.');
+                resetForm();
+                renderUsers();
+            } else {
+                alert('Kayıt başarısız: ' + result.message);
+            }
+        } catch (err) {
+            alert('Ağ hatası oluştu!');
+        }
+    };
+
+    async function deleteUser(index) {
+        if (confirm(`${allUsers[index].username} isimli kullanıcıyı silmek istediğinize emin misiniz?`)) {
+            allUsers.splice(index, 1);
+            await fetch('api/save_users.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(allUsers)
+            });
+            renderUsers();
+        }
+    }
+
+    function updateUsersPageGlobalVisSummary() {
+        const el = document.getElementById('usersPageGlobalVisSummary');
+        if (!el) return;
+        const hidden = JSON.parse(localStorage.getItem('system_hidden_pages') || '[]');
+        if (hidden.length === 0) {
+            el.innerHTML = '<span class="badge bg-success text-white px-2 py-1"><i class="bi bi-check-circle me-1"></i>Tüm sayfalar normal kullanıcılara AÇIK</span>';
+        } else {
+            el.innerHTML = `
+                <span class="badge bg-danger text-white px-2 py-1"><i class="bi bi-eye-slash-fill me-1"></i>${hidden.length} sayfa normal kullanıcılardan GİZLİ:</span>
+                ${hidden.slice(0, 5).map(h => `<code class="badge bg-dark text-warning border border-secondary">${h}</code>`).join(' ')}
+                ${hidden.length > 5 ? `<span class="badge bg-secondary">+${hidden.length - 5} daha...</span>` : ''}
+            `;
+        }
+    }
+
+    loadGardens();
+    loadUsers();
+
+    // Modal kapatıldığında kullanıcı listesini güncelle
+    document.addEventListener('hidden.bs.modal', function (event) {
+        if (event.target && event.target.id === 'globalPageVisibilityModal') {
+            loadUsers();
+        }
+    });
+
+    updateUsersPageGlobalVisSummary();
+    window.addEventListener('storage', updateUsersPageGlobalVisSummary);
+</script>
+<script src="assets/js/season_archive_manager.js?v=19"></script>
+<script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+</html>

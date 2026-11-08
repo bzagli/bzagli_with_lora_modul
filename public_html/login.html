@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <script src="assets/js/i18n.js?v=4"></script>
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="assets/images/apple-touch-icon.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Giriş Yap - Bahçe Yönetimi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/css/pastel_theme.css?v=1">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1f3d30 0%, #294e3e 50%, #355f4c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: var(--p-font-base, 'Plus Jakarta Sans', sans-serif);
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(165, 214, 185, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: '';
+            position: absolute;
+            bottom: -20%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(138, 186, 161, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 420px;
+            background: #ffffff;
+            border: 1px solid rgba(45, 75, 60, 0.08);
+            border-radius: 28px;
+            box-shadow: 0 25px 50px -12px rgba(18, 36, 28, 0.35);
+            position: relative;
+            z-index: 2;
+        }
+
+        .form-control {
+            border-radius: 12px;
+            padding: 13px 16px;
+            font-size: 0.95rem;
+            border: 1px solid rgba(45, 75, 60, 0.12);
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--p-sage-btn, #3b7457);
+            box-shadow: 0 0 0 4px rgba(59, 116, 87, 0.15);
+        }
+
+        .input-group-text {
+            border-radius: 12px 0 0 12px !important;
+            border: 1px solid rgba(45, 75, 60, 0.12);
+            background: #fbfdfb;
+            color: var(--p-sage-btn, #3b7457);
+        }
+
+        .btn-login {
+            border-radius: 50px;
+            padding: 13px;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: -0.01em;
+            background: var(--p-sage-btn, #3b7457);
+            border: none;
+            color: #ffffff;
+            box-shadow: 0 6px 18px rgba(59, 116, 87, 0.3);
+            transition: all 0.25s ease;
+        }
+
+        .btn-login:hover {
+            background: var(--p-sage-btn-hover, #2e6047);
+            color: #ffffff;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(59, 116, 87, 0.38);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card login-card p-4 p-md-5">
+        <div class="text-center mb-4">
+            <img src="assets/images/logo.png" alt="bzagli" width="200" height="85" class="mb-3" style="max-width: 70%; height: auto;">
+            <h3 class="fw-bold text-dark mb-1" style="font-family: var(--p-font-heading, sans-serif);">Yönetim Paneli
+            </h3>
+            <p class="text-muted small mb-0">Lütfen giriş bilgilerinizi yazın</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="mb-3">
+                <label class="form-label small fw-semibold text-secondary">Kullanıcı Adı</label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0"><i class="bi bi-person"></i></span>
+                    <input type="text" id="username" autocomplete="username" autocapitalize="none" class="form-control border-start-0" placeholder="Kullanıcı Adı"
+                        required>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label small fw-semibold text-secondary">Parola</label>
+                <div class="input-group">
+                    <span class="input-group-text border-end-0"><i class="bi bi-key"></i></span>
+                    <input type="password" id="password" autocomplete="current-password" class="form-control border-start-0" placeholder="••••"
+                        required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-login w-100">
+                <span>Giriş Yap</span>
+                <i class="bi bi-box-arrow-in-right ms-2"></i>
+            </button>
+            <div id="errorMsg" class="alert alert-danger mt-3 py-2 px-3 small rounded-3 text-center"
+                style="display: none;">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i> Hatalı kullanıcı adı veya parola!
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const defaultGardens = [
+            { id: "g_1777800763460", name: "Icachem", location: "" },
+            { id: "g_1777800773728", name: "Muzaffer Yılmaz", location: "" }
+        ];
+
+        // Giriş sayfası açıldığında sunucu oturumu kapatılır (çıkış işlemleri buraya yönlendirir).
+        const logoutDone = window.location.protocol === 'file:'
+            ? Promise.resolve()
+            : fetch('api/logout.php', { method: 'POST' }).catch(() => { });
+
+        // Eski sürümlerden kalan, tüm kullanıcıların parolalarını içeren önbelleği temizle.
+        try {
+            const cachedList = JSON.parse(localStorage.getItem('cached_users') || '[]');
+            if (!Array.isArray(cachedList) || cachedList.length > 1) localStorage.removeItem('cached_users');
+        } catch (e) { localStorage.removeItem('cached_users'); }
+
+        if (new URLSearchParams(window.location.search).get('expired') === '1') {
+            const expiredEl = document.getElementById('errorMsg');
+            if (expiredEl) {
+                expiredEl.className = 'alert alert-warning mt-3 py-2 px-3 small rounded-3 text-center';
+                expiredEl.innerHTML = '<i class="bi bi-clock-history me-1"></i> Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.';
+                expiredEl.style.display = 'block';
+            }
+        }
+
+        function getOfflineUsers() {
+            try {
+                const cached = localStorage.getItem('cached_users');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (e) { }
+            return [];
+        }
+
+        document.getElementById('loginForm').onsubmit = async function (e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorEl = document.getElementById('errorMsg');
+            if (errorEl) {
+                errorEl.style.display = 'none';
+                errorEl.className = 'alert alert-danger mt-3 py-2 px-3 small rounded-3 text-center';
+            }
+
+            const normalizedUsername = username.trim().toLocaleLowerCase('tr-TR');
+            const isLocalMode = window.location.protocol === 'file:';
+
+            if (isLocalMode) {
+                handleOfflineLogin(username, password);
+                return;
+            }
+
+            try {
+                await logoutDone;
+                const response = await fetch('api/login.php', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('userName', result.username);
+                    localStorage.setItem('userRole', result.role);
+                    localStorage.setItem('allowed_gardens', JSON.stringify(result.allowed_gardens || []));
+                    localStorage.setItem('userPermissions', JSON.stringify(result.permissions));
+
+                    // Başarılı girişte yerel kullanıcı önbelleğini güncelle
+                    try {
+                        // Çevrimdışı giriş için yalnızca bu kullanıcının kendi bilgisi saklanır.
+                        localStorage.setItem('cached_users', JSON.stringify([{
+                            username: result.username,
+                            password: password,
+                            role: result.role,
+                            allowed_gardens: result.allowed_gardens || [],
+                            permissions: result.permissions
+                        }]));
+                    } catch (e) { }
+
+                    if (!localStorage.getItem('user_gardens')) {
+                        localStorage.setItem('user_gardens', JSON.stringify(defaultGardens));
+                    }
+
+                    let gardenAssigned = false;
+                    try {
+                        const gardensRes = await fetch('api/get_gardens.php');
+                        if (gardensRes.ok) {
+                            const allG = await gardensRes.json();
+                            if (Array.isArray(allG) && allG.length > 0) {
+                                localStorage.setItem('user_gardens', JSON.stringify(allG));
+                                if (result.allowed_gardens && result.allowed_gardens.length > 0) {
+                                    const found = allG.find(g => g.id === result.allowed_gardens[0]);
+                                    if (found) {
+                                        localStorage.setItem('selected_garden_id', found.id);
+                                        localStorage.setItem('selected_garden_name', found.name);
+                                        gardenAssigned = true;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) { }
+
+                    if (!gardenAssigned && result.allowed_gardens && result.allowed_gardens.length > 0) {
+                        const gId = result.allowed_gardens[0];
+                        const found = defaultGardens.find(g => g.id === gId);
+                        localStorage.setItem('selected_garden_id', gId);
+                        localStorage.setItem('selected_garden_name', found ? found.name : result.username);
+                    }
+
+                    await fetch('api/log_action.php', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            user: result.username,
+                            action: 'Giriş',
+                            details: 'Sisteme başarılı giriş yapıldı.'
+                        })
+                    });
+
+                    window.location.href = 'index.html';
+                } else {
+                    // Sunucu geçersiz kullanıcı/şifre bildirdi; çevrimdışı girişe DÜŞÜLMEZ.
+                    if (errorEl) {
+                        errorEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${result.message || 'Hatalı kullanıcı adı veya parola!'}`;
+                        errorEl.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.warn("Ağ bağlantısı başarısız, çevrimdışı doğrulamaya geçiliyor.", error);
+                handleOfflineLogin(username, password);
+            }
+        };
+
+        function handleOfflineLogin(username, password) {
+            const errorEl = document.getElementById('errorMsg');
+            const normalizedUsername = username.trim().toLocaleLowerCase('tr-TR');
+            const normalizedPassword = password.trim();
+
+            const usersList = getOfflineUsers();
+            const matchedUser = usersList.find(u =>
+                (u.username || '').trim().toLocaleLowerCase('tr-TR') === normalizedUsername &&
+                String(u.password).trim() === normalizedPassword
+            );
+
+            if (matchedUser) {
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('userName', matchedUser.username);
+                localStorage.setItem('userRole', matchedUser.role);
+                localStorage.setItem('allowed_gardens', JSON.stringify(matchedUser.allowed_gardens || []));
+                localStorage.setItem('userPermissions', JSON.stringify(matchedUser.permissions || { edit: true, delete: true, hidden: [] }));
+
+                if (!localStorage.getItem('user_gardens')) {
+                    localStorage.setItem('user_gardens', JSON.stringify(defaultGardens));
+                }
+
+                if (matchedUser.allowed_gardens && matchedUser.allowed_gardens.length > 0) {
+                    const gId = matchedUser.allowed_gardens[0];
+                    const found = defaultGardens.find(g => g.id === gId);
+                    localStorage.setItem('selected_garden_id', gId);
+                    localStorage.setItem('selected_garden_name', found ? found.name : matchedUser.username);
+                }
+
+                console.log("Çevrimdışı (Offline) giriş başarılı.");
+                window.location.href = 'index.html';
+            } else {
+                const errorEl = document.getElementById('errorMsg');
+                if (errorEl) {
+                    errorEl.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Hatalı kullanıcı adı veya parola!';
+                    errorEl.style.display = 'block';
+                }
+            }
+        }
+    </script>
+    <script src="assets/js/season_archive_manager.js?v=19"></script>
+    <script src="assets/js/interactive_enhancements.js?v=27"></script>
+</body>
+
+</html>
