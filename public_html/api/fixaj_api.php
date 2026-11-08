@@ -12,6 +12,9 @@ ini_set('log_errors', '1');
 
 const DX_VERSION = '4.3.0-fixaj';
 
+// DHT22 arizalaninca sabit %1 gibi gercek disi nem okuyabiliyor; bunun altindaki nem kayitlari reddedilir.
+const DX_HUM_MIN = 3;
+
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store, no-cache, must-revalidate');
 header('Access-Control-Allow-Origin: *');
@@ -59,7 +62,7 @@ function dx_parse_date($value) {
 function dx_record($item) {
     if (!is_array($item)) return null;
     $t = dx_clean_num($item['temp'] ?? $item['temperature'] ?? null, -50, 80);
-    $h = dx_clean_num($item['hum'] ?? $item['humidity'] ?? null, 0, 100);
+    $h = dx_clean_num($item['hum'] ?? $item['humidity'] ?? null, DX_HUM_MIN, 100);
     if ($t === null || $h === null) return null;
 
     $timeStr = $item['time'] ?? $item['at'] ?? null;
@@ -348,7 +351,7 @@ try {
         if (!is_array($input)) dx_json_reply(['error' => 'Geçersiz veri biçimi.'], 400);
 
         $t = dx_clean_num($input['temp'] ?? $input['temperature'] ?? null, -50, 80);
-        $h = dx_clean_num($input['hum'] ?? $input['humidity'] ?? null, 0, 100);
+        $h = dx_clean_num($input['hum'] ?? $input['humidity'] ?? null, DX_HUM_MIN, 100);
         if ($t === null || $h === null) {
             dx_json_reply(['error' => 'Geçerli temp ve hum alanları gereklidir.'], 400);
         }

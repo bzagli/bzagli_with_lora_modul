@@ -3,6 +3,7 @@
   - LoRa'dan gelen sicaklik/nem degerlerini okur
   - Min / Max degerleri tutar (sifirlanabilir)
   - ESP32 icindeki web sunucusundan canli dashboard sunar
+  - Son olcumu belirli araliklarla web sitesine (meteo.html 3. istasyon) gonderir
 
   Acilis: Seri Port Ekrani (115200) IP adresini yazar. Tarayicida o adresi
   (veya http://lora-alici.local) acin. WiFi'ye baglanamazsa ESP32 kendi agini
@@ -19,12 +20,19 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
 
 // ---------------- WiFi ----------------
 const char* WIFI_SSID  = "WIFI_ADINIZ";      // <-- kendi ag adiniz
 const char* WIFI_SIFRE = "WIFI_SIFRENIZ";    // <-- kendi sifreniz
 const char* AP_SSID    = "LoRa-Alici";       // WiFi yoksa ESP32'nin kuracagi ag
 const char* AP_SIFRE   = "12345678";
+
+// ---------------- WEB SITESI (3. istasyon) ----------------
+// Olcumler bu adrese POST edilir (temp, hum, konum). Bos birakilirsa gonderim kapali olur.
+const char* SITE_URL = "https://bzagli.com/api/fixaj_api.php";
+const unsigned long GONDERIM_ARALIGI_MS = 60000UL;  // en fazla dakikada bir gonderim
 
 // ---------------- PINLER ----------------
 #define E22_RX_PIN 16
@@ -51,10 +59,12 @@ struct __attribute__((packed)) Signal {
   char sifre[15];
   char konum[15];
   bool btn1;
-  byte btn2[10];   // float sicaklik
-  byte btn3[4];    // int16 nem x 10
+  byte btn2[10];      // ilk 4 bayt: float sicaklik
+  int16_t hmdty[10];  // hmdty[0]: nem x 10 (vericide Uno int = 2 bayt)
 };
-static_assert(sizeof(Signal) == 45, "Signal boyutu vericiyle (45 bayt) ayni olmali");
+static_assert(sizeof(Signal) == 61, "Signal boyutu vericiyle (61 bayt) ayni olmali");
+
+#define NEM_MIN 3.0f  // Bunun altindaki nem DHT22 arizasi sayilir (sabit %1 sorunu)
 
 // ---------------- OLCUM VERILERI ----------------
 unsigned long paketSayisi = 0;
@@ -64,6 +74,11 @@ float sonSicaklik = NAN, sonNem = NAN;
 float minSicaklik = NAN, maxSicaklik = NAN;
 float minNem = NAN, maxNem = NAN;
 char sonKonum[16] = "-";
+
+// ---------------- SITE GONDERIM DURUMU ----------------
+unsigned long sonGonderimMs = 0;
+unsigned long gonderilenPaket = 0;   // siteye en son gonderilen paket numarasi
+int sonHttpKodu = 0;
 
 void minMaxSifirla() {
   minSicaklik = maxSicaklik = sonSicaklik;
@@ -161,6 +176,7 @@ void handleData() {
   j += ",\"hmax\":" + jsonSayi(maxNem);
   j += ",\"paket\":" + String(paketSayisi);
   j += ",\"yas\":" + String(yas);
+  j += ",\"site\":" + String(sonHttpKodu);
   j += ",\"konum\":\"" + String(sonKonum) + "\"}";
   server.send(200, "application/json", j);
 }
@@ -172,6 +188,7 @@ void handleReset() {
 
 void wifiBaslat() {
   WiFi.mode(WIFI_STA);
+  WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_SIFRE);
   Serial.print("WiFi'ye baglaniliyor");
   unsigned long bas = millis();
@@ -245,6 +262,46 @@ bool LoraE22Ayarlar() {
   return rs.code == E22_SUCCESS;
 }
 
+String urlKodla(const char* s) {
+  String out;
+  const char* hex = "0123456789ABCDEF";
+  for (; *s; s++) {
+    unsigned char c = (unsigned char)*s;
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') out += (char)c;
+    else { out += '%'; out += hex[c >> 4]; out += hex[c & 15]; }
+  }
+  return out;
+}
+
+// Son olcumu web sitesine gonderir. Sadece ev WiFi'sine bagliyken calisir.
+void siteyeGonder() {
+  if (SITE_URL[0] == 0 || WiFi.getMode() != WIFI_STA || WiFi.status() != WL_CONNECTED) return;
+  if (paketSayisi == 0 || paketSayisi == gonderilenPaket || isnan(sonSicaklik)) return;
+  if (sonGonderimMs != 0 && millis() - sonGonderimMs < GONDERIM_ARALIGI_MS) return;
+  sonGonderimMs = millis();
+
+  WiFiClientSecure istemci;
+  istemci.setInsecure();  // sertifika dogrulamasi yok (basitlik icin)
+  HTTPClient http;
+  http.setTimeout(5000);
+  if (!http.begin(istemci, SITE_URL)) {
+    Serial.println("Site: baglanti baslatilamadi");
+    sonHttpKodu = -1;
+    return;
+  }
+  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+  String govde = "temp=" + String(sonSicaklik, 1) + "&hum=" + String(sonNem, 1) + "&konum=" + urlKodla(sonKonum);
+  sonHttpKodu = http.POST(govde);
+  if (sonHttpKodu == 200) {
+    gonderilenPaket = paketSayisi;
+    Serial.println("Site: olcum gonderildi");
+  } else {
+    Serial.print("Site: gonderim hatasi, kod=");
+    Serial.println(sonHttpKodu);
+  }
+  http.end();
+}
+
 void setup() {
   Serial.begin(115200);
   delay(300);
@@ -290,11 +347,11 @@ void paketOku() {
   float sicaklik;
   memcpy(&sicaklik, data.btn2, sizeof(sicaklik));
   int16_t nemX10;
-  memcpy(&nemX10, data.btn3, sizeof(nemX10));
+  memcpy(&nemX10, &data.hmdty[0], sizeof(nemX10));
   float nem = nemX10 / 10.0;
 
   // Mantiksiz degerleri min/max'a katma (bozuk paket korumasi)
-  if (isnan(sicaklik) || sicaklik < -40 || sicaklik > 125 || nem < 0 || nem > 100) {
+  if (isnan(sicaklik) || sicaklik < -40 || sicaklik > 125 || nem < NEM_MIN || nem > 100) {
     Serial.println("Gecersiz deger, atlandi");
     return;
   }
@@ -329,6 +386,8 @@ void loop() {
   server.handleClient();
 
   if (FixajSS.available() > 0) paketOku();
+
+  siteyeGonder();
 
   if (millis() - sonNabiz > 10000UL) {
     sonNabiz = millis();
